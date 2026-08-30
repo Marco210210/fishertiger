@@ -2,9 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 const store = new Map();
+let readsFail = false;
 let writesFail = false;
 globalThis.localStorage = {
-  getItem: (key) => (store.has(key) ? store.get(key) : null),
+  getItem: (key) => {
+    if (readsFail) throw new Error("SecurityError");
+    return store.has(key) ? store.get(key) : null;
+  },
   setItem: (key, value) => {
     if (writesFail) throw new Error("QuotaExceededError");
     store.set(key, String(value));
@@ -44,7 +48,7 @@ const {
   userTeamStorageKey,
   writeUserTeamIndex,
 } = await import("../src/auction-store.js");
-const { auctionStorageKey } = await import("../src/auction-state.js");
+const { auctionStorageKey, reconcileAuctionDraft } = await import("../src/auction-state.js");
 
 const rules = { participants: 3, teamNames: ["Mia", "Altra", "Terza"] };
 
@@ -177,6 +181,20 @@ test("a profile with no saved auction still gets an empty, usable board", () => 
   assert.equal(board.taken, 0);
   assert.deepEqual(board.teamNames, ["Mia", "Rivale"]);
   assert.equal(board.teams[0].maxBid, 28);
+  assert.equal(board.storageReadOk, true);
+});
+
+test("a genuinely missing auction can be created", () => {
+  store.clear();
+  assert.equal(
+    assignPlayer(PROFILE, livePlayers, liveRules, {
+      playerId: 1,
+      owner: 0,
+      price: 4,
+    }).ok,
+    true,
+  );
+  assert.equal(readAuctionBoard(PROFILE, livePlayers, liveRules).taken, 1);
 });
 
 test("assigning from the players page lands in the auction the other view reads", () => {
@@ -385,6 +403,99 @@ test("a browser that refuses to write reports it and keeps the saved auction", (
   assert.equal(result.ok, false);
   assert.match(result.message, /memoria del browser/i);
   assert.equal(store.get(auctionStorageKey(PROFILE)), before);
+});
+
+test("a browser read failure blocks every auction mutation without overwriting", () => {
+  resetStore();
+  assignPlayer(PROFILE, livePlayers, liveRules, {
+    playerId: 1,
+    owner: 0,
+    price: 4,
+  });
+  const before = store.get(auctionStorageKey(PROFILE));
+  let notifications = 0;
+  const unsubscribe = subscribeAuctionChanges(() => (notifications += 1));
+  readsFail = true;
+  try {
+    const operations = [
+      () => assignPlayer(PROFILE, livePlayers, liveRules, { playerId: 2, owner: 0, price: 4 }),
+      () => releasePlayer(PROFILE, livePlayers, liveRules, 1),
+      () => undoAssignment(PROFILE, livePlayers, liveRules),
+      () => redoAssignment(PROFILE, livePlayers, liveRules),
+      () => resetAuction(PROFILE, livePlayers, liveRules),
+      () => setStartingCredits(PROFILE, livePlayers, liveRules, 0, 50),
+      () => renameTeam(PROFILE, livePlayers, liveRules, 0, "Nuovo"),
+    ];
+    for (const operation of operations) {
+      const result = operation();
+      assert.equal(result.ok, false);
+      assert.match(result.message, /leggere l'asta salvata/i);
+      assert.equal(store.get(auctionStorageKey(PROFILE)), before);
+    }
+    assert.equal(readAuctionBoard(PROFILE, livePlayers, liveRules).storageReadOk, false);
+    assert.equal(notifications, 0);
+  } finally {
+    readsFail = false;
+    unsubscribe();
+  }
+});
+
+test("auction mutations recover by re-reading the preserved snapshot", () => {
+  resetStore();
+  assignPlayer(PROFILE, livePlayers, liveRules, {
+    playerId: 1,
+    owner: 0,
+    price: 4,
+  });
+  readsFail = true;
+  try {
+    assert.equal(
+      assignPlayer(PROFILE, livePlayers, liveRules, {
+        playerId: 2,
+        owner: 0,
+        price: 4,
+      }).ok,
+      false,
+    );
+  } finally {
+    readsFail = false;
+  }
+  assert.equal(
+    assignPlayer(PROFILE, livePlayers, liveRules, {
+      playerId: 2,
+      owner: 0,
+      price: 4,
+    }).ok,
+    true,
+  );
+  assert.equal(readAuctionBoard(PROFILE, livePlayers, liveRules).taken, 2);
+});
+
+test("a cross-tab assignment invalidates an open nomination", () => {
+  resetStore();
+  let draft = { playerId: 2, query: "Bomber", price: "12" };
+  const unsubscribe = subscribeAuctionChanges(() => {
+    draft = reconcileAuctionDraft(
+      draft,
+      livePlayers,
+      readAuctionBoard(PROFILE, livePlayers, liveRules),
+    );
+  });
+  store.set(
+    auctionStorageKey(PROFILE),
+    JSON.stringify({
+      version: 2,
+      teams: [
+        { name: "Mia", startingCredits: 30 },
+        { name: "Rivale", startingCredits: 30 },
+      ],
+      history: [{ playerId: 2, owner: 1, price: 12 }],
+      undone: [],
+    }),
+  );
+  emitStorageEvent(auctionStorageKey(PROFILE));
+  unsubscribe();
+  assert.deepEqual(draft, { playerId: null, query: "", price: "" });
 });
 
 test("the legacy single-profile auction is migrated to the profile-scoped key", () => {

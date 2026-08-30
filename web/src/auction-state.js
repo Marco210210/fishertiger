@@ -26,6 +26,18 @@ export const draftForQuery = (draft, players, query) => {
     : { ...draft, query };
 };
 
+export const reconcileAuctionDraft = (draft, players, board) => {
+  if (board?.storageReadOk === false) return draft;
+  const selected = draftPlayer(draft, players);
+  if (!selected)
+    return draft?.playerId === null || draft?.playerId === undefined
+      ? draft
+      : emptyDraft();
+  const assigned = board?.assigned?.[playerIdKey(selected.id)];
+  const wrongRole = board?.activeRole && selected.ruolo !== board.activeRole;
+  return assigned || wrongRole ? emptyDraft() : draft;
+};
+
 export const auctionPriceAtOrBelow = (value, rules) => {
   const minimum = rules.auction.minPrice;
   const increment = rules.auction.increment;

@@ -17,6 +17,8 @@ const STARTING_CREDITS_FLOOR = 25;
 
 const STORAGE_FAILURE =
   "Memoria del browser non disponibile: nulla è stato salvato.";
+const STORAGE_READ_FAILURE =
+  "Impossibile leggere l'asta salvata dalla memoria del browser: operazione annullata.";
 
 const ROLE_NAMES = {
   P: "portieri",
@@ -30,9 +32,9 @@ const success = (message) => ({ ok: true, message });
 
 const readKey = (key) => {
   try {
-    return localStorage.getItem(key);
+    return { ok: true, value: localStorage.getItem(key) };
   } catch {
-    return null;
+    return { ok: false, value: null };
   }
 };
 
@@ -79,7 +81,8 @@ const inRange = (index, rules) =>
   Number.isInteger(index) && index >= 0 && index < rules?.participants;
 
 export const readUserTeamIndex = (profileId, rules) => {
-  const raw = readKey(userTeamStorageKey(profileId));
+  const storedTeam = readKey(userTeamStorageKey(profileId));
+  const raw = storedTeam.ok ? storedTeam.value : null;
   if (typeof raw !== "string" || !raw.trim())
     return defaultUserTeamIndex(rules);
   const stored = Number(raw);
@@ -116,25 +119,37 @@ export const subscribeAuctionChanges = (listener) => {
 };
 
 const migrateLegacy = (profileId, players, rules) => {
-  if (String(profileId || "default") !== "default") return null;
-  const legacy = parsed(readKey(AUCTION_LEGACY_STORAGE_KEY));
+  if (String(profileId || "default") !== "default")
+    return { ok: true, state: null };
+  const legacyRead = readKey(AUCTION_LEGACY_STORAGE_KEY);
+  if (!legacyRead.ok) return { ok: false, state: null };
+  const legacy = parsed(legacyRead.value);
   const state = rehydrateAuction(legacy, players, rules);
   if (!state) {
     if (legacy) removeKey(AUCTION_LEGACY_STORAGE_KEY);
-    return null;
+    return { ok: true, state: null };
   }
   if (writeKey(auctionStorageKey(profileId), JSON.stringify(serializeAuction(state))))
     removeKey(AUCTION_LEGACY_STORAGE_KEY);
-  return state;
+  return { ok: true, state };
+};
+
+const loadAuction = (profileId, players, rules) => {
+  const currentRead = readKey(auctionStorageKey(profileId));
+  if (!currentRead.ok) return { ok: false, state: emptyAuction(rules) };
+  const current = rehydrateAuction(parsed(currentRead.value), players, rules);
+  if (current) return { ok: true, state: current };
+  const legacy = migrateLegacy(profileId, players, rules);
+  if (!legacy.ok) return { ok: false, state: emptyAuction(rules) };
+  return { ok: true, state: legacy.state || emptyAuction(rules) };
 };
 
 export const readAuction = (profileId, players, rules) =>
-  rehydrateAuction(parsed(readKey(auctionStorageKey(profileId))), players, rules) ||
-  migrateLegacy(profileId, players, rules) ||
-  emptyAuction(rules);
+  loadAuction(profileId, players, rules).state;
 
 export const readAuctionBoard = (profileId, players, rules) => {
-  const state = readAuction(profileId, players, rules);
+  const loaded = loadAuction(profileId, players, rules);
+  const state = loaded.state;
   return {
     teams: state.teams.map((team, index) => ({
       ...team,
@@ -149,6 +164,7 @@ export const readAuctionBoard = (profileId, players, rules) => {
     taken: Object.keys(state.assigned).length,
     activeRole: activeNominationRole(state.teams, rules),
     userTeamIndex: readUserTeamIndex(profileId, rules),
+    storageReadOk: loaded.ok,
   };
 };
 
@@ -179,8 +195,16 @@ const playerFrom = (players, playerId) =>
 
 const roleName = (role) => ROLE_NAMES[role] || role;
 
+const mutationState = (profileId, players, rules) => {
+  const loaded = loadAuction(profileId, players, rules);
+  return loaded.ok ? loaded.state : null;
+};
+
+const readFailure = () => failure(STORAGE_READ_FAILURE);
+
 export const assignPlayer = (profileId, players, rules, request) => {
-  const state = readAuction(profileId, players, rules);
+  const state = mutationState(profileId, players, rules);
+  if (!state) return readFailure();
   const player = playerFrom(players, request?.playerId);
   const owner = Number(request?.owner);
   const price = Number(request?.price);
@@ -230,7 +254,8 @@ export const assignPlayer = (profileId, players, rules, request) => {
 };
 
 export const releasePlayer = (profileId, players, rules, playerId) => {
-  const state = readAuction(profileId, players, rules);
+  const state = mutationState(profileId, players, rules);
+  if (!state) return readFailure();
   if (!state.assigned[playerIdKey(playerId)])
     return failure("Il giocatore non risulta assegnato.");
   return persist(
@@ -249,7 +274,8 @@ export const releasePlayer = (profileId, players, rules, playerId) => {
 };
 
 export const undoAssignment = (profileId, players, rules) => {
-  const state = readAuction(profileId, players, rules);
+  const state = mutationState(profileId, players, rules);
+  if (!state) return readFailure();
   const last = state.history.at(-1);
   if (!last) return failure("Non c'è nessuna assegnazione da annullare.");
   return persist(
@@ -265,7 +291,8 @@ export const undoAssignment = (profileId, players, rules) => {
 };
 
 export const redoAssignment = (profileId, players, rules) => {
-  const state = readAuction(profileId, players, rules);
+  const state = mutationState(profileId, players, rules);
+  if (!state) return readFailure();
   const last = (state.undone || []).at(-1);
   if (!last) return failure("Non c'è nessuna assegnazione da ripristinare.");
   const restored = playerFrom(players, last.playerId);
@@ -283,14 +310,16 @@ export const redoAssignment = (profileId, players, rules) => {
   );
 };
 
-export const resetAuction = (profileId, players, rules) =>
-  persist(
+export const resetAuction = (profileId, players, rules) => {
+  if (!mutationState(profileId, players, rules)) return readFailure();
+  return persist(
     profileId,
     serializeAuction(emptyAuction(rules)),
     players,
     rules,
     "Asta azzerata. Puoi reimpostare i crediti iniziali.",
   );
+};
 
 /** Starting credits describe the league before it starts, so they may only move
  *  while nothing has been bought — including through the redo stack. */
@@ -301,7 +330,8 @@ export const setStartingCredits = (
   teamIndex,
   value,
 ) => {
-  const state = readAuction(profileId, players, rules);
+  const state = mutationState(profileId, players, rules);
+  if (!state) return readFailure();
   const credits = Number(value);
   if (state.history.length || (state.undone || []).length)
     return failure("I crediti iniziali si cambiano solo prima del primo acquisto.");
@@ -325,7 +355,8 @@ export const setStartingCredits = (
 };
 
 export const renameTeam = (profileId, players, rules, teamIndex, name) => {
-  const state = readAuction(profileId, players, rules);
+  const state = mutationState(profileId, players, rules);
+  if (!state) return readFailure();
   const label = String(name ?? "").trim();
   if (!state.teams[teamIndex]) return failure("Squadra non riconosciuta.");
   if (!label) return failure("Il nome della squadra non può essere vuoto.");

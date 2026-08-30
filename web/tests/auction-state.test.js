@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { auctionPriceAtOrBelow, draftForQuery, draftPlayer, emptyAuction, emptyDraft, legalMaxBid, nearestAuctionPrice, rehydrateAuction, serializeAuction } from "../src/auction-state.js";
+import { auctionPriceAtOrBelow, draftForQuery, draftPlayer, emptyAuction, emptyDraft, legalMaxBid, nearestAuctionPrice, reconcileAuctionDraft, rehydrateAuction, serializeAuction } from "../src/auction-state.js";
 
 const rules = { participants: 2, teamNames: ["Mine", "Other"], startingCredits: 20, rosterSlots: { P: 1, A: 1 }, auction: { minPrice: 2, increment: 2, reserve: 2 } };
 const players = [{ id: 1, ruolo: "P" }, { id: 2, ruolo: "A" }];
@@ -50,6 +50,62 @@ test("editing a selected player's query invalidates the nomination and price", (
     price: "",
   });
   assert.deepEqual(draftForQuery(selected, [{ id: 2, nome: "Player A" }], "Player A"), selected);
+});
+
+test("an externally assigned player invalidates the whole nomination", () => {
+  const draft = { playerId: 2, query: "Bomber", price: "12" };
+  assert.deepEqual(
+    reconcileAuctionDraft(draft, players, {
+      assigned: { 2: { owner: 1, price: 12 } },
+      activeRole: null,
+      storageReadOk: true,
+    }),
+    emptyDraft(),
+  );
+});
+
+test("an active-role change invalidates a nomination from the old phase", () => {
+  const draft = { playerId: 1, query: "Portiere", price: "4" };
+  assert.deepEqual(
+    reconcileAuctionDraft(draft, players, {
+      assigned: {},
+      activeRole: "A",
+      storageReadOk: true,
+    }),
+    emptyDraft(),
+  );
+});
+
+test("a player removed by a dataset refresh invalidates the nomination", () => {
+  const draft = { playerId: 2, query: "Bomber", price: "12" };
+  assert.deepEqual(
+    reconcileAuctionDraft(draft, [players[0]], {
+      assigned: {},
+      activeRole: null,
+      storageReadOk: true,
+    }),
+    emptyDraft(),
+  );
+});
+
+test("a valid nomination survives board updates and unreadable storage", () => {
+  const draft = { playerId: 2, query: "Bomber", price: "12" };
+  assert.equal(
+    reconcileAuctionDraft(draft, players, {
+      assigned: {},
+      activeRole: "A",
+      storageReadOk: true,
+    }),
+    draft,
+  );
+  assert.equal(
+    reconcileAuctionDraft(draft, players, {
+      assigned: {},
+      activeRole: "P",
+      storageReadOk: false,
+    }),
+    draft,
+  );
 });
 
 test("custom minimum and increment snap every generated price to the legal grid", () => {

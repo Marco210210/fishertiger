@@ -6,6 +6,7 @@ import {
   legalMaxBid,
   nearestAuctionPrice,
   playerIdKey,
+  reconcileAuctionDraft,
   slotsLeft,
 } from "../auction-state.js";
 import { normalizeRules } from "../league-rules.js";
@@ -111,6 +112,10 @@ export default function AuctionView({
   }, [storageKey, rulesSignature, defaultUserTeamIndex]);
 
   useEffect(() => setOwner(userTeamIndex), [userTeamIndex]);
+
+  useEffect(() => {
+    setDraft((current) => reconcileAuctionDraft(current, data.players, board));
+  }, [data.players, board.assigned, board.activeRole, board.storageReadOk, setDraft]);
 
   const { advice, squadPlan: overview } = useAdvisor({
     player,
