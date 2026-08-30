@@ -8,12 +8,9 @@ import { playerIdKey } from "./auction-state.js";
  * The dataset instance wins over the caller's copy, which may come from a
  * previous profile.
  */
-export const reconcileSelectedPlayer = (selected, players, query = "") => {
+export const reconcileSelectedPlayer = (selected, eligiblePlayers) => {
   if (!selected) return null;
-  const current = (players || []).find(
+  return (eligiblePlayers || []).find(
     (candidate) => playerIdKey(candidate.id) === playerIdKey(selected.id),
-  );
-  if (!current) return null;
-  const needle = String(query ?? "").trim().toLowerCase();
-  return !needle || current.nome.toLowerCase().includes(needle) ? current : null;
+  ) || null;
 };

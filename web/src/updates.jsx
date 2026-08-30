@@ -30,7 +30,7 @@ const displayChangeValue = (value) => value && typeof value === "object"
   ? Object.entries(value).map(([key, item]) => `${key}: ${item}`).join(" · ")
   : String(value ?? "-");
 
-function PlayerListUpdates({ profile, apiBase, onApplied }) {
+function PlayerListUpdates({ profile, apiBase, onApplyStart, onApplied }) {
   const [candidate, setCandidate] = useState(null);
   const [remote, setRemote] = useState(null);
   const [busy, setBusy] = useState("");
@@ -97,6 +97,7 @@ function PlayerListUpdates({ profile, apiBase, onApplied }) {
   };
 
   const apply = async () => {
+    const profileRequest = onApplyStart?.();
     const request = ++sequence.current;
     setBusy("apply");
     setMessage("");
@@ -110,7 +111,7 @@ function PlayerListUpdates({ profile, apiBase, onApplied }) {
         { apiBase },
       );
       if (request !== sequence.current) return;
-      if (onApplied) await onApplied(result);
+      if (onApplied && await onApplied(result, profileRequest) === false) return;
       if (request !== sequence.current) return;
       setCandidate((current) => ({ ...current, state: "unchanged", summary: {}, details: {} }));
       setRemote(null);
@@ -353,7 +354,12 @@ function SetPieceUpdates({ profile, apiBase }) {
   );
 }
 
-export function Updates({ profile, apiBase = "", onPlayerListApplied }) {
+export function Updates({
+  profile,
+  apiBase = "",
+  onPlayerListApplyStart,
+  onPlayerListApplied,
+}) {
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
@@ -515,7 +521,12 @@ export function Updates({ profile, apiBase = "", onPlayerListApplied }) {
 
       <SetPieceUpdates profile={profile} apiBase={apiBase} />
 
-      <PlayerListUpdates profile={profile} apiBase={apiBase} onApplied={onPlayerListApplied} />
+      <PlayerListUpdates
+        profile={profile}
+        apiBase={apiBase}
+        onApplyStart={onPlayerListApplyStart}
+        onApplied={onPlayerListApplied}
+      />
 
       <aside className="update-method-note">
         <strong>Metodo</strong>

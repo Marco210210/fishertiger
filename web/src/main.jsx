@@ -4,6 +4,7 @@ import { Download, Trash2, Upload } from "lucide-react";
 import "./index.css";
 import { LeagueSettings } from "./league-settings.jsx";
 import { createRequestGate } from "./latest-request.js";
+import { adoptLatestPlayerListUpdate } from "./player-list-adoption.js";
 import { datasetFreshness, simulationFreshness } from "./dataset-freshness.js";
 import { emptyDraft } from "./auction-state.js";
 import { Updates } from "./updates.jsx";
@@ -184,6 +185,13 @@ function App() {
     setAuctionDraft(emptyDraft());
   };
 
+  const applyProfileForLoading = (nextProfile) => {
+    const nextId = nextProfile?.profile_id || "default";
+    if (loadedProfileId.current && loadedProfileId.current !== nextId)
+      clearDataset();
+    setProfile(nextProfile);
+  };
+
   useEffect(() => {
     let cancelled = false;
     const request = claimProfileRequest();
@@ -201,7 +209,8 @@ function App() {
       if (storedId && names.includes(storedId))
         next = await loadProfile(storedId, { apiBase }).catch(() => null);
       if (!next) next = await fetchDefaultProfile(apiBase);
-      if (!cancelled && isCurrentProfileRequest(request)) setProfile(next);
+      if (!cancelled && isCurrentProfileRequest(request))
+        applyProfileForLoading(next);
     })();
     return () => {
       cancelled = true;
@@ -363,7 +372,7 @@ function App() {
       writeStoredProfileId(activeProfile.profile_id);
     }
     if (!generate) {
-      setProfile(activeProfile);
+      applyProfileForLoading(activeProfile);
       if (saveWarning) {
         setProfileError(saveWarning);
         throw new Error(saveWarning);
@@ -404,7 +413,7 @@ function App() {
         isCurrentProfileRequest(request) &&
         generationRequests.current.isCurrent(generationRequest);
       if (current) {
-        setProfile(activeProfile);
+        applyProfileForLoading(activeProfile);
         setProfileError(
           error instanceof Error
             ? error.message
@@ -428,14 +437,14 @@ function App() {
       const fallback = await fetchDefaultProfile(apiBase);
       if (!isCurrentProfileRequest(request)) return;
       writeStoredProfileId("");
-      setProfile(fallback);
+      applyProfileForLoading(fallback);
       return;
     }
     try {
       const next = await loadProfile(id, { apiBase });
       if (!isCurrentProfileRequest(request)) return;
       writeStoredProfileId(id);
-      setProfile(next);
+      applyProfileForLoading(next);
     } catch (error) {
       if (!isCurrentProfileRequest(request)) return;
       setProfileError(
@@ -472,7 +481,7 @@ function App() {
     if (profile?.profile_id === id) {
       const request = claimProfileRequest();
       const fallback = await fetchDefaultProfile(apiBase);
-      if (isCurrentProfileRequest(request)) setProfile(fallback);
+      if (isCurrentProfileRequest(request)) applyProfileForLoading(fallback);
     }
   };
 
@@ -521,7 +530,7 @@ function App() {
         current.includes(id) ? current : [...current, id].sort(),
       );
       writeStoredProfileId(id);
-      setProfile(stored || incoming);
+      applyProfileForLoading(stored || incoming);
     } catch (error) {
       if (!isCurrentProfileRequest(request)) return;
       setProfileError(
@@ -594,18 +603,28 @@ function App() {
     }
   };
 
-  const adoptPlayerListUpdate = async (result) => {
-    const nextProfile = await loadProfile(result.profile_id, { apiBase });
-    const nextData = await loadDatasetUrl(
-      apiUrl(`/api/datasets/${result.dataset_path}`, apiBase),
-      { profile: nextProfile },
-    );
-    generatedProfileCommit.current = nextProfile;
-    setProfile(nextProfile);
-    setData(nextData);
-    setSeason(null);
-    setAuctionDraft(emptyDraft());
+  const beginPlayerListUpdate = () => {
+    invalidateOperations();
+    return claimProfileRequest();
   };
+
+  const adoptPlayerListUpdate = (result, request) =>
+    adoptLatestPlayerListUpdate({
+      request,
+      isCurrent: isCurrentProfileRequest,
+      loadProfile: () => loadProfile(result.profile_id, { apiBase }),
+      loadDataset: (nextProfile) =>
+        loadDatasetUrl(
+          apiUrl(`/api/datasets/${result.dataset_path}`, apiBase),
+          { profile: nextProfile },
+        ),
+      commit: (nextProfile, nextData) => {
+        generatedProfileCommit.current = nextProfile;
+        setProfile(nextProfile);
+        applyDataset(nextData, nextProfile);
+        setSeason(null);
+      },
+    });
 
   const rerunSimulation = async () => {
     if (isSimulating) return;
@@ -790,6 +809,7 @@ function App() {
             <Updates
               profile={profile}
               apiBase={apiBase}
+              onPlayerListApplyStart={beginPlayerListUpdate}
               onPlayerListApplied={adoptPlayerListUpdate}
             />
           ) : null}
@@ -929,4 +949,3 @@ createRoot(document.getElementById("root")).render(
     </AppErrorBoundary>
   </StrictMode>,
 );
-

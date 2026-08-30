@@ -193,10 +193,10 @@ export default function PlayersView({
   useEffect(() => setLimit(PAGE), [query, role, team, onlyTargets]);
 
   const board = useAuctionBoard(profileId, data.players, activeRules, showLive);
-  /* The panel drives the assignment, so it may only show a player this dataset
-     still contains and this search still matches. */
-  const player =
-    reconcileSelectedPlayer(selected, data.players, query) || rows[0];
+  /* The panel drives assignment and notes, so every active filter must still
+     admit an explicitly selected player. */
+  const reconciledPlayer = reconcileSelectedPlayer(selected, rows);
+  const player = selected ? reconciledPlayer : rows[0];
   const mark = player ? playerMark(notes, player.id) : null;
   const live = playerAuctionStatus(board, player);
   const targets = targetCount(notes);
@@ -215,6 +215,10 @@ export default function PlayersView({
     setAssignPrice("");
     setFeedback(null);
   }, [player?.id]);
+
+  useEffect(() => {
+    if (selected && !reconciledPlayer) setSelected(null);
+  }, [selected, reconciledPlayer, setSelected]);
 
   const pick = (next) => {
     setSelected(next);
