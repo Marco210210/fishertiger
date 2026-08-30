@@ -48,7 +48,7 @@ const roleNeeds = (team, rules) =>
       Math.max(
         0,
         rules.rosterSlots[role] -
-          (team?.roster || []).filter((player) => player.ruolo === role).length,
+        (team?.roster || []).filter((player) => player.ruolo === role).length,
       ),
     ]),
   );
@@ -119,7 +119,7 @@ const marketModel = (data, teams, rules, baseValueFor) => {
       const shrunk =
         inflation +
         ((roleObserved - inflation) * roleRatios.length) /
-          (roleRatios.length + 5);
+        (roleRatios.length + 5);
       return [role, shrunk];
     }),
   );
@@ -174,7 +174,7 @@ const roleBudgetPlan = (records, ownerIndex, needs, rules) => {
       role,
       (finite(rules.startingCredits) *
         finite(rules.auction.roleBudgetPercentages[role])) /
-        100,
+      100,
     ]),
   );
   const spent = Object.fromEntries(roles.map((role) => [role, 0]));
@@ -203,7 +203,7 @@ const roleBudgetPlan = (records, ownerIndex, needs, rules) => {
       const redistributed =
         needs[role] && openWeight
           ? (released * finite(rules.auction.roleBudgetPercentages[role])) /
-            openWeight
+          openWeight
           : 0;
       const remaining = Math.max(0, targets[role] - spent[role]) + redistributed;
       const softRemaining =
@@ -219,7 +219,7 @@ const roleBudgetPlan = (records, ownerIndex, needs, rules) => {
             0,
             Math.floor(
               softRemaining -
-                Math.max(0, needs[role] - 1) * rules.auction.reserve,
+              Math.max(0, needs[role] - 1) * rules.auction.reserve,
             ),
           ),
         },
@@ -342,8 +342,8 @@ export const evaluateOverview = (data = {}) => {
   const mineIndex = teams.indexOf(data.mine);
   const ownerIndex =
     Number.isInteger(requestedOwner) &&
-    requestedOwner >= 0 &&
-    requestedOwner < teams.length
+      requestedOwner >= 0 &&
+      requestedOwner < teams.length
       ? requestedOwner
       : mineIndex >= 0
         ? mineIndex
@@ -447,8 +447,8 @@ export const evaluateAuction = (data = {}) => {
   const mineIndex = teams.indexOf(data.mine);
   const ownerIndex =
     Number.isInteger(requestedOwner) &&
-    requestedOwner >= 0 &&
-    requestedOwner < teams.length
+      requestedOwner >= 0 &&
+      requestedOwner < teams.length
       ? requestedOwner
       : mineIndex >= 0
         ? mineIndex
@@ -556,10 +556,10 @@ export const evaluateAuction = (data = {}) => {
     rawValueCap < rules.auction.minPrice
       ? 0
       : rules.auction.minPrice +
-        Math.floor(
-          (rawValueCap - rules.auction.minPrice) / rules.auction.increment,
-        ) *
-          rules.auction.increment;
+      Math.floor(
+        (rawValueCap - rules.auction.minPrice) / rules.auction.increment,
+      ) *
+      rules.auction.increment;
 
   const baseline = completionFrontier(pool, needs, credits, costFor, valueFor);
   const withNeeds = { ...needs, [player.ruolo]: needs[player.ruolo] - 1 };
@@ -583,15 +583,15 @@ export const evaluateAuction = (data = {}) => {
   const idealMin =
     idealMax > 0
       ? auctionPriceAtOrBelow(
-          Math.max(
-            rules.auction.minPrice,
-            Math.min(
-              rounded(candidateCost * 0.75),
-              rounded(idealMax * 0.8),
-            ),
+        Math.max(
+          rules.auction.minPrice,
+          Math.min(
+            rounded(candidateCost * 0.75),
+            rounded(idealMax * 0.8),
           ),
-          rules,
-        )
+        ),
+        rules,
+      )
       : 0;
   const recommendation =
     maxBid < 1
@@ -604,7 +604,7 @@ export const evaluateAuction = (data = {}) => {
 
   const dataCoverage = Number(
     Array.isArray(player.p_gioca_per_giornata) &&
-      player.p_gioca_per_giornata.length > 0,
+    player.p_gioca_per_giornata.length > 0,
   );
   const historyCoverage = Math.min(1, market.records.length / 20);
   const poolCoverage = Math.min(
@@ -620,8 +620,8 @@ export const evaluateAuction = (data = {}) => {
     replacement
       ? `${rounded(candidateValue)} punti proiettati; margine di ${rounded(marginalValue)} sul cutoff del ruolo (${replacementIndex + 1}° tra i disponibili).`
       : `${rounded(candidateValue)} punti proiettati; nessuna alternativa disponibile nel ruolo.`,
-     `Margine corretto: ${rounded(individualMarginalValue)} punti individuali + ${rounded(defenseMarginalValue)} punti modificatore difesa.`,
-     `Limite ancorato al mercato a ${candidateCost} crediti, corretto per qualità relativa e fattibilità del completamento.`,
+    `Margine corretto: ${rounded(individualMarginalValue)} punti individuali + ${rounded(defenseMarginalValue)} punti modificatore difesa.`,
+    `Limite ancorato al mercato a ${candidateCost} crediti, corretto per qualità relativa e fattibilità del completamento.`,
     `Completamento ottimizzato rispettando ${openSlots} slot aperti e la riserva minima di ${Math.max(0, openSlots - 1) * rules.auction.reserve} crediti dopo l'acquisto.`,
     `Mercato osservato a ${market.inflation.toFixed(2)}x (${market.records.length} assegnazioni); ruolo ${player.ruolo} a ${market.roleInflation[player.ruolo].toFixed(2)}x.`,
     `${opponents.needing} avversari hanno ancora bisogno del ruolo; ${opponents.affordable} possono offrire almeno un credito oltre le proprie riserve.`,
@@ -709,11 +709,11 @@ export const evaluateAuction = (data = {}) => {
       slotsOpen: openSlots,
       reservedCredits:
         Math.max(0, openSlots - 1) * rules.auction.reserve,
-       candidateValue: rounded(candidateValue),
-       individualMarginalValue: rounded(individualMarginalValue),
-       defenseMarginalValue: rounded(defenseMarginalValue),
-       defenseValueBefore: rounded(currentDefenseValue),
-       defenseValueWithCandidate: rounded(candidateDefenseValue),
+      candidateValue: rounded(candidateValue),
+      individualMarginalValue: rounded(individualMarginalValue),
+      defenseMarginalValue: rounded(defenseMarginalValue),
+      defenseValueBefore: rounded(currentDefenseValue),
+      defenseValueWithCandidate: rounded(candidateDefenseValue),
       replacementValue: rounded(replacement?.value),
       replacementRank: replacementIndex == null ? null : replacementIndex + 1,
       marginalValue: rounded(marginalValue),
@@ -745,11 +745,13 @@ export const evaluateAuction = (data = {}) => {
   };
 };
 
+export const evaluateRequest = (data = {}) => ({
+  ...(data?.mode === "overview"
+    ? evaluateOverview(data)
+    : evaluateAuction(data)),
+  requestId: data?.requestId ?? null,
+});
+
 if (typeof self !== "undefined") {
-  self.onmessage = ({ data }) =>
-    self.postMessage(
-      data?.mode === "overview"
-        ? evaluateOverview(data)
-        : evaluateAuction(data),
-    );
+  self.onmessage = ({ data }) => self.postMessage(evaluateRequest(data));
 }

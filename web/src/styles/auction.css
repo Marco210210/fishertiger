@@ -242,6 +242,10 @@
   padding: 0 var(--s-4) var(--s-3);
 }
 
+.verdict--bare .verdict-call {
+  padding-top: var(--s-4);
+}
+
 .verdict-word {
   color: var(--verdict-color, var(--c-text));
   font-size: var(--fs-3xl);
@@ -451,9 +455,7 @@
   min-width: 0;
 }
 
-.verdict-more {
-  display: grid;
-  gap: var(--s-2);
+.verdict .verdict-more {
   padding: 0 var(--s-4) var(--s-4);
 }
 

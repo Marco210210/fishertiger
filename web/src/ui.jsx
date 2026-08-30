@@ -181,22 +181,35 @@ export function PlayerRow({
   valueLabel,
   rank,
   className = "",
+  media,
+  crest,
+  flag,
+  lead,
+  trailing,
 }) {
   const tone = availabilityTone(player.disponibilita?.status);
-  return (
+  const framed = Boolean(lead || trailing);
+  const hit = (
     <button
       type="button"
-      className={`row ${className}${selected ? " is-selected" : ""}`.trim()}
+      className={
+        framed
+          ? "row-hit"
+          : `row ${className}${selected ? " is-selected" : ""}`.trim()
+      }
       onClick={onClick}
     >
       {rank !== undefined ? <b className="row-rank">{rank}</b> : null}
       <RoleChip role={player.ruolo} />
+      {media}
       <span className="row-main">
         <span className="row-title">
           <i className={`avail avail--${tone}`} aria-hidden="true" />
           {player.nome}
+          {flag}
         </span>
         <span className="row-sub">
+          {crest}
           {player.squadra} · {formatTier(player.guida_asta_fascia)}
         </span>
       </span>
@@ -207,6 +220,16 @@ export function PlayerRow({
         </span>
       ) : null}
     </button>
+  );
+  if (!framed) return hit;
+  return (
+    <div
+      className={`row row--framed ${className}${selected ? " is-selected" : ""}`.trim()}
+    >
+      {lead}
+      {hit}
+      {trailing}
+    </div>
   );
 }
 

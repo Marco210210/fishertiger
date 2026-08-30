@@ -86,6 +86,7 @@ checks as having run.
 - Keep shared design tokens and styles under `web/src/styles/`.
 - Keep screen components under `web/src/views/` and shared primitives in `web/src/ui.jsx`.
 - Preserve the established color semantics: indigo for navigation and focus, and green, amber, or red for auction verdicts.
+- Keep persisted browser state behind its owning module; do not call `localStorage` from a view. Auction state goes through `web/src/auction-store.js`, and any new profile-scoped key must be registered in `web/src/profile-storage.js` so deleting a profile stays complete.
 - Verify user-facing changes on both mobile and desktop viewport sizes.
 
 ## Data, Profiles, and Privacy

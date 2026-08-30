@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { evaluateAuction, evaluateOverview } from "../src/simulation.worker.js";
+import {
+  evaluateAuction,
+  evaluateOverview,
+  evaluateRequest,
+} from "../src/simulation.worker.js";
 
 const LIMITS = { P: 3, D: 8, C: 8, A: 6 };
 let nextId = 1;
@@ -315,4 +319,34 @@ test("completed overview roles are not urgent", () => {
 
   assert.ok(completed.every((item) => item.urgency === "COMPLETO"));
   assert.equal(result.priorities.at(-1).urgency, "COMPLETO");
+});
+
+test("every answer carries back the id of the request that asked for it", () => {
+  const teams = [team("Mine", 80, { A: 1 })];
+  const candidate = player("A");
+
+  const advice = evaluateRequest({
+    ...payloadFor({ candidate, teams, remaining: [player("A")] }),
+    requestId: 7,
+  });
+  const overview = evaluateRequest({
+    mode: "overview",
+    teams,
+    remaining: [player("A")],
+    assigned: {},
+    requestId: 8,
+  });
+
+  assert.equal(advice.kind, "candidate");
+  assert.equal(advice.requestId, 7);
+  assert.equal(overview.kind, "overview");
+  assert.equal(overview.requestId, 8);
+});
+
+test("a request without an id is answered with a null id, not a stale one", () => {
+  const teams = [team("Mine", 80, { A: 1 })];
+  const answer = evaluateRequest(
+    payloadFor({ candidate: player("A"), teams, remaining: [player("A")] }),
+  );
+  assert.equal(answer.requestId, null);
 });

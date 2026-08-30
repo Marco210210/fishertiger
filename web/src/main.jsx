@@ -7,6 +7,7 @@ import { createRequestGate } from "./latest-request.js";
 import { datasetFreshness, simulationFreshness } from "./dataset-freshness.js";
 import { emptyDraft } from "./auction-state.js";
 import { Updates } from "./updates.jsx";
+import { clearProfileBrowserData } from "./profile-storage.js";
 import {
   apiUrl,
   auctionDatasetPath,
@@ -28,9 +29,25 @@ import SimulationView from "./views/simulation.jsx";
 import AuctionView from "./views/auction.jsx";
 
 const TABS = [
-  { id: "sintesi", label: "Sintesi", icon: "home", views: [["overview", "Sintesi"]] },
-  { id: "listone", label: "Listone", icon: "list", views: [["players", "Listone"]] },
-  { id: "asta", label: "Asta", icon: "gavel", hero: true, views: [["auction", "Asta"]] },
+  {
+    id: "sintesi",
+    label: "Sintesi",
+    icon: "home",
+    views: [["overview", "Sintesi"]],
+  },
+  {
+    id: "listone",
+    label: "Listone",
+    icon: "list",
+    views: [["players", "Listone"]],
+  },
+  {
+    id: "asta",
+    label: "Asta",
+    icon: "gavel",
+    hero: true,
+    views: [["auction", "Asta"]],
+  },
   {
     id: "squadre",
     label: "Squadre",
@@ -85,7 +102,7 @@ const writeStoredProfileId = (id) => {
 };
 
 function App() {
-  const [data, setData] = useState(null);
+  const [dataset, setDataset] = useState(null);
   const [season, setSeason] = useState(null);
   const [profile, setProfile] = useState(null);
   const [profileError, setProfileError] = useState("");
@@ -109,6 +126,7 @@ function App() {
   // An empty override deliberately enables same-origin requests behind Docker.
   const apiBase =
     import.meta.env.VITE_LOCAL_API_BASE ?? "http://127.0.0.1:8000";
+  const loadedProfileId = useRef(null);
   const profileRequests = useRef(null);
   const generationRequests = useRef(null);
   const simulationRequests = useRef(null);
@@ -139,6 +157,33 @@ function App() {
     invalidateSimulation();
   };
 
+  const applyDataset = (nextData, nextProfile) => {
+    const id =
+      nextProfile?.profile_id ||
+      nextData?.meta?.profile?.profile_id ||
+      "default";
+    const switched = loadedProfileId.current !== id;
+    loadedProfileId.current = id;
+    setDataset({ data: nextData, profile: nextProfile, profileId: id });
+    const fallbackTeam = nextData?.teams?.[0]?.squadra || null;
+    if (switched) {
+      setSelectedPlayer(null);
+      setSelectedTeam(fallbackTeam);
+      setAuctionDraft(emptyDraft());
+      setListRole(null);
+    } else {
+      setSelectedTeam((team) => team || fallbackTeam);
+    }
+  };
+
+  const clearDataset = () => {
+    loadedProfileId.current = null;
+    setDataset(null);
+    setSelectedPlayer(null);
+    setSelectedTeam(null);
+    setAuctionDraft(emptyDraft());
+  };
+
   useEffect(() => {
     let cancelled = false;
     const request = claimProfileRequest();
@@ -167,13 +212,12 @@ function App() {
     if (!profile) return;
     if (generatedProfileCommit.current === profile) {
       generatedProfileCommit.current = null;
-      setAuctionDraft(emptyDraft());
       return;
     }
     const pathError = datasetPathError(profile);
     if (pathError) {
       setProfileError(pathError);
-      setData(null);
+      clearDataset();
       setSeason(null);
       return;
     }
@@ -181,12 +225,10 @@ function App() {
     const datasetPath = auctionDatasetPath(profile);
     loadDatasetUrl(apiUrl(`/api/datasets/${datasetPath}`, apiBase), { profile })
       .then((nextData) => {
-        if (cancelled) return;
-        setData(nextData);
-        setSelectedTeam((team) => team || nextData.teams[0]?.squadra || null);
+        if (!cancelled) applyDataset(nextData, profile);
       })
       .catch(() => {
-        if (!cancelled) setData(null);
+        if (!cancelled) clearDataset();
       });
     fetch(apiUrl(`/api/datasets/${seasonSimulationPath(profile)}`, apiBase))
       .then((response) => (response.ok ? response.json() : null))
@@ -196,7 +238,6 @@ function App() {
       .catch(() => {
         if (!cancelled) setSeason(null);
       });
-    setAuctionDraft(emptyDraft());
     return () => {
       cancelled = true;
     };
@@ -240,7 +281,10 @@ function App() {
 
   useEffect(() => {
     const initialRoute = { view: "overview", player: null, team: null };
-    window.history.replaceState({ fantaRoute: initialRoute, fantaIndex: 0 }, "");
+    window.history.replaceState(
+      { fantaRoute: initialRoute, fantaIndex: 0 },
+      "",
+    );
     const restoreRoute = (event) => {
       const route = event.state?.fantaRoute;
       if (!route) return;
@@ -255,6 +299,7 @@ function App() {
     nextView,
     { player = selectedPlayer, team = selectedTeam } = {},
   ) => {
+    if (nextView !== "players") setListRole(null);
     const route = { view: nextView, player, team };
     setViewHistory((routes) => [...routes.slice(0, historyIndex + 1), route]);
     setHistoryIndex((index) => index + 1);
@@ -276,9 +321,9 @@ function App() {
     setListRole(role);
     navigate("players", { player: null });
   };
-  const activeRules = rulesFor(profile, data || {});
-  const activeProfileId =
-    profile?.profile_id || data?.meta?.profile?.profile_id || "default";
+  const data = dataset?.data || null;
+  const activeProfileId = dataset?.profileId || "default";
+  const activeRules = rulesFor(dataset?.profile ?? profile, data || {});
 
   const updateProfile = async (nextProfile, generate = false) => {
     setProfileError("");
@@ -333,7 +378,9 @@ function App() {
       });
       const payload = await response.json();
       if (!response.ok || !payload.dataset_path)
-        throw new Error(payload.error?.message || "Generazione non completata.");
+        throw new Error(
+          payload.error?.message || "Generazione non completata.",
+        );
       const nextData = await loadDatasetUrl(
         apiUrl(`/api/datasets/${payload.dataset_path}`, apiBase),
         { profile: activeProfile },
@@ -346,8 +393,7 @@ function App() {
       const generatedProfile = { ...activeProfile };
       generatedProfileCommit.current = generatedProfile;
       setProfile(generatedProfile);
-      setData(nextData);
-      setSelectedTeam((team) => team || nextData.teams[0]?.squadra || null);
+      applyDataset(nextData, generatedProfile);
       setSeason(null);
       navigate("overview");
       if (saveWarning) setProfileError(saveWarning);
@@ -404,7 +450,7 @@ function App() {
     if (!id) return;
     if (
       !window.confirm(
-        `Rimuovere il profilo "${id}"? I dati gia generati restano su disco.`,
+        `Rimuovere il profilo "${id}"? I dati gia generati restano su disco, note, filtri e asta salvati in questo browser vengono cancellati.`,
       )
     )
       return;
@@ -420,6 +466,7 @@ function App() {
       );
       return;
     }
+    clearProfileBrowserData(id);
     setProfiles((current) => current.filter((name) => name !== id));
     if (readStoredProfileId() === id) writeStoredProfileId("");
     if (profile?.profile_id === id) {
@@ -432,7 +479,9 @@ function App() {
   const exportProfile = () => {
     if (!profile) return;
     const url = URL.createObjectURL(
-      new Blob([JSON.stringify(profile, null, 2)], { type: "application/json" }),
+      new Blob([JSON.stringify(profile, null, 2)], {
+        type: "application/json",
+      }),
     );
     const link = document.createElement("a");
     link.href = url;
@@ -473,7 +522,6 @@ function App() {
       );
       writeStoredProfileId(id);
       setProfile(stored || incoming);
-      setAuctionDraft(emptyDraft());
     } catch (error) {
       if (!isCurrentProfileRequest(request)) return;
       setProfileError(
@@ -491,7 +539,9 @@ function App() {
         <select
           className="select"
           id="profile-select"
-          value={profiles.includes(profile?.profile_id) ? profile.profile_id : ""}
+          value={
+            profiles.includes(profile?.profile_id) ? profile.profile_id : ""
+          }
           onChange={(event) => selectProfile(event.target.value)}
         >
           <option value="">Profilo predefinito</option>
@@ -606,8 +656,8 @@ function App() {
             <span className="kicker">Configurazione iniziale</span>
             <h1>Genera il tuo dataset</h1>
             <p>
-              Carica il calendario della tua lega in Impostazioni e genera i dati
-              per iniziare.
+              Carica il calendario della tua lega in Impostazioni e genera i
+              dati per iniziare.
             </p>
           </div>
           {profilePicker}
@@ -637,7 +687,9 @@ function App() {
     <>
       <header className="topbar">
         <button className="brand" onClick={() => navigate("overview")}>
-          <span className="brand-mark" aria-hidden="true">FT</span>
+          <span className="brand-mark" aria-hidden="true">
+            FT
+          </span>
           <span className="brand-text">
             <strong>Fishertiger</strong>
             <span>{profile?.season?.season || "FANTACALCIO"}</span>
@@ -695,6 +747,7 @@ function App() {
             <PlayersView
               data={data}
               rules={activeRules}
+              profileId={activeProfileId}
               selected={selectedPlayer}
               setSelected={setSelectedPlayer}
               initialRole={listRole}
@@ -767,7 +820,9 @@ function App() {
             onClick={() => navigate(item.views[0][0])}
             aria-current={item.id === tab.id ? "page" : undefined}
           >
-            <span className="tab-icon"><Icon name={item.icon} /></span>
+            <span className="tab-icon">
+              <Icon name={item.icon} />
+            </span>
             {item.label}
           </button>
         ))}
@@ -795,11 +850,19 @@ function App() {
           </div>
           <div className="notice">{simulationState}</div>
           <p className="micro">
-            Generato il {data.meta?.generato_il?.slice(0, 10) || "n/d"} · profilo{" "}
-            {activeProfileId}
+            Generato il {data.meta?.generato_il?.slice(0, 10) || "n/d"} ·
+            profilo {activeProfileId}
           </p>
-          {generationStatus ? <p className="micro" role="status">{generationStatus}</p> : null}
-          {profileError ? <p className="notice notice--stop" role="alert">{profileError}</p> : null}
+          {generationStatus ? (
+            <p className="micro" role="status">
+              {generationStatus}
+            </p>
+          ) : null}
+          {profileError ? (
+            <p className="notice notice--stop" role="alert">
+              {profileError}
+            </p>
+          ) : null}
           <button
             type="button"
             className="btn btn--primary btn--block"
@@ -866,3 +929,4 @@ createRoot(document.getElementById("root")).render(
     </AppErrorBoundary>
   </StrictMode>,
 );
+

@@ -561,6 +561,11 @@
   text-align: right;
 }
 
+.verdict-more {
+  display: grid;
+  gap: var(--s-2);
+}
+
 /* --------------------------------------------------------------- disclosure */
 
 /* Progressive disclosure is how the redesign keeps depth without clutter:

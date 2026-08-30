@@ -1,21 +1,33 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { activeNominationRole } from "../auction-nomination.js";
 import {
   auctionStorageKey,
   draftForQuery,
   draftPlayer,
-  emptyAuction,
-  isValidBid,
   legalMaxBid,
   nearestAuctionPrice,
   playerIdKey,
-  rehydrateAuction,
-  serializeAuction,
   slotsLeft,
 } from "../auction-state.js";
 import { normalizeRules } from "../league-rules.js";
 import {
-  Disclosure,
+  assignPlayer,
+  defaultUserTeamIndex as configuredUserTeamIndex,
+  redoAssignment,
+  renameTeam,
+  resetAuction,
+  setStartingCredits,
+  undoAssignment,
+  writeUserTeamIndex,
+} from "../auction-store.js";
+import { useAuctionBoard } from "../use-auction-store.js";
+import { useAdvisor } from "../use-advisor.js";
+import {
+  AdviceDetail,
+  BidGauge,
+  PriceStepper,
+  bidVerdict,
+} from "../auction-advice.jsx";
+import {
   Empty,
   Icon,
   PlayerRow,
@@ -23,26 +35,6 @@ import {
   ROLE_LABELS,
   formatTier,
 } from "../ui.jsx";
-
-const RECOMMENDATION_LABELS = {
-  STRONG_BUY: "Compra",
-  BID: "Conviene",
-  VALUE_ONLY: "Solo al prezzo giusto",
-  PASS: "Lascia andare",
-  INELIGIBLE: "Non acquistabile",
-};
-
-const RECOMMENDATION_TONE = {
-  STRONG_BUY: "go",
-  BID: "go",
-  VALUE_ONLY: "warn",
-  PASS: "stop",
-  INELIGIBLE: "stop",
-};
-
-const STEPS = [-5, -1, 1, 5];
-
-const clampPercent = (value) => Math.max(0, Math.min(100, value));
 
 /**
  * Live auction.
@@ -70,34 +62,10 @@ export default function AuctionView({
   );
   const storageKey = auctionStorageKey(activeProfileId);
   const rulesSignature = JSON.stringify(activeRules);
-  const configuredUserIndex = Number(activeRules.userTeam);
-  const defaultUserTeamIndex = Math.max(
-    0,
-    Number.isInteger(configuredUserIndex) &&
-      configuredUserIndex >= 0 &&
-      configuredUserIndex < activeRules.participants
-      ? configuredUserIndex
-      : (activeRules.teamNames?.indexOf(activeRules.userTeam) ?? -1),
-  );
+  const defaultUserTeamIndex = configuredUserTeamIndex(activeRules);
 
-  const loadAuction = () => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
-      const legacy =
-        !saved && activeProfileId === "default"
-          ? JSON.parse(localStorage.getItem("fanta-auction-v1") || "null")
-          : null;
-      return (
-        rehydrateAuction(saved || legacy, data.players, activeRules) ||
-        emptyAuction(activeRules)
-      );
-    } catch {
-      return emptyAuction(activeRules);
-    }
-  };
-
-  const [state, setState] = useState(loadAuction);
-  const [userTeamIndex, setUserTeamIndex] = useState(defaultUserTeamIndex);
+  const board = useAuctionBoard(activeProfileId, data.players, activeRules);
+  const userTeamIndex = board.userTeamIndex;
   const { query, price } = draft;
   const setQuery = (value) =>
     setDraft((current) => ({ ...current, query: value }));
@@ -110,103 +78,59 @@ export default function AuctionView({
       playerId: candidate ? candidate.id : null,
     }));
   const [owner, setOwner] = useState(userTeamIndex);
-  const [advice, setAdvice] = useState(null);
-  const [overview, setOverview] = useState(null);
   const [message, setMessage] = useState(null);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
-  const worker = useRef();
-  const skipPersist = useRef(false);
   const priceTouched = useRef(false);
   const resetSignature = `${storageKey}|${rulesSignature}|${defaultUserTeamIndex}`;
   const lastResetSignature = useRef(resetSignature);
-
-  const workerHistory = state.history.flatMap((transaction) => {
-    const transactionPlayer = data.players.find(
-      (candidate) =>
-        playerIdKey(candidate.id) === playerIdKey(transaction.playerId),
-    );
-    return transactionPlayer
-      ? [{ ...transaction, player: transactionPlayer }]
-      : [];
+  const lastConfiguredUserTeam = useRef({
+    key: storageKey,
+    index: defaultUserTeamIndex,
   });
 
+  /* A profile or a rules change starts a different auction: the team chosen in
+     the settings wins over the one stored for the previous configuration. */
   useEffect(() => {
-    skipPersist.current = true;
-    setState(loadAuction());
-    setUserTeamIndex(defaultUserTeamIndex);
-    setOwner(defaultUserTeamIndex);
+    const configuredChanged =
+      lastConfiguredUserTeam.current.key === storageKey &&
+      lastConfiguredUserTeam.current.index !== defaultUserTeamIndex;
+    lastConfiguredUserTeam.current = {
+      key: storageKey,
+      index: defaultUserTeamIndex,
+    };
+    if (configuredChanged) writeUserTeamIndex(activeProfileId, defaultUserTeamIndex);
+    setOwner(configuredChanged ? defaultUserTeamIndex : userTeamIndex);
     if (lastResetSignature.current !== resetSignature) {
       setPlayer(null);
       setQuery("");
       setPrice("");
+      setMessage(null);
     }
     lastResetSignature.current = resetSignature;
   }, [storageKey, rulesSignature, defaultUserTeamIndex]);
 
-  useEffect(() => {
-    if (skipPersist.current) {
-      skipPersist.current = false;
-      return;
-    }
-    localStorage.setItem(storageKey, JSON.stringify(serializeAuction(state)));
-  }, [state, storageKey]);
+  useEffect(() => setOwner(userTeamIndex), [userTeamIndex]);
 
-  useEffect(() => {
-    worker.current = new Worker(
-      new URL("../simulation.worker.js", import.meta.url),
-      { type: "module" },
-    );
-    worker.current.onmessage = (event) =>
-      event.data.kind === "overview"
-        ? setOverview(event.data)
-        : setAdvice(event.data);
-    return () => worker.current.terminate();
-  }, []);
+  const { advice, squadPlan: overview } = useAdvisor({
+    player,
+    board,
+    players: data.players,
+    rules: activeRules,
+    overview: true,
+  });
 
-  useEffect(() => {
-    if (!player) return setAdvice(null);
-    worker.current.postMessage({
-      player,
-      owner: userTeamIndex,
-      mine: state.teams[userTeamIndex],
-      teams: state.teams,
-      remaining: data.players.filter(
-        (candidate) => !state.assigned[playerIdKey(candidate.id)],
-      ),
-      assigned: state.assigned,
-      history: workerHistory,
-      rules: activeRules,
-    });
-  }, [player, state, data, rulesSignature, userTeamIndex]);
-
-  useEffect(() => {
-    worker.current.postMessage({
-      mode: "overview",
-      owner: userTeamIndex,
-      mine: state.teams[userTeamIndex],
-      teams: state.teams,
-      remaining: data.players.filter(
-        (candidate) => !state.assigned[playerIdKey(candidate.id)],
-      ),
-      assigned: state.assigned,
-      history: workerHistory,
-      rules: activeRules,
-    });
-  }, [state, data, rulesSignature, userTeamIndex]);
-
-  const activeRole = activeNominationRole(state.teams, activeRules);
-  const myTeam = state.teams[userTeamIndex];
+  const activeRole = board.activeRole;
+  const myTeam = board.teams[userTeamIndex];
   const mySlots = slotsLeft(myTeam, activeRules);
   const myMax = legalMaxBid(myTeam, activeRules);
-  const ownerTeam = state.teams[owner];
+  const ownerTeam = board.teams[owner];
   const selectedLegalMax = legalMaxBid(ownerTeam, activeRules);
   const totalSlots = Object.values(activeRules.rosterSlots).reduce(
     (sum, count) => sum + count,
     0,
   );
-  const canSetStartingCredits =
-    state.history.length === 0 && !state.undone?.length;
+  const canSetStartingCredits = !board.history.length && !board.undone.length;
 
   const choices = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -214,12 +138,12 @@ export default function AuctionView({
     return data.players
       .filter(
         (candidate) =>
-          !state.assigned[playerIdKey(candidate.id)] &&
+          !board.assigned[playerIdKey(candidate.id)] &&
           (!activeRole || candidate.ruolo === activeRole) &&
           candidate.nome.toLowerCase().includes(needle),
       )
       .slice(0, 8);
-  }, [data.players, state.assigned, activeRole, query]);
+  }, [data.players, board.assigned, activeRole, query]);
 
   /* The price box opens on the estimated market price so the common case needs
      no typing; the moment the user edits it we stop overwriting their number. */
@@ -228,11 +152,23 @@ export default function AuctionView({
     const estimate = Number(advice.summary?.estimatedMarketPrice);
     if (!Number.isFinite(estimate) || estimate < activeRules.auction.minPrice)
       return;
-    const suggested = nearestAuctionPrice(estimate, selectedLegalMax, activeRules);
+    const suggested = nearestAuctionPrice(
+      estimate,
+      selectedLegalMax,
+      activeRules,
+    );
     if (suggested != null) setPrice(String(suggested));
   }, [player, advice, selectedLegalMax, rulesSignature]);
 
   const say = (text, tone = "info") => setMessage({ text, tone });
+
+  /** Every store answer reaches the user: a refused write is not a silent one. */
+  const report = (result, tone = "go") => {
+    if (result.message) say(result.message, result.ok ? tone : "stop");
+    else if (!result.ok) say("Operazione non riuscita.", "stop");
+    else setMessage(null);
+    return result.ok;
+  };
 
   const resetSelection = () => {
     setPlayer(null);
@@ -258,171 +194,21 @@ export default function AuctionView({
     setMessage(null);
   };
 
-  const bumpPrice = (steps) => {
-    priceTouched.current = true;
-    const current = nearestAuctionPrice(
-      price,
-      selectedLegalMax,
-      activeRules,
-    );
-    if (current == null) return;
-    const next = nearestAuctionPrice(
-      current + steps * activeRules.auction.increment,
-      selectedLegalMax,
-      activeRules,
-    );
-    if (next != null) setPrice(String(next));
-  };
-
   const assign = () => {
-    const value = Number(price);
-    const team = state.teams[owner];
     if (!player) return;
-    if (state.assigned[playerIdKey(player.id)]) {
-      say(`${player.nome} risulta già assegnato.`, "stop");
-      return;
-    }
-    if (activeRole && player.ruolo !== activeRole) {
-      say(
-        `In questa fase puoi assegnare solo ${ROLE_LABELS[activeRole].toLowerCase()}.`,
-        "stop",
-      );
-      return;
-    }
-    if (!Number.isInteger(value) || value < activeRules.auction.minPrice) {
-      say(
-        `Inserisci un prezzo intero di almeno ${activeRules.auction.minPrice} crediti.`,
-        "stop",
-      );
-      return;
-    }
-    if ((value - activeRules.auction.minPrice) % activeRules.auction.increment) {
-      say(
-        `Il prezzo deve salire di ${activeRules.auction.increment} crediti a partire da ${activeRules.auction.minPrice}.`,
-        "stop",
-      );
-      return;
-    }
-    const legalMax = legalMaxBid(team, activeRules);
-    if (value > legalMax) {
-      const reserve =
-        Math.max(
-          0,
-          Object.values(slotsLeft(team, activeRules)).reduce(
-            (sum, count) => sum + count,
-            0,
-          ) - 1,
-        ) * activeRules.auction.reserve;
-      say(
-        `${team.name} può spendere al massimo ${legalMax} crediti: deve conservarne ${reserve} per completare la rosa.`,
-        "stop",
-      );
-      return;
-    }
-    if (slotsLeft(team, activeRules)[player.ruolo] < 1) {
-      say(
-        `${team.name} non ha più posti per ${(ROLE_LABELS[player.ruolo] || player.ruolo).toLowerCase()}.`,
-        "stop",
-      );
-      return;
-    }
-    setState((current) => ({
-      ...current,
-      teams: current.teams.map((team_, index) =>
-        index === owner
-          ? {
-              ...team_,
-              credits: team_.credits - value,
-              roster: [...team_.roster, player],
-            }
-          : team_,
-      ),
-      assigned: {
-        ...current.assigned,
-        [playerIdKey(player.id)]: { owner, price: value },
-      },
-      history: [...current.history, { playerId: player.id, owner, price: value }],
-      undone: [],
-    }));
-    say(`${player.nome} a ${team.name} per ${value} crediti.`, "go");
-    resetSelection();
-  };
-
-  const undo = () => {
-    const last = state.history.at(-1);
-    if (!last) return;
-    setState((current) => {
-      const assigned = { ...current.assigned };
-      delete assigned[playerIdKey(last.playerId)];
-      return {
-        ...current,
-        assigned,
-        history: current.history.slice(0, -1),
-        undone: [...(current.undone || []), last],
-        teams: current.teams.map((team, index) =>
-          index === last.owner
-            ? {
-                ...team,
-                credits: team.credits + last.price,
-                roster: team.roster.filter(
-                  (item) => playerIdKey(item.id) !== playerIdKey(last.playerId),
-                ),
-              }
-            : team,
-        ),
-      };
+    const result = assignPlayer(activeProfileId, data.players, activeRules, {
+      playerId: player.id,
+      owner,
+      price: Number(price),
     });
-    say(
-      `Annullata l'assegnazione di ${
-        data.players.find(
-          (item) => playerIdKey(item.id) === playerIdKey(last.playerId),
-        )?.nome || "giocatore"
-      }.`,
-    );
+    if (report(result)) resetSelection();
   };
 
-  const redo = () => {
-    const last = state.undone?.at(-1);
-    if (!last) return;
-    const team = state.teams[last.owner];
-    const restored = data.players.find(
-      (item) => playerIdKey(item.id) === playerIdKey(last.playerId),
-    );
-    if (
-      !restored ||
-      state.assigned[playerIdKey(last.playerId)] ||
-      slotsLeft(team, activeRules)[restored.ruolo] < 1 ||
-      !isValidBid(last.price, team, activeRules)
-    ) {
-      say(
-        "Non posso ripristinare l'operazione: budget o slot sono cambiati.",
-        "stop",
-      );
-      return;
-    }
-    setState((current) => ({
-      ...current,
-      teams: current.teams.map((team_, index) =>
-        index === last.owner
-          ? {
-              ...team_,
-              credits: team_.credits - last.price,
-              roster: [...team_.roster, restored],
-            }
-          : team_,
-      ),
-      assigned: {
-        ...current.assigned,
-        [playerIdKey(last.playerId)]: {
-          owner: last.owner,
-          price: last.price,
-        },
-      },
-      history: [...current.history, last],
-      undone: current.undone.slice(0, -1),
-    }));
-    say(`Ripristinata l'assegnazione di ${restored.nome}.`, "go");
-  };
+  const undo = () =>
+    report(undoAssignment(activeProfileId, data.players, activeRules), "info");
+
+  const redo = () =>
+    report(redoAssignment(activeProfileId, data.players, activeRules));
 
   const flushAuction = () => {
     if (
@@ -431,26 +217,39 @@ export default function AuctionView({
       )
     )
       return;
-    setState(emptyAuction(activeRules));
-    resetSelection();
-    say("Asta azzerata. Puoi reimpostare i crediti iniziali.", "go");
+    if (report(resetAuction(activeProfileId, data.players, activeRules)))
+      resetSelection();
   };
 
   const updateStartingCredits = (teamIndex, value) => {
     const credits = Number(value);
     if (!Number.isInteger(credits) || credits < 25) return;
-    setState((current) => ({
-      ...current,
-      teams: current.teams.map((team, index) =>
-        index === teamIndex ? { ...team, startingCredits: credits, credits } : team,
+    report(
+      setStartingCredits(
+        activeProfileId,
+        data.players,
+        activeRules,
+        teamIndex,
+        credits,
       ),
-    }));
+    );
   };
 
-  const lastTransaction = state.history.at(-1);
+  const updateTeamName = (teamIndex, name) =>
+    report(
+      renameTeam(activeProfileId, data.players, activeRules, teamIndex, name),
+    );
+
+  const chooseUserTeam = (index) => {
+    setOwner(index);
+    report(writeUserTeamIndex(activeProfileId, index));
+  };
+
+  const lastTransaction = board.history.at(-1);
   const lastPlayer = lastTransaction
     ? data.players.find(
-        (item) => playerIdKey(item.id) === playerIdKey(lastTransaction.playerId),
+        (item) =>
+          playerIdKey(item.id) === playerIdKey(lastTransaction.playerId),
       )
     : null;
 
@@ -471,12 +270,9 @@ export default function AuctionView({
             max={myMax}
             rosterSize={myTeam.roster.length}
             totalSlots={totalSlots}
-            teams={state.teams}
+            teams={board.teams}
             userTeamIndex={userTeamIndex}
-            onChangeUserTeam={(index) => {
-              setUserTeamIndex(index);
-              setOwner(index);
-            }}
+            onChangeUserTeam={chooseUserTeam}
           />
 
           <div className="nominate">
@@ -494,10 +290,8 @@ export default function AuctionView({
                 value={query}
                 onChange={(event) => {
                   const nextQuery = event.target.value;
-                  if (player && nextQuery !== player.nome) {
-                    setAdvice(null);
+                  if (player && nextQuery !== player.nome)
                     priceTouched.current = false;
-                  }
                   setDraft((current) =>
                     draftForQuery(current, data.players, nextQuery),
                   );
@@ -563,7 +357,7 @@ export default function AuctionView({
               price={price}
               rules={activeRules}
               legalMax={selectedLegalMax}
-              teams={state.teams}
+              teams={board.teams}
               owner={owner}
               userTeamIndex={userTeamIndex}
               onOwner={setOwner}
@@ -571,7 +365,6 @@ export default function AuctionView({
                 priceTouched.current = true;
                 setPrice(value);
               }}
-              onStep={bumpPrice}
               onAssign={assign}
               onCancel={resetSelection}
               onOpenPlayer={() => openPlayer(player)}
@@ -589,7 +382,7 @@ export default function AuctionView({
             {lastPlayer ? (
               <span>
                 Ultima: <b>{lastPlayer.nome}</b> a{" "}
-                {state.teams[lastTransaction.owner]?.name} per{" "}
+                {board.teams[lastTransaction.owner]?.name} per{" "}
                 {lastTransaction.price}
               </span>
             ) : (
@@ -599,7 +392,7 @@ export default function AuctionView({
               type="button"
               className="btn btn--sm"
               onClick={undo}
-              disabled={!state.history.length}
+              disabled={!board.history.length}
             >
               Annulla
             </button>
@@ -607,7 +400,7 @@ export default function AuctionView({
               type="button"
               className="btn btn--sm"
               onClick={redo}
-              disabled={!state.undone?.length}
+              disabled={!board.undone.length}
             >
               Ripristina
             </button>
@@ -630,24 +423,17 @@ export default function AuctionView({
               </button>
             </div>
             <div className="teams-board">
-              {state.teams.map((team, index) => (
+              {board.teams.map((team, index) => (
                 <TeamCard
                   key={index}
                   team={team}
                   index={index}
                   rules={activeRules}
                   isMine={index === userTeamIndex}
-                  assigned={state.assigned}
+                  assigned={board.assigned}
                   showSetup={showSetup}
                   canSetStartingCredits={canSetStartingCredits}
-                  onRename={(name) =>
-                    setState((current) => ({
-                      ...current,
-                      teams: current.teams.map((team_, teamIndex) =>
-                        teamIndex === index ? { ...team_, name } : team_,
-                      ),
-                    }))
-                  }
+                  onRename={(name) => updateTeamName(index, name)}
                   onCredits={(value) => updateStartingCredits(index, value)}
                   onOpenPlayer={openPlayer}
                 />
@@ -655,7 +441,11 @@ export default function AuctionView({
             </div>
           </section>
 
-          <button type="button" className="btn btn--danger" onClick={flushAuction}>
+          <button
+            type="button"
+            className="btn btn--danger"
+            onClick={flushAuction}
+          >
             Azzera l&apos;asta salvata
           </button>
         </aside>
@@ -687,7 +477,13 @@ function MyTeamBar({
             className="select"
             value={userTeamIndex}
             onChange={(event) => onChangeUserTeam(Number(event.target.value))}
-            style={{ minHeight: 32, fontSize: "var(--fs-xs)", padding: "0 26px 0 8px", width: "auto", maxWidth: "12rem" }}
+            style={{
+              minHeight: 32,
+              fontSize: "var(--fs-xs)",
+              padding: "0 26px 0 8px",
+              width: "auto",
+              maxWidth: "12rem",
+            }}
           >
             {teams.map((item, index) => (
               <option value={index} key={index}>
@@ -697,7 +493,9 @@ function MyTeamBar({
           </select>
           <div className="myteam-credits">
             {team.credits}
-            <span>crediti · {rosterSize}/{totalSlots}</span>
+            <span>
+              crediti · {rosterSize}/{totalSlots}
+            </span>
           </div>
         </div>
         <div className="myteam-max">
@@ -737,61 +535,19 @@ function VerdictCard({
   userTeamIndex,
   onOwner,
   onPrice,
-  onStep,
   onAssign,
   onCancel,
   onOpenPlayer,
 }) {
-  const value = Number(price);
-  const hasPrice = Number.isFinite(value) && value > 0;
-  const market = Number(advice?.summary?.estimatedMarketPrice);
-  const maxBid = Number(advice?.maxBid ?? 0);
-  const idealMin = Number(advice?.idealMin ?? 0);
-  const idealMax = Number(advice?.idealMax ?? 0);
-
   /* The headline answers the question actually being asked at the table — "at
      this price, yes or no?" — so it follows the live number, not the static
      recommendation. The recommendation stays underneath as the reference. */
-  const unaffordable = maxBid < rules.auction.minPrice;
-  const priceTone = unaffordable
-    ? "stop"
-    : value > legalMax || value > maxBid
-      ? "stop"
-      : value > idealMax
-        ? "warn"
-        : "go";
-  const tone = !advice
-    ? null
-    : hasPrice
-      ? priceTone
-      : RECOMMENDATION_TONE[advice.recommendation] || null;
-
-  const recommendation =
-    RECOMMENDATION_LABELS[advice?.recommendation] || "Valuta";
-  const headline = !advice
-    ? "Calcolo…"
-    : unaffordable
-      ? "Non acquistabile"
-      : !hasPrice
-        ? recommendation
-        : value > legalMax
-          ? "Fuori budget"
-          : value > maxBid
-            ? "Troppo caro"
-            : value > idealMax
-              ? "Ancora accettabile"
-              : recommendation;
-
-  /* The scale is framed on the decision, not on the whole wallet: anchoring it
-     to the legal ceiling would squeeze every marker into the first few pixels. */
-  const anchor = Math.max(
-    maxBid,
-    Number.isFinite(market) ? market : 0,
-    hasPrice ? value : 0,
-    rules.auction.minPrice,
-  );
-  const scale = Math.max(anchor * 1.25, anchor + 4);
-  const pct = (input) => clampPercent((input / scale) * 100);
+  const { tone, headline, recommendation } = bidVerdict({
+    advice,
+    price,
+    rules,
+    legalMax,
+  });
 
   const forOther = owner !== userTeamIndex;
 
@@ -826,92 +582,16 @@ function VerdictCard({
         </span>
       </div>
 
-      {advice && maxBid >= rules.auction.minPrice ? (
-        <div className="gauge">
-          <div
-            className="gauge-track"
-            style={{
-              "--ideal-start": `${pct(idealMin)}%`,
-              "--ideal-width": `${Math.max(0, pct(idealMax) - pct(idealMin))}%`,
-              "--now": `${hasPrice ? pct(value) : 0}%`,
-            }}
-          >
-            <span className="gauge-fill" />
-            <span className="gauge-band" />
-            {Number.isFinite(market) ? (
-              <span
-                className="gauge-mark gauge-mark--market"
-                style={{ "--at": `${pct(market)}%` }}
-              />
-            ) : null}
-            <span
-              className="gauge-mark gauge-mark--cap"
-              style={{ "--at": `${pct(maxBid)}%` }}
-            />
-            {hasPrice ? (
-              <span
-                className="gauge-thumb"
-                style={{ "--now": `${pct(value)}%` }}
-              >
-                {value}
-              </span>
-            ) : null}
-          </div>
-          <div className="gauge-legend">
-            <span>
-              <i className="k-band" />
-              ideale <b>{idealMin}–{idealMax}</b>
-            </span>
-            <span>
-              <i className="k-cap" />
-              non superare <b>{maxBid}</b>
-            </span>
-            {Number.isFinite(market) ? (
-              <span>
-                <i className="k-market" />
-                mercato <b>{market}</b>
-              </span>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
+      <BidGauge advice={advice} price={price} rules={rules} legalMax={legalMax} />
 
       <div className="bidbar">
-        <div className="stepper">
-          {STEPS.slice(0, 2).map((step) => (
-            <button
-              key={step}
-              type="button"
-              onClick={() => onStep(step)}
-              aria-label={`Riduci di ${Math.abs(step * rules.auction.increment)}`}
-            >
-              {step * rules.auction.increment}
-            </button>
-          ))}
-          <input
-            className="input"
-            type="number"
-            inputMode="numeric"
-            min={rules.auction.minPrice}
-            max={legalMax}
-            step={rules.auction.increment}
-            value={price}
-            onChange={(event) => onPrice(event.target.value)}
-            onKeyDown={(event) => event.key === "Enter" && onAssign()}
-            placeholder="Prezzo"
-            aria-label="Prezzo di acquisto in crediti"
-          />
-          {STEPS.slice(2).map((step) => (
-            <button
-              key={step}
-              type="button"
-              onClick={() => onStep(step)}
-              aria-label={`Aumenta di ${step * rules.auction.increment}`}
-            >
-              +{step * rules.auction.increment}
-            </button>
-          ))}
-        </div>
+        <PriceStepper
+          price={price}
+          rules={rules}
+          legalMax={legalMax}
+          onPrice={onPrice}
+          onSubmit={onAssign}
+        />
 
         <div className="assign-row">
           <select
@@ -950,54 +630,7 @@ function VerdictCard({
         </div>
       </div>
 
-      {advice ? (
-        <div className="verdict-more">
-          <Disclosure summary="Perché" badge={`${advice.reasons.length}`}>
-            <ul className="bullets">
-              {advice.reasons.slice(0, 4).map((reason) => (
-                <li key={reason}>{reason}</li>
-              ))}
-            </ul>
-          </Disclosure>
-          <Disclosure
-            summary="Attenzione"
-            badge={advice.risks.length ? `${advice.risks.length}` : "0"}
-          >
-            {advice.risks.length ? (
-              <ul className="bullets bullets--warn">
-                {advice.risks.slice(0, 4).map((risk) => (
-                  <li key={risk}>{risk}</li>
-                ))}
-              </ul>
-            ) : (
-              <p className="micro">Nessun rischio specifico rilevato.</p>
-            )}
-          </Disclosure>
-          {advice.alternatives.length ? (
-            <Disclosure
-              summary="Alternative nello stesso ruolo"
-              badge={`${advice.alternatives.length}`}
-            >
-              <div className="rows">
-                {advice.alternatives.map((alternative) => (
-                  <div className="row" key={alternative.id}>
-                    <RoleChip role={alternative.role} />
-                    <span className="row-main">
-                      <span className="row-title">{alternative.name}</span>
-                      <span className="row-sub">
-                        differenza di valore {alternative.valueGap}
-                      </span>
-                    </span>
-                    <span className="row-value">
-                      ≈ {alternative.estimatedCost}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </Disclosure>
-          ) : null}
-        </div>
-      ) : null}
+      <AdviceDetail advice={advice} />
     </section>
   );
 }
@@ -1013,7 +646,9 @@ function RosePlan({ overview }) {
         </div>
         <div className="stat" style={{ textAlign: "right" }}>
           <span className="stat-label">Spendibili</span>
-          <span className="stat-value">{overview.summary.spendableCredits}</span>
+          <span className="stat-value">
+            {overview.summary.spendableCredits}
+          </span>
         </div>
       </div>
       <div className="rows">

@@ -296,9 +296,15 @@
 
 .detail-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--s-3);
   margin-bottom: var(--s-3);
+}
+
+.detail-identity {
+  flex: 1 1 9rem;
+  min-width: 0;
 }
 
 .detail-head h2 {
@@ -623,4 +629,214 @@
   border-top: 0;
   border-radius: var(--r-sm);
   padding-inline: var(--s-2);
+}
+
+.row.row--framed {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--s-2);
+  padding-inline: var(--s-2) var(--s-3);
+}
+
+.row-hit {
+  display: flex;
+  align-self: stretch;
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
+  color: inherit;
+}
+
+.row-hit > .row-main {
+  flex: 1 1 auto;
+}
+
+.row-hit > .role-chip,
+.row-hit > .player-avatar,
+.row-hit > .player-metric {
+  flex: 0 0 auto;
+}
+
+.row-star {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-sm);
+  color: var(--c-text-mute);
+  transition: color var(--t-fast) var(--ease);
+}
+
+.row-star:hover {
+  color: var(--c-text);
+}
+
+/* Targets are a personal mark, not a verdict: they wear the brand indigo so the
+   saturated go / warn / stop stay unambiguous at the auction. */
+.row-star[aria-pressed="true"],
+.target-toggle.is-target {
+  color: var(--c-brand-bright);
+}
+
+.detail-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--s-2);
+  margin-left: auto;
+}
+
+.player-row.is-target {
+  box-shadow: inset 2px 0 0 var(--c-brand);
+}
+
+.player-row.is-live-taken,
+.player-row.is-live-mine {
+  background: var(--c-surface-2);
+}
+
+.player-row.is-live-mine {
+  background: var(--c-info-tint);
+}
+
+.player-row.is-live-taken .row-title,
+.player-row.is-live-mine .row-title,
+.player-row.is-live-taken .player-metric b,
+.player-row.is-live-mine .player-metric b,
+.player-row.is-live-taken .live-cell b,
+.player-row.is-live-mine .live-cell b {
+  color: var(--c-text-mute);
+  font-weight: 600;
+}
+
+.player-row.is-live-taken .role-chip,
+.player-row.is-live-mine .role-chip,
+.player-row.is-live-taken .avail,
+.player-row.is-live-mine .avail,
+.player-row.is-live-taken .player-avatar,
+.player-row.is-live-mine .player-avatar,
+.player-row.is-live-taken .team-logo,
+.player-row.is-live-mine .team-logo {
+  opacity: 0.45;
+}
+
+.note-flag {
+  margin-left: 5px;
+  color: var(--c-text-mute);
+  vertical-align: middle;
+}
+
+.player-avatar {
+  flex: 0 0 auto;
+  width: auto;
+  height: 34px;
+  max-width: 40px;
+  object-fit: contain;
+}
+
+.player-avatar--lg {
+  height: 64px;
+  max-width: 72px;
+}
+
+.team-logo {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+  object-fit: contain;
+  vertical-align: middle;
+}
+
+.detail-role {
+  display: grid;
+  flex: 0 0 auto;
+  gap: var(--s-2);
+  justify-items: center;
+}
+
+.detail-role .team-logo {
+  width: 26px;
+  height: 26px;
+  margin: 0;
+}
+
+.live-cell {
+  display: grid;
+  gap: 1px;
+  justify-items: end;
+  min-width: 72px;
+  text-align: right;
+}
+
+.live-cell b {
+  overflow: hidden;
+  max-width: 88px;
+  font-size: var(--fs-xs);
+  font-weight: 660;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-cell small {
+  color: var(--c-text-mute);
+  font-size: var(--fs-2xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.live-assign-open {
+  flex: 0 0 auto;
+}
+
+.live-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-4);
+  align-items: center;
+  margin-bottom: var(--s-3);
+  color: var(--c-text-dim);
+  font-size: var(--fs-xs);
+}
+
+.live-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.live-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.live-legend .k-mine {
+  background: var(--c-info);
+}
+
+.live-legend .k-taken {
+  background: var(--c-text-mute);
+}
+
+.live-legend-count {
+  color: var(--c-text-mute);
+}
+
+.live-panel {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-3);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+  background: var(--c-surface-2);
+}
+
+.textarea {
+  min-height: 5rem;
+  padding: var(--s-2) var(--s-3);
+  line-height: var(--lh-snug);
+  resize: vertical;
+}
+
+.player-row.is-selected {
+  box-shadow: inset 3px 0 0 var(--c-brand);
 }
