@@ -77,6 +77,7 @@ function PlayerAvatar({ player, size = "small" }) {
       height={box}
       loading="lazy"
       decoding="async"
+      referrerPolicy="no-referrer"
       onError={() => setFailed(true)}
     />
   );
@@ -96,6 +97,7 @@ function TeamLogo({ team }) {
       height={28}
       loading="lazy"
       decoding="async"
+      referrerPolicy="no-referrer"
       onError={() => setFailed(true)}
     />
   );

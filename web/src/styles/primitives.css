@@ -464,7 +464,7 @@
   flex: 0 0 auto;
   align-items: center;
   gap: 6px;
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 var(--s-3);
   border: 1px solid var(--c-line);
   border-radius: var(--r-pill);
