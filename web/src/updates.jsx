@@ -26,6 +26,14 @@ import {
 } from "./updates-client.js";
 
 const ROLE_LABELS = { P: "Portieri", D: "Difensori", C: "Centrocampisti", A: "Attaccanti" };
+const ActionIcon = ({ name }) => {
+  const paths = {
+    refresh: <path d="M20 11a8.1 8.1 0 0 0-14.8-4L3 10m0 0V4m0 6h6M4 13a8.1 8.1 0 0 0 14.8 4L21 14m0 0v6m0-6h-6" />,
+    download: <path d="M12 3v12m0 0 4-4m-4 4-4-4M4 20h16" />,
+    check: <path d="m5 12 4 4L19 6" />,
+  };
+  return <svg className="action-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">{paths[name]}</svg>;
+};
 const LISTONE_SUMMARY_LABELS = {
   added: "Nuovi", removed: "Rimossi", ceduti_added: "Nuovi ceduti",
   ceduti_removed: "Ceduti rientrati", role: "Ruoli", name: "Nomi",
@@ -184,7 +192,7 @@ function PlayerListUpdates({ profile, apiBase, onApplyStart, onApplied }) {
           />
         </label>
         {candidate?.state === "candidate_ready" && (
-          <button onClick={apply} disabled={Boolean(busy) || Boolean(candidate.details?.truncated)}>
+          <button className="update-apply-button" onClick={apply} disabled={Boolean(busy) || Boolean(candidate.details?.truncated)}>
             {busy === "apply" ? "Rigenerazione in corso..." : "Applica e rigenera"}
           </button>
         )}
@@ -338,18 +346,21 @@ function FormationUpdates({ profile, apiBase }) {
       </div>
       <a className="source-url" href={sourceUrl} target="_blank" rel="noreferrer">{sourceUrl}</a>
       <div className="update-actions">
-        <button className="update-check-button" onClick={() => run("check")} disabled={Boolean(busy)}>
-          {busy === "check" ? "Controllo in corso..." : "Controlla formazioni"}
-        </button>
-        {result?.bundle_available && (
-          <button onClick={downloadBundle} disabled={Boolean(busy)}>
-            {busy === "bundle" ? "Preparazione..." : "Scarica bundle AI"}
-          </button>
-        )}
-        {(result?.state === "baseline_missing" || result?.state === "changed") && (
-          <button className="quiet" onClick={() => run("accept")} disabled={Boolean(busy)}>
-            {result.state === "baseline_missing" ? "Salva riferimento iniziale" : "Segna fonte come acquisita"}
-          </button>
+         <button className="update-check-button" onClick={() => run("check")} disabled={Boolean(busy)}>
+           <ActionIcon name="refresh" />
+           <span>{busy === "check" ? "Controllo in corso..." : "Controlla formazioni"}</span>
+         </button>
+         {result?.bundle_available && (
+           <button className="update-download-button" onClick={downloadBundle} disabled={Boolean(busy)}>
+             <ActionIcon name="download" />
+             <span>{busy === "bundle" ? "Preparazione..." : "Scarica bundle AI"}</span>
+           </button>
+         )}
+         {(result?.state === "baseline_missing" || result?.state === "changed") && (
+           <button className="update-accept-button quiet" onClick={() => run("accept")} disabled={Boolean(busy)}>
+             <ActionIcon name="check" />
+             <span>{result.state === "baseline_missing" ? "Salva riferimento iniziale" : "Segna fonte come acquisita"}</span>
+           </button>
         )}
       </div>
       <p className="accept-warning">L’accettazione riconosce solo lo stato della fonte remota. <code>titolari.csv</code> non viene modificato automaticamente: revisiona separatamente l’audit CSV e applica le correzioni necessarie.</p>
@@ -500,15 +511,17 @@ function SetPieceUpdates({ profile, apiBase }) {
         <button className="update-check-button" onClick={() => run("check")} disabled={Boolean(busy)}>
           {busy === "check" ? "Controllo in corso..." : "Controlla gerarchie"}
         </button>
-        {result?.state === "changed" && (
-          <button onClick={downloadBundle} disabled={Boolean(busy)}>
-            {busy === "bundle" ? "Preparazione..." : "Scarica bundle AI"}
-          </button>
-        )}
-        {(result?.state === "baseline_missing" || result?.state === "changed") && (
-          <button className="quiet" onClick={() => run("accept")} disabled={Boolean(busy)}>
-            {result.state === "baseline_missing" ? "Salva riferimento iniziale" : "Segna come acquisito"}
-          </button>
+         {result?.state === "changed" && (
+           <button className="update-download-button" onClick={downloadBundle} disabled={Boolean(busy)}>
+             <ActionIcon name="download" />
+             <span>{busy === "bundle" ? "Preparazione..." : "Scarica bundle AI"}</span>
+           </button>
+         )}
+         {(result?.state === "baseline_missing" || result?.state === "changed") && (
+           <button className="update-accept-button quiet" onClick={() => run("accept")} disabled={Boolean(busy)}>
+             <ActionIcon name="check" />
+             <span>{result.state === "baseline_missing" ? "Salva riferimento iniziale" : "Segna come acquisito"}</span>
+           </button>
         )}
       </div>
       <p className="accept-warning">Il controllo combina le gerarchie della pagina rigoristi con quelle di punizioni e corner. Segna come acquisito solo dopo aver revisionato <code>piazzati.csv</code>.</p>
@@ -651,18 +664,21 @@ export function Updates({
         <a className="source-url" href={sourceUrl} target="_blank" rel="noreferrer">{sourceUrl}</a>
 
         <div className="update-actions">
-          <button className="update-check-button" onClick={() => run("check")} disabled={Boolean(busy)}>
-            {busy === "check" ? "Controllo in corso..." : "Controlla aggiornamenti"}
-          </button>
-          {result?.state === "changed" && (
-            <button onClick={downloadBundle} disabled={Boolean(busy)}>
-              {busy === "bundle" ? "Preparazione..." : "Scarica bundle AI"}
-            </button>
-          )}
-          {(result?.state === "baseline_missing" || result?.state === "changed") && (
-            <button className="quiet" onClick={() => run("accept")} disabled={Boolean(busy)}>
-              {result.state === "baseline_missing" ? "Salva riferimento iniziale" : "Segna come acquisito"}
-            </button>
+           <button className="update-check-button" onClick={() => run("check")} disabled={Boolean(busy)}>
+             <ActionIcon name="refresh" />
+             <span>{busy === "check" ? "Controllo in corso..." : "Controlla aggiornamenti"}</span>
+           </button>
+           {result?.state === "changed" && (
+             <button className="update-download-button" onClick={downloadBundle} disabled={Boolean(busy)}>
+               <ActionIcon name="download" />
+               <span>{busy === "bundle" ? "Preparazione..." : "Scarica bundle AI"}</span>
+             </button>
+           )}
+           {(result?.state === "baseline_missing" || result?.state === "changed") && (
+             <button className="update-accept-button quiet" onClick={() => run("accept")} disabled={Boolean(busy)}>
+               <ActionIcon name="check" />
+               <span>{result.state === "baseline_missing" ? "Salva riferimento iniziale" : "Segna come acquisito"}</span>
+             </button>
           )}
         </div>
         {result?.state === "changed" && (
