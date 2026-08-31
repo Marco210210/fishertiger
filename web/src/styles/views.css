@@ -223,7 +223,11 @@
 }
 
 .player-row {
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: 20px 24px minmax(0, 1fr) 62px;
+}
+
+.player-row .player-metric {
+  min-width: 62px;
 }
 
 .player-row .row-value {
