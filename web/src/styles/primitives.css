@@ -453,6 +453,13 @@
   scroll-snap-type: x proximity;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  cursor: grab;
+  touch-action: pan-y;
+}
+
+.chip-rail.is-dragging {
+  cursor: grabbing;
+  user-select: none;
 }
 
 .chip-rail::-webkit-scrollbar {

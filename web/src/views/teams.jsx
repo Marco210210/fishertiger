@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { teamLogoUrl } from "../player-media.js";
 import {
   Empty,
   Meter,
@@ -12,6 +13,46 @@ const TABS = [
   { value: "piazzati", label: "Piazzati" },
 ];
 
+function ClubBadge({ team, large = false }) {
+  const [failed, setFailed] = useState(false);
+  const name = typeof team === "string" ? team : team?.squadra || "";
+  const url = teamLogoUrl(typeof team === "string" ? name : team);
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+
+  return (
+    <span className={`club-badge${large ? " club-badge--large" : ""}`}>
+      {url && !failed ? (
+        <img
+          src={url}
+          alt=""
+          width={large ? 56 : 32}
+          height={large ? 56 : 32}
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <b aria-hidden="true">{initials}</b>
+      )}
+    </span>
+  );
+}
+
+const formatFixtureDate = (date) => {
+  if (!date) return null;
+  const parsed = new Date(`${date}T12:00:00`);
+  return Number.isNaN(parsed.getTime())
+    ? date
+    : new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "short" }).format(parsed);
+};
+
 /**
  * One club at a time. The club picker is a horizontal rail rather than a wrapped
  * block of twenty buttons, and rosa / calendario / piazzati are three tabs on
@@ -24,6 +65,8 @@ export default function TeamsView({
   openPlayer,
 }) {
   const [tab, setTab] = useState("rosa");
+  const [isDragging, setIsDragging] = useState(false);
+  const chipRail = useRef({ active: false, moved: false, startX: 0, scrollLeft: 0 });
   const team =
     data.teams.find((item) => item.squadra === selectedTeam) || data.teams[0];
   const players = team.player_ids
@@ -48,7 +91,43 @@ export default function TeamsView({
         </div>
       </div>
 
-      <div className="chip-rail">
+      <div
+        className={`chip-rail${isDragging ? " is-dragging" : ""}`}
+        onPointerDown={(event) => {
+          if (event.pointerType === "mouse" && event.button !== 0) return;
+          chipRail.current = {
+            active: true,
+            moved: false,
+            startX: event.clientX,
+            scrollLeft: event.currentTarget.scrollLeft,
+          };
+          setIsDragging(true);
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }}
+        onPointerMove={(event) => {
+          const drag = chipRail.current;
+          if (!drag.active) return;
+          const distance = event.clientX - drag.startX;
+          if (Math.abs(distance) > 4) drag.moved = true;
+          event.currentTarget.scrollLeft = drag.scrollLeft - distance;
+        }}
+        onPointerUp={(event) => {
+          chipRail.current.active = false;
+          setIsDragging(false);
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        }}
+        onPointerCancel={() => {
+          chipRail.current.active = false;
+          setIsDragging(false);
+        }}
+        onClickCapture={(event) => {
+          if (chipRail.current.moved) {
+            event.preventDefault();
+            event.stopPropagation();
+            chipRail.current.moved = false;
+          }
+        }}
+      >
         {data.teams.map((item) => (
           <button
             type="button"
@@ -56,6 +135,7 @@ export default function TeamsView({
             className={`chip${item.squadra === team.squadra ? " is-active" : ""}`}
             onClick={() => setSelectedTeam(item.squadra)}
           >
+            <ClubBadge team={item} />
             {item.squadra}
           </button>
         ))}
@@ -63,6 +143,7 @@ export default function TeamsView({
 
       <section className="club-hero">
         <div>
+          <ClubBadge team={team} large />
           <span className="kicker">
             {team.coppa_europea || (team.promossa ? "Neopromossa" : "Serie A")}
           </span>
@@ -123,7 +204,15 @@ export default function TeamsView({
       {tab === "calendario" ? (
         <section className="card">
           <div className="section-head">
-            <h2>Le 38 giornate</h2>
+            <div className="fixture-heading">
+              <h2>Il cammino della stagione</h2>
+              <p className="micro">Casa e trasferta, giornata dopo giornata</p>
+            </div>
+            <span className="count">{team.fixtures.length} partite</span>
+          </div>
+          <div className="fixture-summary">
+            <span><b>{team.fixtures.filter((fixture) => fixture.venue === "CASA").length}</b> in casa</span>
+            <span><b>{team.fixtures.filter((fixture) => fixture.venue !== "CASA").length}</b> in trasferta</span>
             <span className="legend">
               <span>
                 <i className="k-home" />
@@ -135,14 +224,21 @@ export default function TeamsView({
               </span>
             </span>
           </div>
-          <div className="fixtures">
+          <div className="fixture-list">
             {team.fixtures.map((fixture) => (
               <div
                 key={fixture.matchday}
-                className={`fixture${fixture.venue === "CASA" ? " is-home" : ""}`}
+                className={`fixture-card${fixture.venue === "CASA" ? " is-home" : ""}`}
               >
-                <i>G{fixture.matchday}</i>
-                <b>{fixture.opponent}</b>
+                <div className="fixture-round">
+                  <b>G{fixture.matchday}</b>
+                  {formatFixtureDate(fixture.date) ? <small>{formatFixtureDate(fixture.date)}</small> : null}
+                </div>
+                <div className="fixture-opponent">
+                  <ClubBadge team={{ squadra: fixture.opponent, team_id: fixture.opponent_team_id }} />
+                  <strong>{fixture.opponent}</strong>
+                </div>
+                <span className="fixture-venue">{fixture.venue === "CASA" ? "Casa" : "Trasferta"}</span>
               </div>
             ))}
           </div>
