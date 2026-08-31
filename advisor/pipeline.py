@@ -64,7 +64,10 @@ def active_auction_guide(guide: pd.DataFrame, listone: pd.DataFrame) -> pd.DataF
     """Keep optional guide enrichment only for players in the current official list."""
     if not guide.empty and guide.id_fantacalcio.duplicated().any():
         raise ValueError("guide_asta_sosfanta: IDs must be unique")
-    return guide[guide.id_fantacalcio.isin(set(listone.Id))].copy()
+    active = guide.id_fantacalcio.isin(set(listone.Id))
+    if "fascia" in guide:
+        active &= guide.fascia.astype(str).str.strip().str.upper().ne("INFORTUNATO")
+    return guide[active].copy()
 
 
 def _season_sort_key(label: str) -> tuple[int, int, str]:

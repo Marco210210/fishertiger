@@ -1,11 +1,19 @@
+import { useEffect, useState } from "react";
 import {
   Empty,
   Meter,
   PlayerRow,
   RoleChip,
   ROLE_LABELS,
+  Sheet,
   formatTier,
 } from "../ui.jsx";
+import {
+  isPlayerInjured,
+  loadPlayerInjuries,
+  savePlayerInjuries,
+  withPlayerInjury,
+} from "../player-injuries.js";
 
 const TOP_TIERS = ["SUPER TOP", "TOP", "SEMITOP"];
 
@@ -14,7 +22,19 @@ const TOP_TIERS = ["SUPER TOP", "TOP", "SEMITOP"];
  * then hands over to the three working screens. Nothing here is a decision aid;
  * the auction screen owns that job.
  */
-export default function OverviewView({ data, openPlayer, openTeam, openRole }) {
+export default function OverviewView({ data, profileId, openPlayer, openTeam, openRole }) {
+  const [injuries, setInjuries] = useState(() => loadPlayerInjuries(profileId));
+  const [injuryManagerOpen, setInjuryManagerOpen] = useState(false);
+  const [injuryQuery, setInjuryQuery] = useState("");
+  const [injuryWarning, setInjuryWarning] = useState("");
+
+  useEffect(() => {
+    setInjuries(loadPlayerInjuries(profileId));
+    setInjuryManagerOpen(false);
+    setInjuryQuery("");
+    setInjuryWarning("");
+  }, [profileId]);
+
   const roleCounts = Object.keys(ROLE_LABELS).map((role) => ({
     role,
     count: data.players.filter((player) => player.ruolo === role).length,
@@ -23,12 +43,19 @@ export default function OverviewView({ data, openPlayer, openTeam, openRole }) {
     .filter((player) => TOP_TIERS.includes(formatTier(player.guida_asta_fascia)))
     .sort((a, b) => b.fvm_scaled - a.fvm_scaled)
     .slice(0, 8);
-  const injured = data.players.filter(
-    (player) => player.guida_asta_fascia === "INFORTUNATO",
-  );
+  const injured = data.players.filter((player) => isPlayerInjured(injuries, player.id));
   const matchdays = data.calendario_serie_a?.length
     ? Math.round(data.calendario_serie_a.length / 10)
     : null;
+  const setPlayerInjured = (playerId, value) => {
+    const next = withPlayerInjury(injuries, playerId, value);
+    setInjuries(next);
+    setInjuryWarning(
+      savePlayerInjuries(profileId, next)
+        ? ""
+        : "Stato non salvato: la memoria del browser non è disponibile.",
+    );
+  };
 
   return (
     <div className="stack stack--lg">
@@ -111,7 +138,16 @@ export default function OverviewView({ data, openPlayer, openTeam, openRole }) {
               <span className="kicker">Da monitorare</span>
               <h2>Infortunati</h2>
             </div>
-            <span className="count">{injured.length}</span>
+            <div className="overview-card-actions">
+              <span className="count">{injured.length}</span>
+              <button
+                type="button"
+                className="btn btn--ghost btn--sm"
+                onClick={() => setInjuryManagerOpen(true)}
+              >
+                Gestisci
+              </button>
+            </div>
           </div>
           {injured.length ? (
             <div className="rows">
@@ -127,12 +163,25 @@ export default function OverviewView({ data, openPlayer, openTeam, openRole }) {
               ))}
             </div>
           ) : (
-            <Empty title="Nessun infortunato classificato">
-              Le fasce della guida non segnalano indisponibilità.
+            <Empty title="Nessun infortunato segnalato">
+              Usa Gestisci per aggiungere un avviso senza modificare valori o
+              consigli d&apos;asta.
             </Empty>
           )}
         </section>
       </div>
+
+      <InjuryManager
+        open={injuryManagerOpen}
+        onClose={() => setInjuryManagerOpen(false)}
+        players={data.players}
+        injured={injured}
+        injuries={injuries}
+        query={injuryQuery}
+        setQuery={setInjuryQuery}
+        setPlayerInjured={setPlayerInjured}
+        warning={injuryWarning}
+      />
 
       <section>
         <div className="section-head">
@@ -166,5 +215,108 @@ export default function OverviewView({ data, openPlayer, openTeam, openRole }) {
         </div>
       </section>
     </div>
+  );
+}
+
+function InjuryManager({
+  open,
+  onClose,
+  players,
+  injured,
+  injuries,
+  query,
+  setQuery,
+  setPlayerInjured,
+  warning,
+}) {
+  const normalizedQuery = query.trim().toLocaleLowerCase("it");
+  const matches = normalizedQuery
+    ? players
+      .filter((player) =>
+        `${player.nome} ${player.squadra}`.toLocaleLowerCase("it").includes(normalizedQuery),
+      )
+      .sort((a, b) => a.nome.localeCompare(b.nome, "it"))
+      .slice(0, 30)
+    : [];
+
+  return (
+    <Sheet open={open} onClose={onClose} title="Gestisci infortunati" wide>
+      <div className="injury-manager stack">
+        <div className="injury-manager-note">
+          <strong>Solo promemoria</strong>
+          <p>
+            Questo stato appare nella Home e non modifica valori, fasce o
+            consigli d&apos;asta. Viene salvato solo in questo browser.
+          </p>
+        </div>
+
+        <label className="injury-search">
+          <span>Cerca giocatore</span>
+          <input
+            className="input"
+            type="search"
+            value={query}
+            placeholder="Nome o squadra"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+
+        {warning ? <p className="injury-manager-warning" role="alert">{warning}</p> : null}
+
+        {normalizedQuery ? (
+          <InjuryPlayerList
+            title="Risultati"
+            players={matches}
+            injuries={injuries}
+            setPlayerInjured={setPlayerInjured}
+            empty="Nessun giocatore trovato."
+          />
+        ) : null}
+
+        <InjuryPlayerList
+          title={`Segnalati (${injured.length})`}
+          players={injured}
+          injuries={injuries}
+          setPlayerInjured={setPlayerInjured}
+          empty="Nessun giocatore segnalato. Cerca un giocatore per iniziare."
+        />
+      </div>
+    </Sheet>
+  );
+}
+
+function InjuryPlayerList({ title, players, injuries, setPlayerInjured, empty }) {
+  return (
+    <section className="injury-list">
+      <div className="injury-list-title">
+        <h3>{title}</h3>
+      </div>
+      {players.length ? (
+        <div className="injury-list-rows">
+          {players.map((player) => {
+            const marked = isPlayerInjured(injuries, player.id);
+            return (
+              <div className="injury-manager-row" key={player.id}>
+                <RoleChip role={player.ruolo} />
+                <span>
+                  <strong>{player.nome}</strong>
+                  <small>{player.squadra}</small>
+                </span>
+                <button
+                  type="button"
+                  className={`btn btn--sm${marked ? " btn--danger" : ""}`}
+                  aria-pressed={marked}
+                  onClick={() => setPlayerInjured(player.id, !marked)}
+                >
+                  {marked ? "Segna disponibile" : "Segna infortunato"}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="injury-list-empty">{empty}</p>
+      )}
+    </section>
   );
 }

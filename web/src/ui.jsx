@@ -16,7 +16,7 @@ export const ROLE_LABELS = {
 };
 
 export const formatTier = (tier) =>
-  tier ? tier.replaceAll("_", " ") : "NON CLASSIFICATO";
+  tier && tier !== "INFORTUNATO" ? tier.replaceAll("_", " ") : "NON CLASSIFICATO";
 
 export const availabilityTone = (status) =>
   ({ TITOLARE: "good", BALLOTTAGGIO: "caution", RISERVA: "muted" })[status] ||

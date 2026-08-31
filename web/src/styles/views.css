@@ -85,6 +85,116 @@
   }
 }
 
+.overview-card-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.injury-manager {
+  padding-bottom: var(--s-3);
+}
+
+.injury-manager-note {
+  padding: var(--s-3);
+  border: 1px solid color-mix(in srgb, var(--c-warn) 42%, var(--c-line));
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--c-warn) 8%, var(--c-surface));
+}
+
+.injury-manager-note strong {
+  color: var(--c-warn);
+  font-size: var(--fs-sm);
+}
+
+.injury-manager-note p {
+  margin-top: var(--s-1);
+  color: var(--c-text-dim);
+  font-size: var(--fs-sm);
+}
+
+.injury-search {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.injury-search > span,
+.injury-list-title h3 {
+  color: var(--c-text-mute);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.injury-manager-warning {
+  color: var(--c-stop);
+  font-size: var(--fs-sm);
+}
+
+.injury-list {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.injury-list-rows {
+  overflow: hidden;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+}
+
+.injury-manager-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--s-2) var(--s-3);
+  align-items: center;
+  padding: var(--s-3);
+  background: var(--c-surface);
+}
+
+.injury-manager-row + .injury-manager-row {
+  border-top: 1px solid var(--c-line-soft);
+}
+
+.injury-manager-row > span {
+  display: grid;
+  min-width: 0;
+}
+
+.injury-manager-row strong,
+.injury-manager-row small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.injury-manager-row small,
+.injury-list-empty {
+  color: var(--c-text-mute);
+  font-size: var(--fs-xs);
+}
+
+.injury-manager-row .btn {
+  grid-column: 1 / -1;
+}
+
+.injury-list-empty {
+  padding: var(--s-4);
+  border: 1px dashed var(--c-line);
+  border-radius: var(--r-md);
+  text-align: center;
+}
+
+@media (min-width: 560px) {
+  .injury-manager-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .injury-manager-row .btn {
+    grid-column: auto;
+  }
+}
+
 .club-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -316,7 +316,7 @@ def build_bundle(root: Path, profile_id: str, season: str, starters_path: Path, 
     if not changes:
         raise SosFantaError("There are no SOS Fanta changes to include in an update bundle.")
     try:
-        csv_text = starters_path.read_text(encoding="utf-8")
+        csv_text = starters_path.read_text(encoding="utf-8-sig")
         rows = list(csv.DictReader(io.StringIO(csv_text)))
     except (OSError, csv.Error) as error:
         raise SosFantaError("The current starters CSV is unavailable or invalid.") from error

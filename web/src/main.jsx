@@ -757,6 +757,7 @@ function App() {
           {view === "overview" ? (
             <OverviewView
               data={data}
+              profileId={activeProfileId}
               openPlayer={openPlayer}
               openTeam={(team) => navigate("teams", { team })}
               openRole={openRole}

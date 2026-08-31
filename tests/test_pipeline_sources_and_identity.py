@@ -68,3 +68,13 @@ def test_stale_auction_guide_rows_do_not_block_a_new_official_listone():
     assert active_auction_guide(guide, current).id_fantacalcio.tolist() == [1]
     with pytest.raises(ValueError, match="unique"):
         active_auction_guide(pd.concat([guide.iloc[[0]], guide.iloc[[0]]]), current)
+
+
+def test_injury_warnings_are_not_treated_as_auction_tiers():
+    guide = pd.DataFrame([
+        {"id_fantacalcio": 1, "fascia": "TOP"},
+        {"id_fantacalcio": 2, "fascia": "INFORTUNATO"},
+    ])
+    current = pd.DataFrame([{"Id": 1}, {"Id": 2}])
+
+    assert active_auction_guide(guide, current).id_fantacalcio.tolist() == [1]

@@ -63,8 +63,6 @@ id_fantacalcio,squadra,nome,ruolo,fascia,source
 6867,Como,Valle,D,FASCIA_MEDIA,SOS Fanta guida difensori 2026/27 fornita dall'utente
 6893,Como,Kempf,D,FASCIA_MEDIA,SOS Fanta guida difensori 2026/27 fornita dall'utente
 7219,Atalanta,Bernasconi,D,FASCIA_MEDIA,SOS Fanta guida difensori 2026/27 fornita dall'utente
-2724,Napoli,Buongiorno,D,INFORTUNATO,SOS Fanta guida difensori 2026/27 fornita dall'utente
-5449,Fiorentina,Parisi,D,INFORTUNATO,SOS Fanta guida difensori 2026/27 fornita dall'utente
 6875,Como,Paz N.,C,SUPER_TOP,SOS Fanta guida centrocampisti 2026/27 fornita dall'utente
 4777,Napoli,McTominay,C,SUPER_TOP,SOS Fanta guida centrocampisti 2026/27 fornita dall'utente
 2167,Bologna,Orsolini,C,TOP,SOS Fanta guida centrocampisti 2026/27 fornita dall'utente
@@ -115,8 +113,6 @@ id_fantacalcio,squadra,nome,ruolo,fascia,source
 6684,Udinese,Ekkelenkamp,C,FASCIA_MEDIA,SOS Fanta guida centrocampisti 2026/27 fornita dall'utente
 6151,Como,Perrone,C,FASCIA_MEDIA,SOS Fanta guida centrocampisti 2026/27 fornita dall'utente
 6372,Milan,Moreira,C,FASCIA_MEDIA,SOS Fanta guida centrocampisti 2026/27 fornita dall'utente
-2741,Monza,Pessina,C,INFORTUNATO,SOS Fanta guida centrocampisti 2026/27 fornita dall'utente
-7127,Como,Addai,C,INFORTUNATO,SOS Fanta guida centrocampisti 2026/27 fornita dall'utente
 2764,Inter,Martinez L.,A,SUPER_TOP,SOS Fanta guida attaccanti 2026/27 fornita dall'utente
 5585,Roma,Malen,A,SUPER_TOP,SOS Fanta guida attaccanti 2026/27 fornita dall'utente
 4871,Inter,Thuram,A,TOP,SOS Fanta guida attaccanti 2026/27 fornita dall'utente

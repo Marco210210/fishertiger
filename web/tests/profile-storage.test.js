@@ -13,6 +13,7 @@ const { auctionStorageKey } = await import("../src/auction-state.js");
 const { userTeamStorageKey } = await import("../src/auction-store.js");
 const { playerNotesStorageKey } = await import("../src/player-notes.js");
 const { playerFiltersStorageKey } = await import("../src/player-filters.js");
+const { playerInjuriesStorageKey } = await import("../src/player-injuries.js");
 
 const KEEP = "profilo-da-tenere";
 const DROP = "profilo-da-eliminare";
@@ -22,6 +23,7 @@ const seed = (profileId) => {
   store.set(userTeamStorageKey(profileId), "1");
   store.set(playerNotesStorageKey(profileId), "{}");
   store.set(playerFiltersStorageKey(profileId), "{}");
+  store.set(playerInjuriesStorageKey(profileId), "{}");
 };
 
 test("deleting a profile drops every browser key scoped to it", () => {
@@ -42,6 +44,7 @@ test("deleting a profile leaves the other profiles untouched", () => {
     [
       auctionStorageKey(KEEP),
       playerFiltersStorageKey(KEEP),
+      playerInjuriesStorageKey(KEEP),
       playerNotesStorageKey(KEEP),
       userTeamStorageKey(KEEP),
       "fanta-player-media",
@@ -53,7 +56,7 @@ test("clearing an unknown profile changes nothing", () => {
   store.clear();
   seed(KEEP);
   clearProfileBrowserData("mai-esistito");
-  assert.equal(store.size, 4);
+  assert.equal(store.size, 5);
 });
 
 test("a missing profile id never falls back to wiping the default profile", () => {
@@ -62,5 +65,5 @@ test("a missing profile id never falls back to wiping the default profile", () =
   clearProfileBrowserData("");
   clearProfileBrowserData(null);
   clearProfileBrowserData(undefined);
-  assert.equal(store.size, 4);
+  assert.equal(store.size, 5);
 });
