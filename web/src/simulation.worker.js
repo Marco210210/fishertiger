@@ -1,10 +1,9 @@
 import { normalizeRules } from "./league-rules.js";
 import {
   createRoleValuation,
-  projectedContribution,
   sourceFvm,
 } from "./player-valuation.js";
-import { expectedDefenseModifier } from "./defense-modifier.js";
+import { createLineupUtility, isConfirmedInactive } from "./lineup-utility.js";
 import { auctionPriceAtOrBelow } from "./auction-state.js";
 const EMPTY = -1e15;
 
@@ -16,30 +15,6 @@ const playerKey = (player) =>
   player?.id == null
     ? `${player?.nome || ""}|${player?.ruolo || ""}|${player?.squadra || ""}`
     : String(player.id);
-
-const contribution = (player, rules) => projectedContribution(player, rules.horizons?.currentLeague?.matchdayIndices);
-
-const defenseProfile = (player) => ({
-  probability: Array.isArray(player?.p_gioca_per_giornata) && player.p_gioca_per_giornata.length
-    ? player.p_gioca_per_giornata.reduce((sum, value) => sum + finite(value), 0) / player.p_gioca_per_giornata.length
-    : finite(player?.proiezione?.p_gioca),
-  vote: Array.isArray(player?.voto_puro_mean_per_giornata) && player.voto_puro_mean_per_giornata.length
-    ? player.voto_puro_mean_per_giornata.reduce((sum, value) => sum + finite(value), 0) / player.voto_puro_mean_per_giornata.length
-    : finite(player?.proiezione?.voto_puro),
-});
-
-const defenseValue = (roster, rules) => {
-  if (!rules.defenseModifier.enabled) return 0;
-  const goalkeepers = roster.filter((item) => item.ruolo === "P").sort((a, b) => defenseProfile(b).vote - defenseProfile(a).vote);
-  const defenders = roster.filter((item) => item.ruolo === "D").sort((a, b) => defenseProfile(b).vote - defenseProfile(a).vote);
-  const goalkeeper = goalkeepers[0];
-  if (!goalkeeper || defenders.length < rules.defenseModifier.requiredDefenders) return 0;
-  return expectedDefenseModifier({
-    ...rules.defenseModifier,
-    goalkeeper: defenseProfile(goalkeeper),
-    defenders: defenders.map(defenseProfile),
-  });
-};
 
 const roleNeeds = (team, rules) =>
   Object.fromEntries(
@@ -255,7 +230,12 @@ const roleFrontier = (players, count, budget, costFor, valueFor) => {
     row.fill(EMPTY);
     return row;
   });
+  const picks = Array.from(
+    { length: count + 1 },
+    () => Array(budget + 1).fill(null),
+  );
   dp[0].fill(0);
+  picks[0].fill([]);
   for (const player of players) {
     const cost = costFor(player);
     if (cost > budget) continue;
@@ -265,49 +245,74 @@ const roleFrontier = (players, count, budget, costFor, valueFor) => {
       const previous = dp[selected - 1];
       for (let credits = budget; credits >= cost; credits--) {
         if (previous[credits - cost] > EMPTY / 2) {
-          current[credits] = Math.max(
-            current[credits],
-            previous[credits - cost] + value,
-          );
+          const candidateValue = previous[credits - cost] + value;
+          if (candidateValue > current[credits]) {
+            current[credits] = candidateValue;
+            picks[selected][credits] = [
+              ...picks[selected - 1][credits - cost],
+              player,
+            ];
+          }
         }
       }
     }
   }
   const result = dp[count];
   for (let credits = 1; credits <= budget; credits++) {
-    result[credits] = Math.max(result[credits], result[credits - 1]);
+    if (result[credits - 1] > result[credits]) {
+      result[credits] = result[credits - 1];
+      picks[count][credits] = picks[count][credits - 1];
+    }
   }
-  return result;
+  return { values: result, picks: picks[count] };
 };
 
 const completionFrontier = (pool, needs, budget, costFor, valueFor) => {
   let combined = new Float64Array(budget + 1);
   combined.fill(0);
+  let combinedPicks = Array.from({ length: budget + 1 }, () => []);
   for (const role of Object.keys(needs)) {
     if (!needs[role]) continue;
     const rolePlayers = pool.filter((player) => player.ruolo === role);
-    const roleValues = roleFrontier(rolePlayers, needs[role], budget, costFor, valueFor);
+    const roleFrontierResult = roleFrontier(
+      rolePlayers,
+      needs[role],
+      budget,
+      costFor,
+      valueFor,
+    );
+    const roleValues = roleFrontierResult.values;
     const next = new Float64Array(budget + 1);
     next.fill(EMPTY);
+    const nextPicks = Array(budget + 1).fill(null);
     for (let credits = 0; credits <= budget; credits++) {
       for (let roleBudget = 0; roleBudget <= credits; roleBudget++) {
         if (
           combined[credits - roleBudget] > EMPTY / 2 &&
           roleValues[roleBudget] > EMPTY / 2
         ) {
-          next[credits] = Math.max(
-            next[credits],
-            combined[credits - roleBudget] + roleValues[roleBudget],
-          );
+          const candidateValue =
+            combined[credits - roleBudget] + roleValues[roleBudget];
+          if (candidateValue > next[credits]) {
+            next[credits] = candidateValue;
+            nextPicks[credits] = [
+              ...combinedPicks[credits - roleBudget],
+              ...roleFrontierResult.picks[roleBudget],
+            ];
+          }
         }
       }
     }
     combined = next;
+    combinedPicks = nextPicks;
   }
   for (let credits = 1; credits <= budget; credits++) {
-    combined[credits] = Math.max(combined[credits], combined[credits - 1]);
+    if (combined[credits - 1] > combined[credits]) {
+      combined[credits] = combined[credits - 1];
+      combinedPicks[credits] = combinedPicks[credits - 1];
+    }
   }
-  return combined;
+  return { values: combined, picks: combinedPicks };
 };
 
 const invalidResult = (ownerIndex, team, legalMax, reason, needs) => ({
@@ -349,7 +354,9 @@ export const evaluateOverview = (data = {}) => {
         ? mineIndex
         : 0;
   const team = teams[ownerIndex] || data.mine || { credits: 0, roster: [] };
-  const pool = Array.isArray(data.remaining) ? data.remaining : [];
+  const pool = (Array.isArray(data.remaining) ? data.remaining : []).filter(
+    (player) => !isConfirmedInactive(player),
+  );
   const needs = roleNeeds(team, rules);
   const slotsOpen = totalNeeds(needs);
   const credits = Math.max(0, Math.floor(finite(team.credits)));
@@ -362,10 +369,22 @@ export const evaluateOverview = (data = {}) => {
   );
   const market = marketModel(data, teams, rules, valuation.normalizedFvm);
   const scarcity = scarcityModel(pool, teams, rules);
-  const costFor = (item) =>
-    estimatedCost(item, market, scarcity, valuation.normalizedFvm);
+  const costCache = new Map();
+  const costFor = (item) => {
+    const key = playerKey(item);
+    if (!costCache.has(key)) {
+      costCache.set(
+        key,
+        estimatedCost(item, market, scarcity, valuation.normalizedFvm),
+      );
+    }
+    return costCache.get(key);
+  };
   const budgetPlan = roleBudgetPlan(records, ownerIndex, needs, rules);
-  const valueFor = (player) => contribution(player, rules);
+  const lineupUtility = createLineupUtility(rules);
+  const ownedRoster = team.roster || [];
+  const valueFor = (player) =>
+    lineupUtility.evaluateCandidate(player, ownedRoster).marginalUtility;
 
   const plans = Object.fromEntries(
     roles.map((role) => {
@@ -476,6 +495,15 @@ export const evaluateAuction = (data = {}) => {
       needs,
     );
   }
+  if (isConfirmedInactive(player)) {
+    return invalidResult(
+      ownerIndex,
+      team,
+      0,
+      "Giocatore confermato come non disponibile.",
+      needs,
+    );
+  }
   if (needs[player.ruolo] < 1) {
     return invalidResult(
       ownerIndex,
@@ -498,7 +526,7 @@ export const evaluateAuction = (data = {}) => {
   const candidateKey = playerKey(player);
   // The auctioned player must not also be available as his own replacement.
   const pool = (Array.isArray(data.remaining) ? data.remaining : []).filter(
-    (item) => playerKey(item) !== candidateKey,
+    (item) => playerKey(item) !== candidateKey && !isConfirmedInactive(item),
   );
   const records = assignmentRecords(data, teams);
   const valuation = createRoleValuation(
@@ -510,8 +538,17 @@ export const evaluateAuction = (data = {}) => {
   const competition = Object.fromEntries(
     roles.map((role) => [role, opponentModel(role, teams, ownerIndex, rules)]),
   );
-  const costFor = (item) =>
-    estimatedCost(item, market, scarcity, valuation.normalizedFvm);
+  const auctionCostCache = new Map();
+  const costFor = (item) => {
+    const key = playerKey(item);
+    if (!auctionCostCache.has(key)) {
+      auctionCostCache.set(
+        key,
+        estimatedCost(item, market, scarcity, valuation.normalizedFvm),
+      );
+    }
+    return auctionCostCache.get(key);
+  };
   const candidateCost = estimatedCost(
     player,
     market,
@@ -520,16 +557,28 @@ export const evaluateAuction = (data = {}) => {
     competition[player.ruolo],
   );
   const budgetPlan = roleBudgetPlan(records, ownerIndex, needs, rules);
-  const valueFor = (item) => contribution(item, rules);
+  const lineupUtility = createLineupUtility(rules);
+  const ownedRoster = team.roster || [];
+  const utilityCache = new Map();
+  const evaluationFor = (item) => {
+    const key = playerKey(item);
+    if (!utilityCache.has(key)) {
+      utilityCache.set(key, lineupUtility.evaluateCandidate(item, ownedRoster));
+    }
+    return utilityCache.get(key);
+  };
+  const candidateUtility = evaluationFor(player);
+  const valueFor = (item) => evaluationFor(item).marginalUtility;
   const roleBidCap = budgetPlan[player.ruolo].bidCap;
 
   const roleAlternatives = pool
     .filter((item) => item.ruolo === player.ruolo)
     .map((item) => ({
       player: item,
-      value: valueFor(item),
+      evaluation: evaluationFor(item),
       estimatedCost: costFor(item),
     }))
+    .map((item) => ({ ...item, value: item.evaluation.marginalUtility }))
     .sort((a, b) => b.value - a.value || a.estimatedCost - b.estimatedCost);
   const scarcityInfo = scarcity[player.ruolo];
   const replacementIndex = roleAlternatives.length
@@ -537,15 +586,11 @@ export const evaluateAuction = (data = {}) => {
     : null;
   const replacement =
     replacementIndex == null ? null : roleAlternatives[replacementIndex];
-  const candidateValue = valueFor(player);
-  const individualMarginalValue = candidateValue - finite(replacement?.value);
-  const currentDefenseValue = defenseValue(team.roster || [], rules);
-  const candidateDefenseValue = defenseValue([...(team.roster || []), player], rules);
-  const alternativeDefenseValue = replacement
-    ? defenseValue([...(team.roster || []), replacement.player], rules)
-    : currentDefenseValue;
-  const defenseMarginalValue = candidateDefenseValue - alternativeDefenseValue;
-  const marginalValue = individualMarginalValue + defenseMarginalValue;
+  const candidateValue = candidateUtility.marginalUtility;
+  const defenseMarginalValue =
+    candidateUtility.defenseGain - finite(replacement?.evaluation?.defenseGain);
+  const marginalValue = candidateValue - finite(replacement?.value);
+  const individualMarginalValue = marginalValue - defenseMarginalValue;
   const opponents = competition[player.ruolo];
   const qualityEdge = replacement
     ? marginalValue / Math.max(1, candidateValue, replacement.value)
@@ -564,15 +609,36 @@ export const evaluateAuction = (data = {}) => {
   const baseline = completionFrontier(pool, needs, credits, costFor, valueFor);
   const withNeeds = { ...needs, [player.ruolo]: needs[player.ruolo] - 1 };
   const withCandidate = completionFrontier(pool, withNeeds, credits, costFor, valueFor);
-  const baselineValue = baseline[credits];
-  const baselineFeasible = baselineValue > EMPTY / 2;
+  const ownedUtility = lineupUtility.evaluateRoster(ownedRoster).utility;
+  const baselineFeasible = baseline.values[credits] > EMPTY / 2;
+  const baselineValue = baselineFeasible
+    ? lineupUtility.evaluateRoster([
+      ...ownedRoster,
+      ...baseline.picks[credits],
+    ]).utility - ownedUtility
+    : EMPTY;
   let maxBid = 0;
   for (
     let bid = rules.auction.minPrice;
     bid <= Math.min(legalMax, valueCap, roleBidCap);
     bid += rules.auction.increment
   ) {
-    if (withCandidate[credits - bid] > EMPTY / 2) maxBid = bid;
+    const completionFeasible = withCandidate.values[credits - bid] > EMPTY / 2;
+    const completionValue = completionFeasible
+      ? lineupUtility.evaluateRoster([
+        ...ownedRoster,
+        player,
+        ...withCandidate.picks[credits - bid],
+      ]).utility - ownedUtility
+      : EMPTY;
+    if (
+      candidateValue > 1e-9 &&
+      marginalValue >= 0 &&
+      completionFeasible &&
+      (!baselineFeasible || completionValue >= baselineValue)
+    ) {
+      maxBid = bid;
+    }
   }
 
   const idealMax =
@@ -611,8 +677,12 @@ export const evaluateAuction = (data = {}) => {
     1,
     scarcityInfo.supply / Math.max(1, scarcityInfo.demand),
   );
+  const classified = ["TITOLARE", "BALLOTTAGGIO", "RISERVA"].includes(
+    player?.disponibilita?.status,
+  );
   const confidence = clamp(
-    0.3 + dataCoverage * 0.18 + historyCoverage * 0.32 + poolCoverage * 0.1,
+    0.3 + dataCoverage * 0.18 + historyCoverage * 0.32 + poolCoverage * 0.1 -
+      (classified ? 0 : 0.08),
     0,
     market.records.length ? 0.9 : 0.58,
   );
@@ -626,19 +696,37 @@ export const evaluateAuction = (data = {}) => {
     `Mercato osservato a ${market.inflation.toFixed(2)}x (${market.records.length} assegnazioni); ruolo ${player.ruolo} a ${market.roleInflation[player.ruolo].toFixed(2)}x.`,
     `${opponents.needing} avversari hanno ancora bisogno del ruolo; ${opponents.affordable} possono offrire almeno un credito oltre le proprie riserve.`,
   ];
+  if (player.ruolo === "P" && candidateUtility.goalkeeper.rotationStarts > 0) {
+    reasons.push(
+      `Rotazione prevista in ${candidateUtility.goalkeeper.rotationStarts} giornate, ${candidateUtility.goalkeeper.homeRotationStarts} con il candidato in casa.`,
+    );
+  } else if (player.ruolo === "P" && candidateUtility.goalkeeper.voteCoverageGain > 0) {
+    reasons.push(
+      `Copertura del voto portiere +${Math.round(candidateUtility.goalkeeper.voteCoverageGain * 100)} punti percentuali.`,
+    );
+  }
+  if (candidateUtility.upsideGain > 0) {
+    reasons.push(
+      `Upside probabilistico +${candidateUtility.upsideGain.toFixed(1)}, gia pesato per la probabilita di voto e l'utilizzo in formazione.`,
+    );
+  }
   const risks = [];
   valuation.outliersFor(player).forEach((outlier) => risks.push(outlier.label));
   if (!baselineFeasible)
     risks.push(
       "Il mercato residuo non consente un completamento stimato senza questo giocatore.",
     );
-  if (withCandidate[credits - maxBid] <= EMPTY / 2)
+  if (withCandidate.values[credits - maxBid] <= EMPTY / 2)
     risks.push(
       "Il mercato residuo non consente un completamento stimato della rosa, anche acquistando il candidato.",
     );
   if (market.records.length < 5)
     risks.push(
       "Storico prezzi ancora limitato: la stima dell'inflazione dipende soprattutto dai valori base.",
+    );
+  if (!classified)
+    risks.push(
+      "Stato non classificato: consiglio penalizzato per affidabilita informativa.",
     );
   if (scarcityInfo.supply < scarcityInfo.demand)
     risks.push(
@@ -682,6 +770,7 @@ export const evaluateAuction = (data = {}) => {
 
   return {
     kind: "candidate",
+    purpose: maxBid > 0 ? candidateUtility.purpose : "NO_FIT",
     recommendation,
     idealMin,
     idealMax,
@@ -712,8 +801,10 @@ export const evaluateAuction = (data = {}) => {
       candidateValue: rounded(candidateValue),
       individualMarginalValue: rounded(individualMarginalValue),
       defenseMarginalValue: rounded(defenseMarginalValue),
-      defenseValueBefore: rounded(currentDefenseValue),
-      defenseValueWithCandidate: rounded(candidateDefenseValue),
+      defenseValueBefore: rounded(candidateUtility.baselineDefenseModifier),
+      defenseValueWithCandidate: rounded(
+        candidateUtility.baselineDefenseModifier + candidateUtility.defenseGain,
+      ),
       replacementValue: rounded(replacement?.value),
       replacementRank: replacementIndex == null ? null : replacementIndex + 1,
       marginalValue: rounded(marginalValue),
@@ -726,8 +817,14 @@ export const evaluateAuction = (data = {}) => {
       outliers: valuation.outliersFor(player),
       baselineCompletionValue: baselineFeasible ? rounded(baselineValue) : null,
       completionValueAtMaxBid:
-        withCandidate[credits - maxBid] > EMPTY / 2
-          ? rounded(candidateValue + withCandidate[credits - maxBid])
+        withCandidate.values[credits - maxBid] > EMPTY / 2
+          ? rounded(
+            lineupUtility.evaluateRoster([
+              ...ownedRoster,
+              player,
+              ...withCandidate.picks[credits - maxBid],
+            ]).utility - ownedUtility,
+          )
           : null,
       estimatedMarketPrice:
         auctionPriceAtOrBelow(
@@ -739,6 +836,9 @@ export const evaluateAuction = (data = {}) => {
       roleScarcity: Number(scarcityInfo.ratio.toFixed(3)),
       opponentDemand: opponents.needing,
       opponentAffordable: opponents.affordable,
+      purpose: maxBid > 0 ? candidateUtility.purpose : "NO_FIT",
+      upsideGain: Number(candidateUtility.upsideGain.toFixed(2)),
+      goalkeeper: candidateUtility.goalkeeper,
       deterministic: true,
       horizon: rules.horizons.currentLeague.label,
     },

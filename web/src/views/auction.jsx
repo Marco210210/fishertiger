@@ -547,7 +547,7 @@ function VerdictCard({
   /* The headline answers the question actually being asked at the table — "at
      this price, yes or no?" — so it follows the live number, not the static
      recommendation. The recommendation stays underneath as the reference. */
-  const { tone, headline, recommendation } = bidVerdict({
+  const { tone, headline, recommendation, purpose } = bidVerdict({
     advice,
     price,
     rules,
@@ -582,7 +582,7 @@ function VerdictCard({
         <strong className="verdict-word">{headline}</strong>
         <span className="verdict-sub">
           {advice
-            ? `Consiglio: ${recommendation} · confidenza ${Math.round(advice.confidence * 100)}% · ${advice.utility}`
+            ? `Utilità: ${purpose} · prezzo: ${recommendation} · confidenza ${Math.round(advice.confidence * 100)}% · ${advice.utility}`
             : "Sto valutando la rosa e il mercato."}
         </span>
       </div>

@@ -23,6 +23,18 @@ that season.
 - The UI allocates configured role budgets using FVM as a relative weight.
 - The default role split is P 7%, D 18%, C 25%, A 50%, with a 5% soft target
   flexibility. These are editable profile rules.
+- Advice values the best fixture-aware lineup and missing-vote coverage rather
+  than summing the projections of every player in the roster.
+- Goalkeepers from the same club form one capped coverage unit; goalkeepers
+  from different clubs can add fallback coverage and fixture rotation value.
+  Same-club probability follows explicit `PRIMO`, `SECONDO`, `TERZO`, and
+  contested hierarchy groups before any unknown goalkeeper.
+- Outfield coverage uses configured bench roles, substitution mode, and the
+  global substitution cap. Projection deviation contributes only through a
+  small probability-weighted upside term, so a zero-vote player has zero value.
+- Only an explicit `confirmed_inactive` signal makes a player ineligible.
+  `RISERVA`, `NON_CLASSIFICATO`, low probability, and missing editorial tiers
+  reduce utility or confidence but are not hard exclusions.
 
 ## Simulation
 
@@ -31,5 +43,7 @@ that season.
   `bench_switch` in the active profile.
 - `Basic` and `Strict` replacements preserve the absent starter's role; `None`
   disables replacements. The configured formation remains unchanged.
+- Sample rosters are ordered by probability-weighted projected contribution
+  over the configured league horizon, with FVM used only as a tie-breaker.
 
 These are model defaults, not assertions about future player performance.

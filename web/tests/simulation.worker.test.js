@@ -67,7 +67,7 @@ test("selected player is removed from its own replacement pool", () => {
     }),
   );
 
-  assert.equal(result.summary.replacementValue, 8);
+  assert.equal(result.summary.replacementValue, 2);
   assert.deepEqual(
     result.alternatives.map((item) => item.id),
     [alternative.id],
@@ -88,9 +88,81 @@ test("league demand cutoff replaces the best-player benchmark", () => {
   );
 
   assert.equal(result.summary.replacementRank, 2);
-  assert.equal(result.summary.replacementValue, 7);
+  assert.equal(result.summary.replacementValue, 1);
   assert.equal(result.summary.marginalValue, 3);
   assert.ok(result.maxBid > 0);
+});
+
+test("a dominated minimum-value player is never recommended", () => {
+  const candidate = player("P", 1, {
+    nome: "Non classificato",
+    fvm_original: 1,
+    fvm_scaled: 0.75,
+  });
+  const alternatives = Array.from({ length: 10 }, (_, index) =>
+    player("P", index ? 10 : 100, {
+      nome: index ? `Alternative ${index + 1}` : "Reliable alternative",
+      fvm_original: 100,
+      fvm_scaled: 75,
+    }),
+  );
+  const teams = [{ name: "Mine", credits: 100, roster: [] }];
+
+  const result = evaluateAuction({
+    ...payloadFor({
+      candidate,
+      teams,
+      remaining: [candidate, ...alternatives],
+    }),
+    rules: {
+      participants: 2,
+      startingCredits: 100,
+      rosterSlots: { P: 1 },
+      auction: {
+        roleBudgetPercentages: { P: 100 },
+        roleBudgetFlexibilityPercent: 5,
+      },
+    },
+  });
+
+  assert.equal(result.summary.estimatedMarketPrice, 1);
+  assert.equal(result.summary.marginalValue, -99);
+  assert.equal(result.maxBid, 0);
+  assert.equal(result.idealMin, 0);
+  assert.equal(result.idealMax, 0);
+  assert.equal(result.recommendation, "PASS");
+  assert.ok(
+    result.summary.completionValueAtMaxBid <
+      result.summary.baselineCompletionValue,
+  );
+});
+
+test("an infeasible baseline does not rescue a negative-margin player", () => {
+  const candidate = player("P", 1, { fvm_scaled: 0.75 });
+  const unaffordableAlternative = player("P", 100, { fvm_scaled: 75 });
+  const teams = [{ name: "Mine", credits: 100, roster: [] }];
+
+  const result = evaluateAuction({
+    ...payloadFor({
+      candidate,
+      teams,
+      remaining: [candidate, unaffordableAlternative],
+    }),
+    rules: {
+      participants: 2,
+      startingCredits: 100,
+      rosterSlots: { P: 1 },
+      auction: {
+        roleBudgetPercentages: { P: 100 },
+        roleBudgetFlexibilityPercent: 5,
+      },
+    },
+  });
+
+  assert.equal(result.summary.baselineCompletionValue, null);
+  assert.equal(result.summary.marginalValue, -99);
+  assert.equal(result.maxBid, 0);
+  assert.equal(result.recommendation, "PASS");
 });
 
 test("reservation price stays anchored to market instead of consuming all credits", () => {

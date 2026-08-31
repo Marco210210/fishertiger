@@ -2,11 +2,21 @@ import { nearestAuctionPrice } from "./auction-state.js";
 import { Disclosure, RoleChip } from "./ui.jsx";
 
 export const RECOMMENDATION_LABELS = {
-  STRONG_BUY: "Compra",
-  BID: "Conviene",
+  STRONG_BUY: "Ottimo prezzo",
+  BID: "Prezzo corretto",
   VALUE_ONLY: "Solo al prezzo giusto",
   PASS: "Lascia andare",
   INELIGIBLE: "Non acquistabile",
+};
+
+export const PURPOSE_LABELS = {
+  STARTER: "Titolare",
+  ROTATION: "Rotazione",
+  HANDCUFF: "Copertura della stessa squadra",
+  COVERAGE: "Copertura",
+  DEPTH: "Nessun beneficio per la rosa",
+  NO_FIT: "Non migliora il piano rosa",
+  INACTIVE: "Non disponibile",
 };
 
 export const RECOMMENDATION_TONE = {
@@ -24,6 +34,9 @@ const clampPercent = (value) => Math.max(0, Math.min(100, value));
 export const recommendationLabel = (advice) =>
   RECOMMENDATION_LABELS[advice?.recommendation] || "Valuta";
 
+export const purposeLabel = (advice) =>
+  PURPOSE_LABELS[advice?.purpose] || "Valuta per la rosa";
+
 export const bidVerdict = ({ advice, price, rules, legalMax }) => {
   const value = Number(price);
   const hasPrice = Number.isFinite(value) && value > 0;
@@ -38,11 +51,13 @@ export const bidVerdict = ({ advice, price, rules, legalMax }) => {
         ? "warn"
         : "go";
   const recommendation = recommendationLabel(advice);
+  const purpose = purposeLabel(advice);
   return {
     value,
     hasPrice,
     unaffordable,
     recommendation,
+    purpose,
     tone: !advice
       ? null
       : hasPrice
@@ -53,14 +68,14 @@ export const bidVerdict = ({ advice, price, rules, legalMax }) => {
       : unaffordable
         ? "Non acquistabile"
         : !hasPrice
-          ? recommendation
+          ? purpose
           : value > legalMax
             ? "Fuori budget"
             : value > maxBid
               ? "Troppo caro"
               : value > idealMax
                 ? "Ancora accettabile"
-                : recommendation,
+                : purpose,
   };
 };
 

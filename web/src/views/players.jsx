@@ -730,7 +730,7 @@ function LiveAuctionPanel({
   const blockedRole = board.activeRole && player.ruolo !== board.activeRole;
   const summary = advice?.summary || {};
   const forOther = owner !== board.userTeamIndex;
-  const { tone, headline, recommendation } = bidVerdict({
+  const { tone, headline, recommendation, purpose } = bidVerdict({
     advice,
     price,
     rules,
@@ -747,7 +747,7 @@ function LiveAuctionPanel({
           <strong className="verdict-word">{headline}</strong>
           <span className="verdict-sub">
             {advice
-              ? `Consiglio: ${recommendation} · confidenza ${Math.round(advice.confidence * 100)}% · ${advice.utility}`
+              ? `Utilità: ${purpose} · prezzo: ${recommendation} · confidenza ${Math.round(advice.confidence * 100)}% · ${advice.utility}`
               : adviceFailure || "Sto valutando la rosa e il mercato."}
           </span>
         </div>

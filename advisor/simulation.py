@@ -18,27 +18,193 @@ class SimulationResult:
     diagnostics: dict[str, float]
 
 
+def _confirmed_inactive(player: dict[str, Any]) -> bool:
+    return player.get("confirmed_inactive") is True or player.get("disponibilita", {}).get("confirmed_inactive") is True
+
+
+def _projection_value(player: dict[str, Any], matchday_indices: list[int]) -> float:
+    chances = player.get("p_gioca_per_giornata") or []
+    votes = player.get("voto_puro_mean_per_giornata") or []
+    bonuses = player.get("bonus_atteso_per_giornata") or []
+    if chances:
+        days = matchday_indices or list(range(len(chances)))
+        return sum(
+            float(chances[day]) * (float(votes[day]) + float(bonuses[day]))
+            for day in days
+            if day < len(chances) and day < len(votes) and day < len(bonuses)
+        )
+    projection = player.get("proiezione", {})
+    days = len(matchday_indices) or 38
+    return days * float(projection.get("p_gioca", 0)) * (
+        float(projection.get("voto_puro", 0)) + float(projection.get("bonus", 0))
+    )
+
+
+def _sample_day_projection(player: dict[str, Any], day: int) -> tuple[float, float, float]:
+    projection = player.get("proiezione", {})
+    chances = player.get("p_gioca_per_giornata") or []
+    votes = player.get("voto_puro_mean_per_giornata") or []
+    bonuses = player.get("bonus_atteso_per_giornata") or []
+    probability = float(chances[day]) if day < len(chances) else float(projection.get("p_gioca", 0))
+    vote = float(votes[day]) if day < len(votes) else float(projection.get("voto_puro", 0))
+    bonus = float(bonuses[day]) if day < len(bonuses) else float(projection.get("bonus", 0))
+    return min(1.0, max(0.0, probability)), vote, vote + bonus
+
+
+def _sample_role_utility(players: list[dict[str, Any]], starters_count: int, bench_count: int, day: int) -> tuple[float, list[tuple[float, float]]]:
+    options = sorted(
+        ((*_sample_day_projection(player, day), int(player["id"])) for player in players),
+        key=lambda item: (item[0] * item[2], -item[3]),
+        reverse=True,
+    )
+    starters = options[:starters_count]
+    bench = options[starters_count:starters_count + bench_count]
+    utility = sum(probability * score for probability, _, score, _ in starters)
+    missing = [1.0]
+    for probability, _, _, _ in starters:
+        next_missing = [0.0] * (len(missing) + 1)
+        for absent, state_probability in enumerate(missing):
+            next_missing[absent] += state_probability * probability
+            next_missing[absent + 1] += state_probability * (1 - probability)
+        missing = next_missing
+    for probability, _, score, _ in bench:
+        needed = sum(missing[1:])
+        utility += needed * probability * score
+        next_missing = [0.0] * len(missing)
+        for absent, state_probability in enumerate(missing):
+            next_missing[absent] += state_probability * (1 - probability)
+            next_missing[max(0, absent - 1)] += state_probability * probability
+        missing = next_missing
+    return utility, [(probability, vote) for probability, vote, _, _ in starters]
+
+
+def _goalkeeper_rank(player: dict[str, Any]) -> int:
+    values = {"PRIMO": 0, "SECONDO": 1, "TERZO": 2}
+    hierarchy = player.get("gerarchia_portiere") or player.get("disponibilita", {}).get("gerarchia_portiere") or ""
+    ranks = [values[value] for value in str(hierarchy).split("/") if value in values]
+    return min(ranks) if ranks else 3
+
+
+def _sample_goalkeeper_utility(players: list[dict[str, Any]], day: int) -> tuple[float, tuple[float, float] | None]:
+    clubs: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for player in players:
+        clubs[str(player.get("team_id") or player.get("squadra") or "unknown")].append(player)
+    options = []
+    for club, club_players in clubs.items():
+        remaining = 1.0
+        probability = weighted_score = weighted_vote = 0.0
+        groups: dict[int, list[dict[str, Any]]] = defaultdict(list)
+        for player in club_players:
+            groups[_goalkeeper_rank(player)].append(player)
+        for rank in sorted(groups):
+            projections = [_sample_day_projection(player, day) for player in groups[rank]]
+            raw_probability = sum(item[0] for item in projections)
+            used = min(remaining, raw_probability)
+            if used > 0 and raw_probability > 0:
+                weighted_vote += used * sum(item[0] * item[1] for item in projections) / raw_probability
+                weighted_score += used * sum(item[0] * item[2] for item in projections) / raw_probability
+                probability += used
+                remaining -= used
+        options.append((weighted_score / probability if probability else 0, probability, weighted_vote / probability if probability else 0, club))
+    options.sort(key=lambda item: (item[0], item[1], item[3]), reverse=True)
+    unavailable = 1.0
+    utility = 0.0
+    for score, probability, _, _ in options:
+        utility += unavailable * probability * score
+        unavailable *= 1 - probability
+    primary = (options[0][1], options[0][2]) if options else None
+    return utility, primary
+
+
+def _sample_roster_utility(roster: list[dict[str, Any]], days: list[int], league: LeagueConfig) -> float:
+    by_role: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for player in roster:
+        by_role[player["ruolo"]].append(player)
+    bench_counts = Counter(league.bench_roles) if league.switch_mode != "None" else Counter()
+    total = 0.0
+    for day in days:
+        goalkeeper_utility, goalkeeper = _sample_goalkeeper_utility(by_role["P"], day)
+        best = 0.0
+        for formation in league.allowed_formations:
+            counts = _formation_counts(formation)
+            role_results = {
+                role: _sample_role_utility(by_role[role], counts[role], bench_counts[role], day)
+                for role in ("D", "C", "A")
+            }
+            value = sum(result[0] for result in role_results.values())
+            if league.defense_modifier_enabled:
+                value += expected_defense_modifier(
+                    goalkeeper,
+                    role_results["D"][1],
+                    league.defense_table,
+                    league.defense_tiers,
+                    league.defense_required_defenders,
+                )
+            best = max(best, value)
+        total += goalkeeper_utility + best
+    return total
+
+
+def _projection_matchday_indices(payload: dict[str, Any]) -> list[int]:
+    calendar = _require_league_calendar(payload)
+    if isinstance(calendar, dict):
+        matchdays = {int(day["serie_a_matchday"]) - 1 for day in calendar["matchdays"]}
+    else:
+        matchdays = {int(fixture["serie_a_matchday"]) - 1 for fixture in calendar}
+    return sorted(day for day in matchdays if day >= 0)
+
+
 def make_sample_rosters(payload: dict[str, Any], league: LeagueConfig = LeagueConfig()) -> dict[str, list[int]]:
     """Build balanced, non-overlapping rosters using the configured slots."""
     names = _calendar_teams(payload)
     if len(names) != league.participants:
         raise ValueError(f"Expected {league.participants} fantasy teams in the league calendar")
     players = payload["players"]
+    player_ids = [int(player["id"]) for player in players]
+    if len(set(player_ids)) != len(player_ids):
+        raise ValueError("Player IDs must be unique to create sample rosters")
+    matchday_indices = _projection_matchday_indices(payload)
     rosters = {name: [] for name in names}
-    used: set[int] = set()
+    roster_players: dict[str, list[dict[str, Any]]] = {name: [] for name in names}
     for role_index, (role, slots) in enumerate(league.roster_slots.items()):
-        candidates = sorted((p for p in players if p["ruolo"] == role), key=lambda p: p["fvm_scaled"], reverse=True)
+        candidates = sorted(
+            (p for p in players if p["ruolo"] == role and not _confirmed_inactive(p)),
+            key=lambda p: (-_projection_value(p, matchday_indices), -float(p.get("fvm_scaled", 0)), int(p["id"])),
+        )
         required = len(names) * slots
         if len(candidates) < required:
             raise ValueError(f"Not enough {role} players to create sample rosters")
         # Each role is distributed in snake rounds so every sample team receives
         # a comparable blend of high and medium projections.
-        base_order = names[role_index:] + names[:role_index]
+        offset = role_index * len(names) // max(1, len(league.roster_slots))
+        base_order = names[offset:] + names[:offset]
         for slot_round in range(slots):
             order = base_order if slot_round % 2 == 0 else list(reversed(base_order))
-            for owner, player in zip(order, candidates[slot_round * len(names):(slot_round + 1) * len(names)]):
+            for owner in order:
+                if role == "P":
+                    owned_goalkeepers = roster_players[owner]
+                    baseline = sum(
+                        _sample_goalkeeper_utility(owned_goalkeepers, day)[0]
+                        for day in matchday_indices
+                    )
+                    player = max(
+                        candidates,
+                        key=lambda item: (
+                            round(sum(
+                                _sample_goalkeeper_utility([*owned_goalkeepers, item], day)[0]
+                                for day in matchday_indices
+                            ) - baseline, 12),
+                            _projection_value(item, matchday_indices),
+                            float(item.get("fvm_scaled", 0)),
+                            -_goalkeeper_rank(item),
+                            -int(item["id"]),
+                        ),
+                    )
+                else:
+                    player = candidates[0]
                 rosters[owner].append(player["id"])
-                used.add(player["id"])
+                roster_players[owner].append(player)
+                candidates.remove(player)
     return rosters
 
 
