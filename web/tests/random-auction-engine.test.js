@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { generateRandomAuction } from "../src/random-auction-engine.js";
+import {
+  generateRandomAuction,
+  generateRandomAuctionReplay,
+} from "../src/random-auction-engine.js";
 
 const SLOTS = { P: 3, D: 8, C: 8, A: 6 };
 const TEAM_COUNT = 8;
@@ -130,7 +133,115 @@ test("random nomination selects from the global eligible pool reproducibly", () 
   const roles = roleById(players);
   const first = eventsFor("random", "global-random")[0];
   assert.deepEqual(eventsFor("random", "global-random"), eventsFor("random", "global-random"));
-  assert.equal(roles.get(first.playerId), "D");
+  assert.equal(roles.get(first.playerId), "C");
+});
+
+test("unsold players remain available and can be called again", () => {
+  const players = Array.from({ length: 3 }, (_, index) => ({
+    id: index + 1,
+    ruolo: "P",
+    nome: `P-${index + 1}`,
+    fvm_scaled: 1,
+    p_gioca_per_giornata: [0.1],
+    voto_puro_mean_per_giornata: [6],
+    bonus_atteso_per_giornata: [0],
+  }));
+  const replay = generateRandomAuctionReplay(players, {
+    seed: "unsold-recall",
+    rules: {
+      participants: 2,
+      startingCredits: 20,
+      rosterSlots: { P: 1 },
+      auction: {
+        minPrice: 2,
+        increment: 1,
+        reserve: 2,
+        nomination: "alphabetical",
+        roleBudgetPercentages: { P: 100 },
+      },
+    },
+  });
+
+  const firstPass = replay.events.find((event) => event.type === "unsold");
+  assert.ok(firstPass);
+  assert.ok(
+    replay.events.some(
+      (event) =>
+        event.callNumber > firstPass.callNumber &&
+        event.playerId === firstPass.playerId,
+    ),
+  );
+  assert.equal(replay.sales.length, 2);
+  assert.ok(replay.events.length > replay.sales.length);
+});
+
+test("zero-utility players are never forced into completed rosters", () => {
+  const players = Array.from({ length: 3 }, (_, index) => ({
+    id: index + 1,
+    ruolo: "P",
+    nome: `P-${index + 1}`,
+    fvm_scaled: 1,
+    p_gioca_per_giornata: [0],
+    voto_puro_mean_per_giornata: [6],
+    bonus_atteso_per_giornata: [0],
+  }));
+
+  assert.throws(
+    () => generateRandomAuctionReplay(players, {
+      rules: {
+        participants: 2,
+        rosterSlots: { P: 1 },
+        auction: { roleBudgetPercentages: { P: 100 } },
+      },
+    }),
+    /cannot complete with positive-utility players/,
+  );
+});
+
+test("confirmed inactive players never enter the simulated auction", () => {
+  const players = [
+    { id: 1, ruolo: "P", fvm_scaled: 10, confirmed_inactive: true },
+    { id: 2, ruolo: "P", fvm_scaled: 10 },
+    { id: 3, ruolo: "P", fvm_scaled: 10 },
+  ];
+  const replay = generateRandomAuctionReplay(players, {
+    rules: {
+      participants: 2,
+      rosterSlots: { P: 1 },
+      auction: { roleBudgetPercentages: { P: 100 } },
+    },
+  });
+
+  assert.ok(replay.sales.every((event) => event.playerId !== 1));
+  assert.ok(new Set(replay.teamArchetypes).size > 1);
+});
+
+test("league depth drives complete auctions from 6 through 12 participants", () => {
+  const slots = { P: 1, D: 2, C: 2, A: 1 };
+  for (const participants of [6, 8, 10, 12]) {
+    let id = 1;
+    const players = Object.entries(slots).flatMap(([ruolo, count]) =>
+      Array.from({ length: participants * count + 4 }, (_, rank) => ({
+        id: id++,
+        ruolo,
+        nome: `${ruolo}-${rank}`,
+        fvm_scaled: participants * count + 4 - rank,
+      })),
+    );
+    const sales = generateRandomAuction(players, {
+      seed: `league-${participants}`,
+      rules: {
+        participants,
+        rosterSlots: slots,
+        auction: {
+          roleBudgetPercentages: { P: 10, D: 25, C: 30, A: 35 },
+        },
+      },
+    });
+
+    assert.equal(sales.length, participants * 6);
+    assert.equal(new Set(sales.map((sale) => sale.playerId)).size, sales.length);
+  }
 });
 
 for (const policy of ["alphabetical", "alphabetical_by_role"]) {
@@ -155,10 +266,14 @@ for (const policy of ["call", "call_by_role"]) {
   test(`${policy} uses seeded random player calls while preserving its caller policy`, () => {
     const first = eventsFor(policy, "one");
     const second = eventsFor(policy, "two");
+    const replay = generateRandomAuctionReplay(makePlayers(), {
+      seed: "one",
+      rules: { auction: { nomination: policy } },
+    });
 
     assert.notDeepEqual(first.map((event) => event.playerId), second.map((event) => event.playerId));
     assert.deepEqual(
-      first.slice(0, TEAM_COUNT).map((event) => event.nominator),
+      replay.events.slice(0, TEAM_COUNT).map((event) => event.nominator),
       Array.from({ length: TEAM_COUNT }, (_, index) => index),
     );
   });

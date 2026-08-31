@@ -75,6 +75,8 @@
   display: grid;
   flex: 0 0 260px;
   gap: 7px;
+  padding-top: var(--s-4);
+  margin-right: var(--s-4);
 }
 
 .ra-new-auction label {
@@ -103,11 +105,19 @@
   border-radius: var(--r-md);
   font: 620 var(--fs-md) / 1.1 inherit;
   cursor: pointer;
+  transition:
+    background var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease),
+    transform var(--t-fast) var(--ease);
 }
 
-.random-auction button:hover:not(:disabled) {
+.random-auction button:not(.ra-primary):hover:not(:disabled) {
   background: var(--c-hover);
   border-color: var(--c-hover);
+}
+
+.random-auction button:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .random-auction button:focus-visible,
@@ -117,17 +127,19 @@
 }
 
 .random-auction button:disabled {
-  color: var(--c-text-mute);
-  background: var(--c-surface-2);
-  border-color: var(--c-text-mute);
+  opacity: 0.42;
   cursor: not-allowed;
-  opacity: 1;
 }
 
 .random-auction .ra-primary {
   color: var(--ra-accent-dark);
   background: var(--ra-accent);
   border-color: var(--ra-accent);
+}
+
+.random-auction .ra-primary:hover:not(:disabled) {
+  background: var(--c-brand-bright);
+  border-color: var(--c-brand-bright);
 }
 
 .ra-error,
@@ -524,6 +536,17 @@
   min-width: 180px;
 }
 
+.ra-league .btn.btn--primary {
+  border-color: transparent;
+  background: var(--c-brand);
+  color: #0a0b12;
+  font-weight: 700;
+}
+
+.ra-league .btn.btn--primary:hover:not(:disabled) {
+  background: var(--c-brand-bright);
+}
+
 .ra-standings {
   overflow-x: auto;
   margin-top: 10px;
@@ -566,8 +589,9 @@
 }
 
 .ra-standings tr.is-mine {
-  color: var(--c-info-tint);
-  background: var(--ra-mine);
+  color: var(--c-text);
+  background: var(--c-info-tint);
+  box-shadow: inset 3px 0 0 var(--c-info);
 }
 
 @media (max-width: 1050px) {
@@ -598,6 +622,8 @@
 
   .ra-new-auction {
     width: 100%;
+    padding-top: 0;
+    margin-right: 0;
   }
 
   .ra-replay {

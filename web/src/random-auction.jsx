@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { normalizeRules } from "./league-rules.js";
 import { simulateMockLeague } from "./mock-league-engine.js";
-import { generateRandomAuction } from "./random-auction-engine.js";
+import { generateRandomAuctionReplay } from "./random-auction-engine.js";
 
 const RECOMMENDATIONS = {
   STRONG_BUY: "Compra con decisione",
@@ -9,6 +9,15 @@ const RECOMMENDATIONS = {
   VALUE_ONLY: "Solo al prezzo giusto",
   PASS: "Lascia andare",
   INELIGIBLE: "Non acquistabile",
+};
+const PURPOSES = {
+  STARTER: "Titolare",
+  ROTATION: "Rotazione",
+  HANDCUFF: "Copertura della stessa squadra",
+  COVERAGE: "Copertura",
+  DEPTH: "Nessun beneficio per la rosa",
+  NO_FIT: "Non migliora il piano rosa",
+  INACTIVE: "Non disponibile",
 };
 
 const NOMINATION_LABELS = {
@@ -36,7 +45,8 @@ const freezeSnapshot = (players, events, count, startingCredits, teamNames) => {
   const credits = Array(teamNames.length).fill(startingCredits);
   const rosters = teamNames.map(() => []);
   const assignments = {};
-  const history = events.slice(0, count).map((event) => {
+  const sales = events.slice(0, count).filter((event) => event.type !== "unsold");
+  const history = sales.map((event) => {
     const player = playersById.get(playerKey(event.playerId));
     const record = Object.freeze({ ...event, player });
     credits[event.owner] -= event.price;
@@ -48,7 +58,7 @@ const freezeSnapshot = (players, events, count, startingCredits, teamNames) => {
     return record;
   });
   const assignedKeys = new Set(
-    events.slice(0, count).map((event) => playerKey(event.playerId)),
+    sales.map((event) => playerKey(event.playerId)),
   );
   const teams = teamNames.map((name, owner) =>
     Object.freeze({
@@ -171,13 +181,13 @@ export function RandomAuctionView({ data, rules, profileId }) {
 
     try {
       const seed = randomSeed();
-      const events = generateRandomAuction(players, {
+      const replay = generateRandomAuctionReplay(players, {
         seed,
         startingCredits: credits,
         rules: normalizedRules,
       });
-      setAuction({ seed, events, startingCredits: credits });
-      setCursor(events.length ? 1 : 0);
+      setAuction({ seed, ...replay, startingCredits: credits });
+      setCursor(replay.events.length ? 1 : 0);
       setPlaying(false);
       setError("");
       setAdvice(null);
@@ -332,7 +342,7 @@ export function RandomAuctionView({ data, rules, profileId }) {
       try {
         const result = simulateMockLeague({
           players,
-          events: auction.events,
+          events: auction.sales,
           teamNames,
           seed: randomSeed(),
           rules: normalizedRules,
@@ -447,7 +457,9 @@ export function RandomAuctionView({ data, rules, profileId }) {
               </div>
               <div>
                 <span className="ra-kicker">
-                  {currentEvent.owner === userTeamIndex
+                  {currentEvent.type === "unsold"
+                    ? "NESSUNA OFFERTA"
+                    : currentEvent.owner === userTeamIndex
                     ? `ACQUISTO DI ${teamNames[userTeamIndex]}`
                     : "VENDITA CORRENTE"}
                 </span>
@@ -461,11 +473,11 @@ export function RandomAuctionView({ data, rules, profileId }) {
                 </div>
                 <div>
                   <dt>Acquirente</dt>
-                  <dd>{teamNames[currentEvent.owner]}</dd>
+                  <dd>{currentEvent.type === "unsold" ? "Invenduto" : teamNames[currentEvent.owner]}</dd>
                 </div>
                 <div>
                   <dt>Prezzo</dt>
-                  <dd>{currentEvent.price} cr.</dd>
+                  <dd>{currentEvent.type === "unsold" ? "Nessuna offerta" : `${currentEvent.price} cr.`}</dd>
                 </div>
               </dl>
             </article>
@@ -501,11 +513,15 @@ export function RandomAuctionView({ data, rules, profileId }) {
               {adviceState === "ready" && advice && (
                 <>
                   <div
-                    className={`ra-outcome ${currentEvent.owner === userTeamIndex ? (currentEvent.price <= advice.maxBid ? "good" : "warning") : currentEvent.price > advice.maxBid ? "good" : "notice"}`}
+                    className={`ra-outcome ${currentEvent.type === "unsold" ? (advice.maxBid > 0 ? "notice" : "good") : currentEvent.owner === userTeamIndex ? (currentEvent.price <= advice.maxBid ? "good" : "warning") : currentEvent.price > advice.maxBid ? "good" : "notice"}`}
                   >
                     <b>Esito simulato</b>
                     <span>
-                      {currentEvent.owner === userTeamIndex
+                      {currentEvent.type === "unsold"
+                        ? advice.maxBid > 0
+                          ? `Invenduto: il tuo limite era ${advice.maxBid}, il giocatore resta disponibile.`
+                          : "Invenduto coerente con il consiglio; il giocatore resta disponibile."
+                        : currentEvent.owner === userTeamIndex
                         ? currentEvent.price <= advice.maxBid
                           ? `Acquisto coerente: ${currentEvent.price} crediti, entro il limite di ${advice.maxBid}.`
                           : `Acquisto aggressivo: ${currentEvent.price} crediti, oltre il limite di ${advice.maxBid}.`
@@ -516,13 +532,13 @@ export function RandomAuctionView({ data, rules, profileId }) {
                   </div>
                   <div className="ra-advice-content">
                     <div className="ra-verdict">
-                      <span>Raccomandazione</span>
+                      <span>Utilità per la rosa</span>
                       <strong>
-                        {RECOMMENDATIONS[advice.recommendation] ||
-                          advice.recommendation}
+                        {PURPOSES[advice.purpose] || advice.purpose || "Valuta"}
                       </strong>
                       <small>
-                        Confidenza {Math.round((advice.confidence || 0) * 100)}%
+                        {RECOMMENDATIONS[advice.recommendation] || advice.recommendation}
+                        {" · "}Confidenza {Math.round((advice.confidence || 0) * 100)}%
                       </small>
                     </div>
                     <dl className="ra-price-grid">
@@ -632,12 +648,12 @@ export function RandomAuctionView({ data, rules, profileId }) {
               <h2 id="ra-league-title">Simulazione lega</h2>
               <p>
                 Il pulsante si sblocca solo dopo tutte le{" "}
-                {auction.events.length} assegnazioni.
+                 {auction.sales.length} assegnazioni in {auction.events.length} chiamate.
               </p>
             </div>
             <button
               type="button"
-              className="ra-primary"
+              className="btn btn--primary"
               onClick={simulateLeague}
               disabled={
                 cursor !== auction.events.length || leagueState === "loading"
