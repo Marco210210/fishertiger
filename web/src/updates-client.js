@@ -16,6 +16,15 @@ export const sosFantaGuideUrl = (season) => {
   return `https://www.sosfanta.com/guida-asta-fantacalcio/guida-asta-fantacalcio-${match[1]}-${end}-tutti-consigli-fasce-chi-prendere/`;
 };
 
+export const sosFantaFormationsUrl = (season) => {
+  const match = String(season || "").trim().match(/^(\d{4})\/(\d{2}|\d{4})$/);
+  if (!match) return "";
+  const start = Number(match[1]);
+  const end = Number(match[2].length === 2 ? `${match[1].slice(0, 2)}${match[2]}` : match[2]);
+  if (end !== start + 1) return "";
+  return `https://www.sosfanta.com/asta-fantacalcio/seriea-tutte-formazioni-tipo-fantacalcio-${start}-${end}-asta-consigli-chi-prendere/`;
+};
+
 export const sosFantaSetPieceUrl = (season) => {
   const match = String(season || "").trim().match(/^(\d{4})\/(\d{2}|\d{4})$/);
   if (!match) return "";
@@ -30,7 +39,7 @@ export const sosFantaPenaltyUrl = () =>
 
 const updateRequest = async (provider, action, profile, {
   apiBase = "", fetchImpl = globalThis.fetch, contentHash = "", candidateHash = "",
-  profileHash = "", activeHash = "",
+  profileHash = "", activeHash = "", auditHash = "",
 } = {}) => {
   if (typeof fetchImpl !== "function")
     throw new UpdateClientError("fetch_unavailable", "Fetch non disponibile.");
@@ -45,6 +54,7 @@ const updateRequest = async (provider, action, profile, {
         candidate_hash: candidateHash,
         profile_hash: profileHash,
         active_hash: activeHash,
+        audit_hash: auditHash,
       }),
     });
   } catch (cause) {
@@ -75,6 +85,10 @@ export const checkSosFanta = (profile, options) => updateRequest("sosfanta", "ch
 export const getSosFantaStatus = (profile, options) => updateRequest("sosfanta", "status", profile, options);
 export const acceptSosFanta = (profile, options) => updateRequest("sosfanta", "accept", profile, options);
 export const fetchSosFantaBundle = (profile, options) => updateRequest("sosfanta", "bundle", profile, options);
+export const checkSosFantaFormations = (profile, options) => updateRequest("sosfanta-formations", "check", profile, options);
+export const getSosFantaFormationStatus = (profile, options) => updateRequest("sosfanta-formations", "status", profile, options);
+export const acceptSosFantaFormations = (profile, options) => updateRequest("sosfanta-formations", "accept", profile, options);
+export const fetchSosFantaFormationBundle = (profile, options) => updateRequest("sosfanta-formations", "bundle", profile, options);
 export const checkSosFantaSetPieces = (profile, options) => updateRequest("sosfanta-set-pieces", "check", profile, options);
 export const getSosFantaSetPieceStatus = (profile, options) => updateRequest("sosfanta-set-pieces", "status", profile, options);
 export const acceptSosFantaSetPieces = (profile, options) => updateRequest("sosfanta-set-pieces", "accept", profile, options);

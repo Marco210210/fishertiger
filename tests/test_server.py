@@ -41,6 +41,11 @@ class LocalApiServerTests(unittest.TestCase):
 
         self.update_prose = "Alpha is the starter."
 
+        def formations_fetcher(_url):
+            return self.formations_html
+
+        self.formations_html = ""
+
         def player_list_fetcher(url):
             return self.player_list_html
 
@@ -61,6 +66,7 @@ class LocalApiServerTests(unittest.TestCase):
             generator=generator,
             simulator=simulator,
             update_fetcher=update_fetcher,
+            formations_fetcher=formations_fetcher,
             set_piece_fetcher=set_piece_fetcher,
             player_list_fetcher=player_list_fetcher,
         )
@@ -123,6 +129,24 @@ class LocalApiServerTests(unittest.TestCase):
             for index, team in enumerate(teams)
         )
         return f'<h1>Tutti i rigoristi 2026/27</h1><div id="article-content">{sections}</div>'
+
+    def formations_article(self, first_ballot="Player 0A remains first choice."):
+        teams = [
+            "ATALANTA", "BOLOGNA", "CAGLIARI", "COMO", "FIORENTINA", "FROSINONE", "GENOA",
+            "INTER", "JUVENTUS", "LAZIO", "LECCE", "MILAN", "MONZA", "NAPOLI", "PARMA",
+            "ROMA", "SASSUOLO", "TORINO", "UDINESE", "VENEZIA",
+        ]
+        sections = []
+        for index, team in enumerate(teams):
+            names = [f"Player {index}{letter}" for letter in "ABCDEFGHIJK"]
+            formation = f"{names[0]}; {', '.join(names[1:5])}; {', '.join(names[5:8])}; {', '.join(names[8:])}"
+            ballot = first_ballot if index == 0 else f"Stable hierarchy for {team}."
+            sections.append(
+                f"<p><strong>{team}</strong></p>"
+                f"<p><em>Formazione-tipo:</em> {formation}.</p>"
+                f"<p><em>I ballottaggi:</em> {ballot}</p>"
+            )
+        return '<h1>Formazioni-tipo Serie A 2026/27</h1><div id="article-content">' + "".join(sections) + "</div>"
 
     def test_profiles_round_trip_and_index(self):
         expected = json.loads(json.dumps(profile_response(LeagueProfile.from_dict(self.profile))))
@@ -399,6 +423,74 @@ class LocalApiServerTests(unittest.TestCase):
         response, payload = self.request("POST", "/api/updates/sosfanta/status", body, headers)
         self.assertEqual(response.status, 200)
         self.assertEqual(payload["state"], "changed")
+
+    def test_sosfanta_formations_full_audit_and_monitoring_flow(self):
+        root = Path(self.temp_dir.name)
+        starters_path = root / "titolari.csv"
+        listone_path = root / "listone.xlsx"
+        players = []
+        starters = []
+        player_id = 1
+        teams = [
+            "Atalanta", "Bologna", "Cagliari", "Como", "Fiorentina", "Frosinone", "Genoa",
+            "Inter", "Juventus", "Lazio", "Lecce", "Milan", "Monza", "Napoli", "Parma",
+            "Roma", "Sassuolo", "Torino", "Udinese", "Venezia",
+        ]
+        for index, team in enumerate(teams):
+            for letter in "ABCDEFGHIJK":
+                name = f"Player {index}{letter}"
+                players.append({"Id": player_id, "Nome": name, "Squadra": team})
+                starters.append({
+                    "squadra": team,
+                    "nome": name,
+                    "id_fantacalcio": player_id,
+                    "status": "TITOLARE",
+                    "note": "",
+                })
+                player_id += 1
+        listone_path.write_bytes(self.player_workbook(players))
+        pd.DataFrame(starters).to_csv(starters_path, index=False)
+        next(item for item in self.profile["current_sources"] if item["name"] == "starters")["path"] = str(starters_path)
+        next(item for item in self.profile["current_sources"] if item["name"] == "player_list")["path"] = str(listone_path)
+        self.formations_html = self.formations_article()
+        body = json.dumps({"profile": self.profile}).encode("utf-8")
+        headers = {"Content-Type": "application/json"}
+
+        response, initial = self.request("POST", "/api/updates/sosfanta-formations/check", body, headers)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(initial["state"], "baseline_missing")
+        self.assertEqual(initial["audit"]["summary"]["issue_count"], 0)
+        self.assertTrue(initial["bundle_available"])
+
+        stale = json.dumps({
+            "profile": self.profile,
+            "content_hash": initial["content_hash"],
+            "audit_hash": "stale",
+        }).encode("utf-8")
+        response, _ = self.request("POST", "/api/updates/sosfanta-formations/bundle", stale, headers)
+        self.assertEqual(response.status, 422)
+
+        reviewed = json.dumps({
+            "profile": self.profile,
+            "content_hash": initial["content_hash"],
+            "audit_hash": initial["audit_hash"],
+        }).encode("utf-8")
+        response, bundle = self.request("POST", "/api/updates/sosfanta-formations/bundle", reviewed, headers)
+        self.assertEqual(response.status, 200)
+        self.assertIn("Slash order is not a hierarchy", bundle)
+
+        response, _ = self.request("POST", "/api/updates/sosfanta-formations/accept", reviewed, headers)
+        self.assertEqual(response.status, 200)
+        response, status = self.request("POST", "/api/updates/sosfanta-formations/status", body, headers)
+        self.assertEqual(response.status, 200)
+        self.assertFalse(status["bundle_available"])
+
+        self.formations_html = self.formations_article("Player 0B now challenges Player 0A.")
+        response, changed = self.request("POST", "/api/updates/sosfanta-formations/check", body, headers)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(changed["state"], "changed")
+        self.assertEqual(changed["change_count"], 1)
+        self.assertTrue(changed["bundle_available"])
 
     def test_sosfanta_set_piece_check_accept_and_bundle_flow(self):
         root = Path(self.temp_dir.name)

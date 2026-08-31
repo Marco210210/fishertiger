@@ -20,7 +20,7 @@
   z-index: 20;
   top: calc(var(--h-topbar) + var(--safe-top));
   display: grid;
-  gap: var(--s-2);
+  gap: var(--s-3);
   margin-inline: calc(var(--s-4) * -1);
   padding: var(--s-3) var(--s-4);
   border-bottom: 1px solid var(--c-line);
@@ -31,6 +31,11 @@
   display: flex;
   align-items: center;
   gap: var(--s-3);
+}
+
+.myteam-top > div:first-child {
+  display: grid;
+  gap: var(--s-2);
 }
 
 .myteam-credits {

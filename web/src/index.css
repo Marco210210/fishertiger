@@ -51,6 +51,11 @@
     gap: var(--s-2);
   }
 
+  .profile-picker {
+    display: grid;
+    gap: var(--s-3);
+  }
+
   .profile-actions .btn {
     display: inline-flex;
     align-items: center;

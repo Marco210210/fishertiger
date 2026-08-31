@@ -1,11 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  acceptSosFantaFormations,
   acceptSosFanta,
   applyPlayerList,
   checkSosFanta,
+  checkSosFantaFormations,
   checkSosFantaSetPieces,
   fantacalcioDownloadUrl,
+  fetchSosFantaFormationBundle,
+  sosFantaFormationsUrl,
   sosFantaGuideUrl,
   sosFantaPenaltyUrl,
   sosFantaSetPieceUrl,
@@ -16,6 +20,26 @@ import {
 test("builds the SOS Fanta guide URL from the selected season", () => {
   assert.match(sosFantaGuideUrl("2026/27"), /2026-2027-tutti-consigli/);
   assert.equal(sosFantaGuideUrl("invalid"), "");
+});
+
+test("builds the exact season-aware SOS Fanta formations URL", () => {
+  assert.equal(
+    sosFantaFormationsUrl("2026/27"),
+    "https://www.sosfanta.com/asta-fantacalcio/seriea-tutte-formazioni-tipo-fantacalcio-2026-2027-asta-consigli-chi-prendere/",
+  );
+  assert.equal(sosFantaFormationsUrl("2026/2027"), sosFantaFormationsUrl("2026/27"));
+  assert.equal(sosFantaFormationsUrl("2026/28"), "");
+  assert.equal(sosFantaFormationsUrl("invalid"), "");
+});
+
+test("uses the SOS Fanta formations provider endpoint", async () => {
+  let requestUrl;
+  const fetchImpl = async (url) => {
+    requestUrl = url;
+    return { ok: true, status: 200, json: async () => ({ state: "unchanged" }) };
+  };
+  await checkSosFantaFormations({ profile_id: "league" }, { fetchImpl });
+  assert.equal(requestUrl, "/api/updates/sosfanta-formations/check");
 });
 
 test("builds the SOS Fanta set-piece URL and endpoint", async () => {
@@ -73,6 +97,30 @@ test("sends the reviewed hash when accepting a snapshot", async () => {
   };
   await acceptSosFanta({ profile_id: "test" }, { fetchImpl, contentHash: "abc" });
   assert.equal(body.content_hash, "abc");
+});
+
+test("sends both reviewed hashes when requesting a formations bundle", async () => {
+  let body;
+  const fetchImpl = async (_url, options) => {
+    body = JSON.parse(options.body);
+    return { ok: true, status: 200 };
+  };
+  await fetchSosFantaFormationBundle(
+    { profile_id: "test" },
+    { fetchImpl, contentHash: "content", auditHash: "audit" },
+  );
+  assert.equal(body.content_hash, "content");
+  assert.equal(body.audit_hash, "audit");
+});
+
+test("accepts a SOS Fanta formations source snapshot", async () => {
+  let requestUrl;
+  const fetchImpl = async (url) => {
+    requestUrl = url;
+    return { ok: true, status: 200, json: async () => ({ state: "unchanged" }) };
+  };
+  await acceptSosFantaFormations({ profile_id: "test" }, { fetchImpl, contentHash: "content" });
+  assert.equal(requestUrl, "/api/updates/sosfanta-formations/accept");
 });
 
 test("normalizes network and invalid response failures", async () => {

@@ -1,18 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import {
   acceptSosFanta,
+  acceptSosFantaFormations,
   acceptSosFantaSetPieces,
   applyPlayerList,
   checkPlayerList,
   checkSosFanta,
+  checkSosFantaFormations,
   fantacalcioDownloadUrl,
   fetchSosFantaBundle,
+  fetchSosFantaFormationBundle,
   fetchSosFantaSetPieceBundle,
   getPlayerListStatus,
   getSosFantaStatus,
+  getSosFantaFormationStatus,
   getSosFantaSetPieceStatus,
   playerListStateLabel,
   sosFantaGuideUrl,
+  sosFantaFormationsUrl,
   sosFantaPenaltyUrl,
   sosFantaSetPieceUrl,
   checkSosFantaSetPieces,
@@ -26,9 +31,21 @@ const LISTONE_SUMMARY_LABELS = {
   ceduti_removed: "Ceduti rientrati", role: "Ruoli", name: "Nomi",
   team: "Squadre", quotation: "Quotazioni", fvm: "FVM",
 };
+const FORMATION_AUDIT_LABELS = {
+  candidates: "Candidati", corroborated: "Confermati", status_mismatch: "Stato diverso",
+  missing_row: "Righe mancanti", unresolved_identity: "Identità irrisolte",
+  duplicate_row: "Righe duplicate", invalid_status: "Stati non validi",
+  source_structure: "Struttura fonte", issue_count: "Problemi",
+};
 const displayChangeValue = (value) => value && typeof value === "object"
   ? Object.entries(value).map(([key, item]) => `${key}: ${item}`).join(" · ")
   : String(value ?? "-");
+const displayFormationSnapshot = (change, prefix) => {
+  const formation = change?.[`${prefix}_formation`];
+  const value = change?.[`${prefix}_text`] ?? change?.[prefix === "old" ? "before" : "after"];
+  const text = Array.isArray(value) ? value : value == null ? [] : [displayChangeValue(value)];
+  return [formation, ...text].filter(Boolean).join("\n\n") || "-";
+};
 
 function PlayerListUpdates({ profile, apiBase, onApplyStart, onApplied }) {
   const [candidate, setCandidate] = useState(null);
@@ -131,7 +148,7 @@ function PlayerListUpdates({ profile, apiBase, onApplyStart, onApplied }) {
   return (
     <article className="update-source-card player-list-card">
       <header>
-        <div><span className="source-index">03</span><h2>Listone Fantacalcio</h2></div>
+        <div><span className="source-index">04</span><h2>Listone Fantacalcio</h2></div>
         <span className={`update-state ${candidate?.state || remote?.state || "idle"}`}>
           {candidate?.state && candidate.state !== "never_uploaded" ? playerListStateLabel(candidate.state) : playerListStateLabel(remote?.state)}
         </span>
@@ -227,6 +244,166 @@ function PlayerListUpdates({ profile, apiBase, onApplyStart, onApplied }) {
   );
 }
 
+function FormationUpdates({ profile, apiBase }) {
+  const [result, setResult] = useState(null);
+  const [busy, setBusy] = useState("");
+  const [message, setMessage] = useState("");
+  const [problem, setProblem] = useState("");
+  const sequence = useRef(0);
+  const season = profile?.season?.season;
+  const sourceUrl = result?.source_url || sosFantaFormationsUrl(season);
+  const auditSummary = result?.audit?.summary;
+  const findings = result?.audit?.findings || [];
+
+  useEffect(() => {
+    let active = true;
+    const request = ++sequence.current;
+    setResult(null);
+    setBusy("");
+    setMessage("");
+    setProblem("");
+    getSosFantaFormationStatus(profile, { apiBase })
+      .then((next) => {
+        if (active && request === sequence.current) setResult(next);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [apiBase, profile?.profile_id, season]);
+
+  const run = async (action) => {
+    const request = ++sequence.current;
+    setBusy(action);
+    setMessage("");
+    setProblem("");
+    try {
+      if (action === "check") {
+        const next = await checkSosFantaFormations(profile, { apiBase });
+        if (request !== sequence.current) return;
+        setResult(next);
+        setMessage(next.state === "changed" ? `${next.change_count} formazioni modificate.` : "Fonte e audit CSV verificati.");
+      } else {
+        const next = await acceptSosFantaFormations(profile, { apiBase, contentHash: result?.content_hash });
+        if (request !== sequence.current) return;
+        setResult((current) => ({ ...current, ...next, changes: [], change_count: 0 }));
+        setMessage("La versione della fonte è stata salvata come riferimento. Il CSV non è stato modificato.");
+      }
+    } catch (error) {
+      if (request !== sequence.current) return;
+      setProblem(error?.code || "request_failed");
+      setMessage(error instanceof Error ? error.message : "Operazione non completata.");
+    } finally {
+      if (request === sequence.current) setBusy("");
+    }
+  };
+
+  const downloadBundle = async () => {
+    const request = ++sequence.current;
+    setBusy("bundle");
+    setMessage("");
+    setProblem("");
+    try {
+      const response = await fetchSosFantaFormationBundle(profile, {
+        apiBase,
+        contentHash: result?.content_hash,
+        auditHash: result?.audit_hash,
+      });
+      const blob = await response.blob();
+      if (request !== sequence.current) return;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `sosfanta-formazioni-update-${season.replace("/", "-")}.txt`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setMessage("Bundle AI per titolari.csv scaricato.");
+    } catch (error) {
+      if (request !== sequence.current) return;
+      setProblem(error?.code || "request_failed");
+      setMessage(error instanceof Error ? error.message : "Download non completato.");
+    } finally {
+      if (request === sequence.current) setBusy("");
+    }
+  };
+
+  return (
+    <article className="update-source-card">
+      <header>
+        <div><span className="source-index">02</span><h2>SOS Fanta Formazioni</h2></div>
+        <span className={`update-state ${result?.state || "idle"}`}>{updateStateLabel(result?.state)}</span>
+      </header>
+      <div className="update-source-meta">
+        <div><span>Stagione</span><strong>{season}</strong></div>
+        <div><span>Ambito</span><strong>Formazioni tipo e audit titolari.csv</strong></div>
+        <div><span>Ultimo controllo</span><strong>{result?.checked_at?.slice(0, 16).replace("T", " ") || "Mai"}</strong></div>
+      </div>
+      <a className="source-url" href={sourceUrl} target="_blank" rel="noreferrer">{sourceUrl}</a>
+      <div className="update-actions">
+        <button className="update-check-button" onClick={() => run("check")} disabled={Boolean(busy)}>
+          {busy === "check" ? "Controllo in corso..." : "Controlla formazioni"}
+        </button>
+        {result?.bundle_available && (
+          <button onClick={downloadBundle} disabled={Boolean(busy)}>
+            {busy === "bundle" ? "Preparazione..." : "Scarica bundle AI"}
+          </button>
+        )}
+        {(result?.state === "baseline_missing" || result?.state === "changed") && (
+          <button className="quiet" onClick={() => run("accept")} disabled={Boolean(busy)}>
+            {result.state === "baseline_missing" ? "Salva riferimento iniziale" : "Segna fonte come acquisita"}
+          </button>
+        )}
+      </div>
+      <p className="accept-warning">L’accettazione riconosce solo lo stato della fonte remota. <code>titolari.csv</code> non viene modificato automaticamente: revisiona separatamente l’audit CSV e applica le correzioni necessarie.</p>
+      {message && <p className={`update-message ${problem ? "error" : ""}`} role={problem ? "alert" : "status"}>{message}</p>}
+
+      {result && (
+        <div className="update-summary">
+          <span>STATO FONTE REMOTA</span>
+          <strong>{updateStateLabel(result.state)}</strong>
+          <p>{result.change_count || 0} modifiche semantiche rilevate</p>
+        </div>
+      )}
+      {result?.changes?.length > 0 && (
+        <div className="update-diff">
+          <div className="diff-title"><span>DIFF FONTE REMOTA</span><strong>{result.change_count} squadre</strong></div>
+          {result.changes.map((change, index) => (
+            <details key={`${change.team || "formazione"}-${index}`}>
+              <summary><span>{change.team || "Formazione"}</span><b>{change.change || change.kind || "modificata"}</b></summary>
+              <div className="diff-columns">
+                <div><small>PRIMA</small><p>{displayFormationSnapshot(change, "old")}</p></div>
+                <div><small>DOPO</small><p>{displayFormationSnapshot(change, "new")}</p></div>
+              </div>
+            </details>
+          ))}
+        </div>
+      )}
+
+      {auditSummary && (
+        <div className="update-diff">
+          <div className="diff-title"><span>AUDIT CSV</span><strong>{auditSummary.issue_count || 0} problemi</strong></div>
+          <div className="listone-summary-grid">
+            {Object.entries(FORMATION_AUDIT_LABELS).map(([key, label]) => (
+              <div key={key}><strong>{auditSummary[key] || 0}</strong><span>{label}</span></div>
+            ))}
+          </div>
+          {findings.map((finding, index) => (
+            <details key={`${finding.team}-${finding.id_fantacalcio || finding.name}-${index}`}>
+              <summary><span>{finding.team || "Squadra non risolta"}</span><b>{finding.issue || "problema"}</b></summary>
+              <div className="listone-change-fields">
+                <p><strong>Stato</strong><span>{finding.current_status || "-"} → {finding.expected_status || "-"}</span></p>
+                <p><strong>Articolo</strong><span>{finding.source === "article" ? finding.name : "-"}{finding.id_fantacalcio ? ` · ID ${finding.id_fantacalcio}` : ""}</span></p>
+                {(finding.current_name || finding.source === "current_csv") && <p><strong>Nome CSV</strong><span>{finding.current_name || finding.name}</span></p>}
+                {finding.diagnostic && <p><strong>Diagnostica</strong><span>{finding.diagnostic}</span></p>}
+                {finding.formation_text && <p><strong>Formazione</strong><span>{finding.formation_text}</span></p>}
+                {finding.ballot_text && <p><strong>Ballottaggio</strong><span>{finding.ballot_text}</span></p>}
+              </div>
+            </details>
+          ))}
+        </div>
+      )}
+    </article>
+  );
+}
+
 function SetPieceUpdates({ profile, apiBase }) {
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState("");
@@ -308,7 +485,7 @@ function SetPieceUpdates({ profile, apiBase }) {
   return (
     <article className="update-source-card">
       <header>
-        <div><span className="source-index">02</span><h2>SOS Fanta Piazzati</h2></div>
+        <div><span className="source-index">03</span><h2>SOS Fanta Piazzati</h2></div>
         <span className={`update-state ${result?.state || "idle"}`}>{updateStateLabel(result?.state)}</span>
       </header>
       <div className="update-source-meta">
@@ -518,6 +695,8 @@ export function Updates({
           </div>
         )}
       </article>
+
+      <FormationUpdates profile={profile} apiBase={apiBase} />
 
       <SetPieceUpdates profile={profile} apiBase={apiBase} />
 
