@@ -337,9 +337,13 @@
   cursor: pointer;
   font-size: 13px;
   font-weight: 800;
+  transition:
+    background var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease),
+    transform var(--t-fast) var(--ease);
 }
-.ls-upload:hover {
-  border-color: var(--lime);
+.ls-upload:hover:not(:has(input:disabled)) {
+  border-color: var(--c-brand-bright);
   background: var(--c-hover);
 }
 .ls-upload input {
@@ -521,6 +525,17 @@
   font: inherit;
   font-size: 12px;
   font-weight: 800;
+  transition:
+    background var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease),
+    transform var(--t-fast) var(--ease);
+}
+.ls-order-actions button:hover {
+  border-color: var(--c-brand-line);
+  background: var(--c-raised);
+}
+.ls-order-actions button:active {
+  transform: translateY(1px);
 }
 .ls-order-actions button:focus-visible {
   outline: 2px solid var(--c-brand-bright);
@@ -559,6 +574,10 @@
   background: var(--lime);
   color: var(--lime-ink);
   font-weight: 900;
+  transition:
+    background var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease),
+    transform var(--t-fast) var(--ease);
 }
 .ls-actions .ls-generate {
   border-color: var(--c-line);
@@ -572,8 +591,15 @@
   cursor: not-allowed;
 }
 .ls-actions button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgb(0 0 0 / 45%);
+  background: var(--c-brand-bright);
+  border-color: var(--c-brand-bright);
+}
+.ls-actions .ls-generate:hover:not(:disabled) {
+  background: var(--c-hover);
+  border-color: var(--c-brand-line);
+}
+.ls-actions button:active:not(:disabled) {
+  transform: translateY(1px);
 }
 .ls-actions button:focus-visible,
 .ls-text-button:focus-visible,
