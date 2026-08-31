@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from advisor.pipeline import anonymize_public_calendar, fixture_projection_arrays, normalize, vote_standard_deviation, weighted_history, weighted_rate_per_appearance
+from advisor.pipeline import _clean_record, anonymize_public_calendar, fixture_projection_arrays, normalize, vote_standard_deviation, weighted_history, weighted_rate_per_appearance
 
 
 def history(mv: float, appearances: int, goals: int = 0) -> pd.DataFrame:
@@ -33,6 +33,12 @@ def test_vote_deviation_is_capped_at_role_default():
     histories = [history(4.0, 10), history(8.0, 10)]
 
     assert vote_standard_deviation(1, histories, default=0.85) == 0.85
+
+
+def test_clean_record_converts_blank_csv_cells_to_json_null():
+    result = _clean_record({"status": "TITOLARE", "nota": float("nan")})
+
+    assert result == {"status": "TITOLARE", "nota": None}
 
 
 def test_fixture_projections_vary_by_opponent_venue_and_rotation():
