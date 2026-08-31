@@ -195,7 +195,7 @@ export function PlayerRow({
       className={
         framed
           ? "row-hit"
-          : `row ${className}${selected ? " is-selected" : ""}`.trim()
+          : `row ${className}${rank !== undefined ? " player-row--ranked" : ""}${selected ? " is-selected" : ""}`.trim()
       }
       onClick={onClick}
     >
