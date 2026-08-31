@@ -549,12 +549,18 @@ class LocalApiServerTests(unittest.TestCase):
     def test_player_list_check_upload_status_and_apply(self):
         root = Path(self.temp_dir.name)
         active = root / "active.xlsx"
+        starters = root / "titolari.csv"
+        pd.DataFrame([
+            {"squadra": "AAA", "nome": "One", "id_fantacalcio": 1, "status": "TITOLARE", "note": ""},
+            {"squadra": "CCC", "nome": "Departed", "id_fantacalcio": 3, "status": "RISERVA", "note": ""},
+        ]).to_csv(starters, index=False)
         active_bytes = self.player_workbook([
             {"Id": 1, "R": "P", "Nome": "One", "Squadra": "AAA", "Qt.A": 10, "FVM": 20},
         ])
         active.write_bytes(active_bytes)
         source = next(item for item in self.profile["current_sources"] if item["name"] == "player_list")
         source["path"] = str(active)
+        next(item for item in self.profile["current_sources"] if item["name"] == "starters")["path"] = str(starters)
         self.player_list_html = """<h1>Quotazioni 2026/27</h1><table><tr class="player-row">
             <td class="role">P</td><td><a class="name" href="/calciatori/1/one">One</a></td>
             <td class="team">AAA</td><td class="quotation">10</td><td class="fvm">20</td></tr></table>"""
@@ -573,7 +579,7 @@ class LocalApiServerTests(unittest.TestCase):
         candidate = self.player_workbook([
             {"Id": 1, "R": "P", "Nome": "One", "Squadra": "AAA", "Qt.A": 11, "FVM": 21},
             {"Id": 2, "R": "A", "Nome": "Two", "Squadra": "BBB", "Qt.A": 8, "FVM": 15},
-        ])
+        ], ceduti=[3])
         response, uploaded = self.request(
             "PUT", "/api/updates/player-list/candidate/my-team/2026-27", candidate,
             {"Content-Type": "application/octet-stream", "X-Filename": "official.xlsx"},
@@ -587,10 +593,13 @@ class LocalApiServerTests(unittest.TestCase):
         self.assertEqual(status["candidate_hash"], uploaded["candidate_hash"])
         self.assertEqual(status["profile_hash"], LeagueProfile.from_dict(self.profile).configuration_hash)
         self.assertEqual(len(status["active_hash"]), 64)
+        self.assertEqual(len(status["starters_hash"]), 64)
+        self.assertEqual(status["summary"]["starters_removed"], 1)
+        self.assertEqual(status["details"]["starters_removed"][0]["id"], 3)
 
         stale = json.dumps({
             "profile": self.profile, "candidate_hash": "0" * 64,
-            "profile_hash": status["profile_hash"], "active_hash": status["active_hash"],
+            "profile_hash": status["profile_hash"], "active_hash": status["active_hash"], "starters_hash": status["starters_hash"],
         }).encode("utf-8")
         response, payload = self.request("POST", "/api/updates/player-list/apply", stale, json_headers)
         self.assertEqual(response.status, 409)
@@ -602,7 +611,7 @@ class LocalApiServerTests(unittest.TestCase):
         self.assertEqual(response.status, 200)
         stale_profile_body = json.dumps({
             "profile": self.profile, "candidate_hash": uploaded["candidate_hash"],
-            "profile_hash": status["profile_hash"], "active_hash": status["active_hash"],
+            "profile_hash": status["profile_hash"], "active_hash": status["active_hash"], "starters_hash": status["starters_hash"],
         }).encode("utf-8")
         response, payload = self.request("POST", "/api/updates/player-list/apply", stale_profile_body, json_headers)
         self.assertEqual(response.status, 409)
@@ -616,16 +625,23 @@ class LocalApiServerTests(unittest.TestCase):
         ]))
         stale_active_body = json.dumps({
             "profile": changed_profile, "candidate_hash": uploaded["candidate_hash"],
-            "profile_hash": status["profile_hash"], "active_hash": status["active_hash"],
+            "profile_hash": status["profile_hash"], "active_hash": status["active_hash"], "starters_hash": status["starters_hash"],
         }).encode("utf-8")
         response, payload = self.request("POST", "/api/updates/player-list/apply", stale_active_body, json_headers)
         self.assertEqual(response.status, 409)
         self.assertEqual(payload["error"]["code"], "stale_active_source")
         active.write_bytes(active_bytes)
 
+        starters_bytes = starters.read_bytes()
+        starters.write_text(starters.read_text(encoding="utf-8") + "AAA,Changed,99,RISERVA,\n", encoding="utf-8")
+        response, payload = self.request("POST", "/api/updates/player-list/apply", stale_active_body, json_headers)
+        self.assertEqual(response.status, 409)
+        self.assertEqual(payload["error"]["code"], "stale_starters_source")
+        starters.write_bytes(starters_bytes)
+
         apply_body = json.dumps({
             "profile": changed_profile, "candidate_hash": uploaded["candidate_hash"],
-            "profile_hash": status["profile_hash"], "active_hash": status["active_hash"],
+            "profile_hash": status["profile_hash"], "active_hash": status["active_hash"], "starters_hash": status["starters_hash"],
         }).encode("utf-8")
         response, payload = self.request("POST", "/api/updates/player-list/apply", apply_body, json_headers)
         self.assertEqual(response.status, 200)
@@ -636,6 +652,11 @@ class LocalApiServerTests(unittest.TestCase):
         self.assertEqual(active.read_bytes(), active_bytes)
         saved = json.loads((self.server.profiles_dir / "my-team.json").read_text(encoding="utf-8"))
         self.assertEqual(saved["current_sources"], payload["profile"]["current_sources"])
+        updated_starters = next(item for item in payload["profile"]["current_sources"] if item["name"] == "starters")
+        self.assertNotEqual(updated_starters["path"], str(starters))
+        cleaned = pd.read_csv(updated_starters["path"])
+        self.assertEqual(cleaned["id_fantacalcio"].tolist(), [1])
+        self.assertEqual(payload["starters_removed"][0]["id"], 3)
         self.assertEqual(self.calls[-1].configuration_hash, LeagueProfile.from_dict(saved).configuration_hash)
 
     def test_player_list_generation_failure_preserves_profile_and_dataset(self):
@@ -666,7 +687,7 @@ class LocalApiServerTests(unittest.TestCase):
         self.server.generator = failing_generator
         request = json.dumps({
             "profile": self.profile, "candidate_hash": uploaded["candidate_hash"],
-            "profile_hash": status["profile_hash"], "active_hash": status["active_hash"],
+            "profile_hash": status["profile_hash"], "active_hash": status["active_hash"], "starters_hash": status["starters_hash"],
         }).encode("utf-8")
         response, payload = self.request("POST", "/api/updates/player-list/apply", request, {"Content-Type": "application/json"})
         self.assertEqual(response.status, 500)

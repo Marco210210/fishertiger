@@ -15,6 +15,7 @@ from advisor.player_list_updates import (
     parse_public_players,
     provider_season_id,
     public_check,
+    reconcile_departed_starters,
     season_slug,
     store_candidate,
 )
@@ -31,7 +32,8 @@ def workbook(players, ceduti=(), season="2026 27"):
         pd.DataFrame([[f"Quotazioni Fantacalcio Stagione {season}"]]).to_excel(writer, sheet_name="Tutti", index=False, header=False)
         pd.DataFrame(rows, columns=sorted(LISTONE_COLUMNS)).to_excel(writer, sheet_name="Tutti", index=False, startrow=1)
         pd.DataFrame([[f"Quotazioni Fantacalcio Stagione {season}"]]).to_excel(writer, sheet_name="Ceduti", index=False, header=False)
-        pd.DataFrame({"Id": list(ceduti)}).to_excel(writer, sheet_name="Ceduti", index=False, startrow=1)
+        departed_rows = [item if isinstance(item, dict) else {"Id": item} for item in ceduti]
+        pd.DataFrame(departed_rows, columns=sorted(LISTONE_COLUMNS)).to_excel(writer, sheet_name="Ceduti", index=False, startrow=1)
     return output.getvalue()
 
 
@@ -39,6 +41,13 @@ def profile_for(path: Path):
     value = json.loads((Path(__file__).parents[1] / "config/default_profile.json").read_text(encoding="utf-8"))
     value["profile_id"] = "updates"
     next(source for source in value["current_sources"] if source["name"] == "player_list")["path"] = str(path)
+    starters = path.with_name("titolari.csv")
+    if not starters.exists():
+        pd.DataFrame([{
+            "squadra": "AAA", "nome": "Player", "id_fantacalcio": 1,
+            "status": "TITOLARE", "note": "",
+        }]).to_csv(starters, index=False)
+    next(source for source in value["current_sources"] if source["name"] == "starters")["path"] = str(starters)
     return LeagueProfile.from_dict(value)
 
 
@@ -107,6 +116,30 @@ def test_wrong_season_candidate_is_rejected(tmp_path):
     payload = workbook([{"Id": 1, "R": "P"}], season="2025 26")
     with pytest.raises(PlayerListUpdateError, match="season 2026-27"):
         store_candidate(tmp_path / "updates", "updates", "2026/27", payload, "wrong.xlsx")
+
+
+def test_departed_starters_are_reconciled_only_by_id_or_unique_exact_identity(tmp_path):
+    starters = tmp_path / "titolari.csv"
+    pd.DataFrame([
+        {"squadra": "Old Team", "nome": "By ID", "id_fantacalcio": "9001", "status": "RISERVA", "note": ""},
+        {"squadra": "Bologna", "nome": "By Name", "id_fantacalcio": "", "status": "RISERVA", "note": ""},
+        {"squadra": "Roma", "nome": "Unverified", "id_fantacalcio": "", "status": "RISERVA", "note": ""},
+    ]).to_csv(starters, index=False)
+    candidate = tmp_path / "candidate.xlsx"
+    candidate.write_bytes(workbook(
+        [{"Id": 1, "R": "P"}],
+        ceduti=[
+            {"Id": 9001, "Nome": "Different Name", "Squadra": "Different Team"},
+            {"Id": 9002, "Nome": "By Name", "Squadra": "Bologna"},
+        ],
+    ))
+
+    cleaned, removed = reconcile_departed_starters(starters, candidate)
+
+    assert cleaned["nome"].tolist() == ["Unverified"]
+    assert [(item["id"], item["match_method"]) for item in removed] == [
+        (9001, "authoritative_id"), (9002, "exact_identity"),
+    ]
 
 
 def test_failed_metadata_swap_preserves_previous_candidate(tmp_path, monkeypatch):

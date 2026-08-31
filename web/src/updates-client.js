@@ -39,7 +39,7 @@ export const sosFantaPenaltyUrl = () =>
 
 const updateRequest = async (provider, action, profile, {
   apiBase = "", fetchImpl = globalThis.fetch, contentHash = "", candidateHash = "",
-  profileHash = "", activeHash = "", auditHash = "",
+  profileHash = "", activeHash = "", startersHash = "", auditHash = "",
 } = {}) => {
   if (typeof fetchImpl !== "function")
     throw new UpdateClientError("fetch_unavailable", "Fetch non disponibile.");
@@ -54,6 +54,7 @@ const updateRequest = async (provider, action, profile, {
         candidate_hash: candidateHash,
         profile_hash: profileHash,
         active_hash: activeHash,
+        starters_hash: startersHash,
         audit_hash: auditHash,
       }),
     });
@@ -109,8 +110,8 @@ export const fantacalcioDownloadUrl = (season) => {
 
 export const checkPlayerList = (profile, options) => updateRequest("player-list", "check", profile, options);
 export const getPlayerListStatus = (profile, options) => updateRequest("player-list", "status", profile, options);
-export const applyPlayerList = (profile, candidateHash, profileHash, activeHash, options = {}) =>
-  updateRequest("player-list", "apply", profile, { ...options, candidateHash, profileHash, activeHash });
+export const applyPlayerList = (profile, candidateHash, profileHash, activeHash, startersHash, options = {}) =>
+  updateRequest("player-list", "apply", profile, { ...options, candidateHash, profileHash, activeHash, startersHash });
 
 export const uploadPlayerListCandidate = async (file, profile, { apiBase = "", fetchImpl = globalThis.fetch } = {}) => {
   const years = seasonParts(profile?.season?.season);

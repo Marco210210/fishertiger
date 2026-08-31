@@ -83,10 +83,11 @@ test("sends the reviewed candidate hash when applying a listone", async () => {
     body = JSON.parse(options.body);
     return { ok: true, status: 200, json: async () => ({ dataset_path: "league/2026-27/auction_data.json" }) };
   };
-  await applyPlayerList({ profile_id: "league" }, "a".repeat(64), "b".repeat(64), "c".repeat(64), { fetchImpl });
+  await applyPlayerList({ profile_id: "league" }, "a".repeat(64), "b".repeat(64), "c".repeat(64), "d".repeat(64), { fetchImpl });
   assert.equal(body.candidate_hash, "a".repeat(64));
   assert.equal(body.profile_hash, "b".repeat(64));
   assert.equal(body.active_hash, "c".repeat(64));
+  assert.equal(body.starters_hash, "d".repeat(64));
 });
 
 test("sends the reviewed hash when accepting a snapshot", async () => {

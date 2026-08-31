@@ -437,6 +437,51 @@ def active_player_list_path(profile: object) -> Path:
     return resolve_source_path(source.path)
 
 
+def active_starters_path(profile: object) -> Path:
+    source = next((item for item in profile.current_sources if item.name == "starters"), None)
+    if source is None:
+        raise PlayerListUpdateError("The profile does not declare a starters source.")
+    return resolve_source_path(source.path)
+
+
+def reconcile_departed_starters(starters_path: Path, candidate_path: Path) -> tuple[pd.DataFrame, list[dict[str, object]]]:
+    try:
+        starters = pd.read_csv(starters_path, dtype=str, keep_default_na=False)
+    except Exception as error:
+        raise PlayerListUpdateError("The current starters CSV is unavailable or invalid.") from error
+    required = {"squadra", "nome", "id_fantacalcio"}
+    if not required.issubset(starters.columns):
+        raise PlayerListUpdateError("The current starters CSV does not have the expected columns.")
+    _, ceduti = read_player_list(candidate_path)
+    ceduti_by_id = {int(row.Id): row for _, row in ceduti.iterrows()}
+    ceduti_by_identity: dict[tuple[str, str], list[pd.Series]] = {}
+    for _, row in ceduti.iterrows():
+        team = row.get("Squadra")
+        name = row.get("Nome")
+        if pd.notna(team) and pd.notna(name):
+            ceduti_by_identity.setdefault((normalize(team), normalize(name)), []).append(row)
+
+    removed: list[dict[str, object]] = []
+    removed_indexes: list[int] = []
+    for index, row in starters.iterrows():
+        raw_id = str(row.id_fantacalcio).strip()
+        declared_id = int(raw_id) if raw_id.isdigit() else None
+        departed = ceduti_by_id.get(declared_id) if declared_id is not None else None
+        method = "authoritative_id"
+        if departed is None and declared_id is None:
+            candidates = ceduti_by_identity.get((normalize(row.squadra), normalize(row.nome)), [])
+            if len(candidates) == 1:
+                departed = candidates[0]
+                method = "exact_identity"
+        if departed is not None:
+            removed_indexes.append(index)
+            removed.append({
+                "id": int(departed.Id), "name": str(row.nome).strip(), "team": str(row.squadra).strip(),
+                "match_method": method,
+            })
+    return starters.drop(index=removed_indexes).reset_index(drop=True), removed
+
+
 def persisted_or_inline_profile(profiles_dir: Path, profile: object, profile_loader: Callable[[dict[str, object]], object]) -> object:
     path = profiles_dir / f"{profile.profile_id}.json"
     if not path.exists():
@@ -455,28 +500,33 @@ def candidate_status(root: Path, profile: object) -> dict[str, object]:
     season = profile.season.season
     with profile_transaction(root, profile.profile_id):
         active_path = active_player_list_path(profile)
+        starters_path = active_starters_path(profile)
         active_hash = file_sha256(active_path)
+        starters_hash = file_sha256(starters_path)
         common = {
             "source": "fantacalcio", "profile_id": profile.profile_id, "season": season,
-            "profile_hash": profile.configuration_hash, "active_hash": active_hash,
+            "profile_hash": profile.configuration_hash, "active_hash": active_hash, "starters_hash": starters_hash,
         }
         stored = _candidate(root, profile.profile_id, season)
         if stored is None:
             return {**common, "state": "never_uploaded", "candidate_hash": None, "summary": {}, "details": {}}
         candidate, metadata = stored
         difference = semantic_diff(active_path, candidate)
-        changed = any(value for key, value in difference["summary"].items() if key != "changed_players")
+        _, departed_starters = reconcile_departed_starters(starters_path, candidate)
+        summary = {**difference["summary"], "starters_removed": len(departed_starters)}
+        details = {**difference["details"], "starters_removed": departed_starters}
+        changed = any(value for key, value in summary.items() if key != "changed_players")
         return {
             **common,
             "state": "candidate_ready" if changed else "unchanged", "candidate_hash": metadata["candidate_hash"],
             "uploaded_at": metadata["uploaded_at"], "row_count": metadata["row_count"], "ceduti_count": metadata["ceduti_count"],
-            **difference,
+            "summary": summary, "details": details,
         }
 
 
 def apply_candidate(
     root: Path, uploads_dir: Path, profiles_dir: Path, profile: object, expected_candidate_hash: str,
-    expected_profile_hash: str, expected_active_hash: str,
+    expected_profile_hash: str, expected_active_hash: str, expected_starters_hash: str,
     datasets_dir: Path, generator: object, profile_loader: Callable[[dict[str, object]], object],
     generate: Callable[..., dict[str, object]], profile_transform: Callable[[object], object] | None = None,
 ) -> dict[str, object]:
@@ -491,6 +541,9 @@ def apply_candidate(
         active_path = active_player_list_path(active_profile)
         if file_sha256(active_path) != expected_active_hash:
             raise StalePlayerListUpdateError("stale_active_source", "The active player list changed after status was reviewed.")
+        starters_path = active_starters_path(active_profile)
+        if file_sha256(starters_path) != expected_starters_hash:
+            raise StalePlayerListUpdateError("stale_starters_source", "The starters CSV changed after player-list status was reviewed.")
         stored = _candidate(root, active_profile.profile_id, active_profile.season.season)
         if stored is None:
             raise PlayerListUpdateError("Upload a candidate player list before applying it.")
@@ -507,6 +560,20 @@ def apply_candidate(
                 temporary.replace(target)
             finally:
                 temporary.unlink(missing_ok=True)
+        cleaned_starters, departed_starters = reconcile_departed_starters(starters_path, candidate)
+        starters_target = None
+        if departed_starters:
+            starters_payload = cleaned_starters.to_csv(index=False).encode("utf-8")
+            starters_content_hash = hashlib.sha256(starters_payload).hexdigest()
+            starters_target = target.parent / f"starters-{starters_content_hash}.csv"
+            if not starters_target.exists():
+                with tempfile.NamedTemporaryFile("wb", dir=starters_target.parent, delete=False) as handle:
+                    handle.write(starters_payload)
+                    temporary = Path(handle.name)
+                try:
+                    temporary.replace(starters_target)
+                finally:
+                    temporary.unlink(missing_ok=True)
         value = active_profile.to_dict()
         replaced = False
         for source in value["current_sources"]:
@@ -514,6 +581,9 @@ def apply_candidate(
                 source["path"] = target.as_posix()
                 source["format"] = "xlsx"
                 replaced = True
+            elif source["name"] == "starters" and starters_target is not None:
+                source["path"] = starters_target.as_posix()
+                source["format"] = "csv"
         if not replaced:
             raise PlayerListUpdateError("The profile does not declare a player_list source.")
         updated = profile_loader(value)
@@ -547,6 +617,7 @@ def apply_candidate(
                 shutil.rmtree(backup_output, ignore_errors=True)
             return {
                 **result, "profile": updated.to_dict(), "candidate_hash": expected_candidate_hash,
+                "starters_removed": departed_starters,
                 "dataset_manifest": dataset_manifest(datasets_dir),
                 "dataset_path": (relative_output / "auction_data.json").as_posix() if (real_output / "auction_data.json").is_file() else None,
             }

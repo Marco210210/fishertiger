@@ -492,6 +492,7 @@ class LocalApiHandler(BaseHTTPRequestHandler):
         candidate_hash = value.get("candidate_hash")
         profile_hash = value.get("profile_hash")
         active_hash = value.get("active_hash")
+        starters_hash = value.get("starters_hash")
         if not isinstance(candidate_hash, str) or not re.fullmatch(r"[0-9a-f]{64}", candidate_hash):
             self._error(HTTPStatus.BAD_REQUEST, "invalid_candidate_hash", "candidate_hash must be a SHA-256 string.")
             return
@@ -501,10 +502,13 @@ class LocalApiHandler(BaseHTTPRequestHandler):
         if not isinstance(active_hash, str) or not re.fullmatch(r"[0-9a-f]{64}", active_hash):
             self._error(HTTPStatus.BAD_REQUEST, "invalid_active_hash", "active_hash must be a SHA-256 string.")
             return
+        if not isinstance(starters_hash, str) or not re.fullmatch(r"[0-9a-f]{64}", starters_hash):
+            self._error(HTTPStatus.BAD_REQUEST, "invalid_starters_hash", "starters_hash must be a SHA-256 string.")
+            return
         try:
             result = apply_candidate(
                 self.server.updates_dir, self.server.uploads_dir, self.server.profiles_dir,
-                profile, candidate_hash, profile_hash, active_hash, self.server.datasets_dir, self.server.generator,
+                profile, candidate_hash, profile_hash, active_hash, starters_hash, self.server.datasets_dir, self.server.generator,
                 self.server.profile_loader, generate_dataset, self._derive_calendar_participants,
             )
         except StalePlayerListUpdateError as error:

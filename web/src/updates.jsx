@@ -37,7 +37,7 @@ const ActionIcon = ({ name }) => {
 const LISTONE_SUMMARY_LABELS = {
   added: "Nuovi", removed: "Rimossi", ceduti_added: "Nuovi ceduti",
   ceduti_removed: "Ceduti rientrati", role: "Ruoli", name: "Nomi",
-  team: "Squadre", quotation: "Quotazioni", fvm: "FVM",
+  team: "Squadre", quotation: "Quotazioni", fvm: "FVM", starters_removed: "Righe titolari da rimuovere",
 };
 const FORMATION_AUDIT_LABELS = {
   candidates: "Candidati", corroborated: "Confermati", status_mismatch: "Stato diverso",
@@ -100,6 +100,17 @@ function PlayerListUpdates({ profile, apiBase, onApplyStart, onApplied }) {
     }
   };
 
+  const copyDownloadLink = async () => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(downloadUrl);
+      setProblem("");
+      setMessage("Link copiato. Apri una nuova scheda, incollalo nella barra degli indirizzi e premi Invio.");
+    } catch {
+      window.prompt("Copia questo link, poi incollalo nella barra degli indirizzi di una nuova scheda:", downloadUrl);
+    }
+  };
+
   const upload = async (file) => {
     if (!file) return;
     const request = ++sequence.current;
@@ -133,6 +144,7 @@ function PlayerListUpdates({ profile, apiBase, onApplyStart, onApplied }) {
         candidate?.candidate_hash,
         candidate?.profile_hash,
         candidate?.active_hash,
+        candidate?.starters_hash,
         { apiBase },
       );
       if (request !== sequence.current) return;
@@ -140,7 +152,10 @@ function PlayerListUpdates({ profile, apiBase, onApplyStart, onApplied }) {
       if (request !== sequence.current) return;
       setCandidate((current) => ({ ...current, state: "unchanged", summary: {}, details: {} }));
       setRemote(null);
-      setMessage("Listone applicato, profilo aggiornato e dataset rigenerato.");
+      const removed = result.starters_removed?.length || 0;
+      setMessage(removed
+        ? `Listone applicato, ${removed} righe cedute rimosse da titolari.csv e dataset rigenerato.`
+        : "Listone applicato, profilo aggiornato e dataset rigenerato.");
     } catch (error) {
       if (request !== sequence.current) return;
       setProblem(error?.code || "request_failed");
@@ -176,9 +191,9 @@ function PlayerListUpdates({ profile, apiBase, onApplyStart, onApplied }) {
         <button className="update-check-button" onClick={check} disabled={Boolean(busy)}>
           {busy === "check" ? "Controllo in corso..." : "Controlla listone online"}
         </button>
-        <a className="update-action-link" href={downloadUrl} target="_blank" rel="noopener">
-          Scarica XLSX ufficiale
-        </a>
+        <button className="update-action-link" type="button" onClick={copyDownloadLink} disabled={!downloadUrl}>
+          Copia link XLSX ufficiale
+        </button>
         <label className={`update-file-button${busy ? " disabled" : ""}`}>
           {busy === "upload" ? "Verifica file..." : "Carica XLSX scaricato"}
           <input
@@ -193,7 +208,11 @@ function PlayerListUpdates({ profile, apiBase, onApplyStart, onApplied }) {
         </label>
         {candidate?.state === "candidate_ready" && (
           <button className="update-apply-button" onClick={apply} disabled={Boolean(busy) || Boolean(candidate.details?.truncated)}>
-            {busy === "apply" ? "Rigenerazione in corso..." : "Applica e rigenera"}
+            {busy === "apply"
+              ? "Rigenerazione in corso..."
+              : candidate.summary?.starters_removed
+                ? "Applica, pulisci titolari e rigenera"
+                : "Applica e rigenera"}
           </button>
         )}
       </div>
@@ -207,7 +226,12 @@ function PlayerListUpdates({ profile, apiBase, onApplyStart, onApplied }) {
           </div>
         )}
         {message && <p className={`update-message ${problem ? "error" : ""}`} role={problem ? "alert" : "status"}>{message}</p>}
-        <p className="accept-warning">Il download ufficiale richiede una sessione Fantacalcio autenticata. Le credenziali non vengono condivise con Fishertiger.</p>
+        {candidate?.summary?.starters_removed > 0 && (
+          <p className="accept-warning">
+            Il foglio autorevole <code>Ceduti</code> conferma {candidate.summary.starters_removed} righe obsolete in <code>titolari.csv</code>. Saranno rimosse insieme all’applicazione del Listone; le identità non confermate resteranno invariate.
+          </p>
+        )}
+        <p className="accept-warning">Il download ufficiale richiede una sessione Fantacalcio autenticata. Copia il link, incollalo nella barra degli indirizzi di una nuova scheda e premi Invio.</p>
       </div>
 
       {summaryItems.length > 0 && (
@@ -221,6 +245,7 @@ function PlayerListUpdates({ profile, apiBase, onApplyStart, onApplied }) {
             ["removed", "Giocatori rimossi"],
             ["ceduti_added", "Nuovi giocatori nel foglio Ceduti"],
             ["ceduti_removed", "Giocatori rimossi dal foglio Ceduti"],
+            ["starters_removed", "Righe che saranno rimosse da titolari.csv"],
           ].map(([key, label]) => candidate.details?.[key]?.length > 0 && (
             <details key={key}>
               <summary><span>{label}</span><b>{candidate.details[key].length}</b></summary>
@@ -228,7 +253,10 @@ function PlayerListUpdates({ profile, apiBase, onApplyStart, onApplied }) {
                 {candidate.details[key].map((item) => {
                   const id = typeof item === "object" ? item.id : item;
                   const name = typeof item === "object" ? item.name : "";
-                  return <p key={id}><strong>{name || `ID ${id}`}</strong>{name && <span>#{id}</span>}</p>;
+                  const match = item.match_method === "authoritative_id"
+                    ? "ID confermato"
+                    : item.match_method === "exact_identity" ? "nome e squadra esatti" : "";
+                  return <p key={`${key}-${id}`}><strong>{name || `ID ${id}`}</strong>{name && <span>{item.team ? `${item.team} · ` : ""}#{id}{match ? ` · ${match}` : ""}</span>}</p>;
                 })}
               </div>
             </details>
