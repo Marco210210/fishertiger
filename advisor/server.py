@@ -61,6 +61,12 @@ from .sosfanta_formations_updates import (
     check_updates as check_formation_updates,
     stored_status as stored_formation_status,
 )
+from .sosfanta_goalkeeper_updates import (
+    accept_latest as accept_latest_goalkeepers,
+    apply_update as apply_goalkeeper_update,
+    check_updates as check_goalkeeper_updates,
+    stored_status as stored_goalkeeper_status,
+)
 
 
 def profile_response(profile: Any) -> dict[str, Any]:
@@ -117,6 +123,7 @@ class LocalApiServer(ThreadingHTTPServer):
         update_fetcher: FetchPage = fetch_page,
         formations_fetcher: FetchPage = fetch_page,
         set_piece_fetcher: FetchPage = fetch_page,
+        goalkeeper_fetcher: FetchPage = fetch_page,
         player_list_fetcher: PlayerListFetchPage = fetch_public_page,
     ) -> None:
         self.profiles_dir = Path(profiles_dir)
@@ -130,6 +137,7 @@ class LocalApiServer(ThreadingHTTPServer):
         self.update_fetcher = update_fetcher
         self.formations_fetcher = formations_fetcher
         self.set_piece_fetcher = set_piece_fetcher
+        self.goalkeeper_fetcher = goalkeeper_fetcher
         self.player_list_fetcher = player_list_fetcher
         super().__init__(address, LocalApiHandler)
 
@@ -212,6 +220,18 @@ class LocalApiHandler(BaseHTTPRequestHandler):
             return
         if self._path() == "/api/updates/sosfanta-formations/bundle":
             self._formation_bundle()
+            return
+        if self._path() == "/api/updates/sosfanta-goalkeepers/check":
+            self._check_goalkeeper_updates()
+            return
+        if self._path() == "/api/updates/sosfanta-goalkeepers/status":
+            self._goalkeeper_status()
+            return
+        if self._path() == "/api/updates/sosfanta-goalkeepers/accept":
+            self._accept_goalkeeper_updates()
+            return
+        if self._path() == "/api/updates/sosfanta-goalkeepers/apply":
+            self._apply_goalkeeper_updates()
             return
         if self._path() == "/api/updates/sosfanta-set-pieces/check":
             self._check_set_piece_updates()
@@ -712,6 +732,77 @@ class LocalApiHandler(BaseHTTPRequestHandler):
             f'sosfanta-formazioni-update-{season.replace("/", "-")}.txt',
         )
 
+    def _check_goalkeeper_updates(self) -> None:
+        request = self._update_request()
+        if request is None:
+            return
+        _, profile_id, season, _, _ = request
+        try:
+            result = check_goalkeeper_updates(self.server.updates_dir, profile_id, season, self.server.goalkeeper_fetcher)
+        except SosFantaError as error:
+            self._error(HTTPStatus.BAD_GATEWAY, "update_check_failed", str(error))
+            return
+        except OSError:
+            self._error(HTTPStatus.INTERNAL_SERVER_ERROR, "storage_error", "The goalkeeper snapshot could not be stored.")
+            return
+        self._send_json(HTTPStatus.OK, result)
+
+    def _goalkeeper_status(self) -> None:
+        request = self._update_request()
+        if request is None:
+            return
+        _, profile_id, season, _, _ = request
+        try:
+            result = stored_goalkeeper_status(self.server.updates_dir, profile_id, season)
+        except SosFantaError as error:
+            self._error(HTTPStatus.UNPROCESSABLE_ENTITY, "snapshot_unavailable", str(error))
+            return
+        self._send_json(HTTPStatus.OK, result)
+
+    def _accept_goalkeeper_updates(self) -> None:
+        request = self._update_request()
+        if request is None:
+            return
+        _, profile_id, season, content_hash, _ = request
+        try:
+            result = accept_latest_goalkeepers(self.server.updates_dir, profile_id, season, content_hash)
+        except SosFantaError as error:
+            self._error(HTTPStatus.UNPROCESSABLE_ENTITY, "snapshot_unavailable", str(error))
+            return
+        self._send_json(HTTPStatus.OK, result)
+
+    def _apply_goalkeeper_updates(self) -> None:
+        request = self._update_request()
+        if request is None:
+            return
+        profile, profile_id, season, content_hash, _ = request
+        profile = self._derive_calendar_participants(profile)
+        paths = self._formation_source_paths(profile)
+        if paths is None:
+            return
+        starters_path, listone_path = paths
+        try:
+            result = apply_goalkeeper_update(
+                self.server.updates_dir,
+                profile_id,
+                season,
+                starters_path,
+                listone_path,
+                content_hash,
+                lambda: generate_dataset(profile, self.server.datasets_dir, generator=self.server.generator),
+            )
+        except SosFantaError as error:
+            self._error(HTTPStatus.UNPROCESSABLE_ENTITY, "update_unavailable", str(error))
+            return
+        except OSError:
+            self._error(HTTPStatus.INTERNAL_SERVER_ERROR, "storage_error", "The goalkeeper update could not be stored.")
+            return
+        except Exception:
+            traceback.print_exc(file=sys.stderr)
+            self._error(HTTPStatus.INTERNAL_SERVER_ERROR, "generation_failed", "The dataset could not be regenerated.")
+            return
+        self._send_json(HTTPStatus.OK, result)
+
     def _check_set_piece_updates(self) -> None:
         request = self._update_request()
         if request is None:
@@ -930,10 +1021,11 @@ def create_server(
     update_fetcher: FetchPage = fetch_page,
     formations_fetcher: FetchPage = fetch_page,
     set_piece_fetcher: FetchPage = fetch_page,
+    goalkeeper_fetcher: FetchPage = fetch_page,
     player_list_fetcher: PlayerListFetchPage = fetch_public_page,
 ) -> LocalApiServer:
     """Create a local API server; inject a pipeline generator for tests or embedding."""
-    return LocalApiServer(address, profiles_dir=profiles_dir, datasets_dir=datasets_dir, uploads_dir=uploads_dir, updates_dir=updates_dir, default_profile_path=default_profile_path, generator=generator, simulator=simulator, profile_loader=profile_loader, update_fetcher=update_fetcher, formations_fetcher=formations_fetcher, set_piece_fetcher=set_piece_fetcher, player_list_fetcher=player_list_fetcher)
+    return LocalApiServer(address, profiles_dir=profiles_dir, datasets_dir=datasets_dir, uploads_dir=uploads_dir, updates_dir=updates_dir, default_profile_path=default_profile_path, generator=generator, simulator=simulator, profile_loader=profile_loader, update_fetcher=update_fetcher, formations_fetcher=formations_fetcher, set_piece_fetcher=set_piece_fetcher, goalkeeper_fetcher=goalkeeper_fetcher, player_list_fetcher=player_list_fetcher)
 
 
 def _simulate_current_dataset(profile: Any, output_dir: Path, iterations: int, seed: int) -> dict[str, Any]:

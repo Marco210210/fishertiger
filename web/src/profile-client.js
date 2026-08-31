@@ -135,6 +135,14 @@ export const generateProfile = async (profileOrId, options = {}) => {
 };
 
 const datasetProfileId = (meta) => object(meta.profile).profile_id || meta.profile_id;
+const VALID_GOALKEEPER_HIERARCHIES = new Set([
+  "PRIMO",
+  "SECONDO",
+  "TERZO",
+  "PRIMO/SECONDO",
+  "SECONDO/TERZO",
+  "PRIMO/SECONDO/TERZO",
+]);
 
 /** Validate generated schema 1.0 data, while accepting pre-schema public exports. */
 export const validateDataset = (payload, profile) => {
@@ -147,6 +155,19 @@ export const validateDataset = (payload, profile) => {
       errors.push({ code: "invalid_dataset_metadata", message: "Schema 1.0 datasets require metadata." });
     if (!Array.isArray(payload.players))
       errors.push({ code: "invalid_dataset_players", message: "Dataset players must be an array." });
+    else payload.players.forEach((player, index) => {
+      const hierarchy = player?.gerarchia_portiere;
+      if (
+        hierarchy != null &&
+        (player?.ruolo !== "P" || !VALID_GOALKEEPER_HIERARCHIES.has(hierarchy))
+      ) {
+        errors.push({
+          code: "invalid_goalkeeper_hierarchy",
+          message: `Player ${index} has an invalid goalkeeper hierarchy.`,
+          details: { index, hierarchy },
+        });
+      }
+    });
     const expected = object(profile).profile_id;
     const actual = isObject(payload.meta) ? datasetProfileId(payload.meta) : undefined;
     if (expected && actual && expected !== actual)

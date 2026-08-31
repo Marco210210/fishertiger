@@ -7,12 +7,14 @@ import {
   checkSosFanta,
   checkSosFantaFormations,
   checkSosFantaSetPieces,
+  checkSosFantaGoalkeepers,
   fantacalcioDownloadUrl,
   fetchSosFantaFormationBundle,
   sosFantaFormationsUrl,
   sosFantaGuideUrl,
   sosFantaPenaltyUrl,
   sosFantaSetPieceUrl,
+  sosFantaGoalkeepersUrl,
   updateStateLabel,
   uploadPlayerListCandidate,
 } from "../src/updates-client.js";
@@ -56,6 +58,15 @@ test("builds the SOS Fanta set-piece URL and endpoint", async () => {
   };
   await checkSosFantaSetPieces({ profile_id: "league" }, { fetchImpl });
   assert.equal(requestUrl, "/api/updates/sosfanta-set-pieces/check");
+});
+
+test("uses the SOS Fanta goalkeeper provider endpoint", async () => {
+  assert.match(sosFantaGoalkeepersUrl(), /tutti-portieri-gerarchie-seriea/);
+  let requestUrl;
+  await checkSosFantaGoalkeepers({ profile_id: "league" }, {
+    fetchImpl: async (url) => { requestUrl = url; return { ok: true, status: 200, json: async () => ({ state: "unchanged" }) }; },
+  });
+  assert.equal(requestUrl, "/api/updates/sosfanta-goalkeepers/check");
 });
 
 test("maps profile seasons to official Fantacalcio downloads", () => {

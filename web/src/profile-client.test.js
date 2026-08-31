@@ -26,6 +26,27 @@ test("normalizes schema 1.0 metadata and rejects another profile", () => {
   assert.throws(() => normalizeDataset({ schema_version: "1.0", meta: { profile: { profile_id: "other" } }, players: [] }, profile), (error) => error instanceof ProfileClientError && error.code === "profile_mismatch");
 });
 
+test("validates optional goalkeeper hierarchy metadata", () => {
+  const envelope = (players) => ({
+    schema_version: "1.0",
+    model_version: "1.6",
+    meta: { profile: { profile_id: "league-a" } },
+    players,
+  });
+  assert.equal(normalizeDataset(envelope([
+    { id: 1, ruolo: "P", gerarchia_portiere: "PRIMO/SECONDO" },
+    { id: 2, ruolo: "D", gerarchia_portiere: null },
+  ]), profile).model_version, "1.6");
+  assert.throws(
+    () => normalizeDataset(envelope([{ id: 1, ruolo: "P", gerarchia_portiere: "PRIMO/TERZO" }]), profile),
+    (error) => error instanceof ProfileClientError && error.code === "invalid_goalkeeper_hierarchy",
+  );
+  assert.throws(
+    () => normalizeDataset(envelope([{ id: 1, ruolo: "D", gerarchia_portiere: "PRIMO" }]), profile),
+    (error) => error instanceof ProfileClientError && error.code === "invalid_goalkeeper_hierarchy",
+  );
+});
+
 test("accepts legacy payloads and resolves profile rules for league engines", () => {
   const legacy = normalizeDataset({ players: [], rules: { participants: 8 } }, profile);
   assert.equal(legacy.legacy, true);

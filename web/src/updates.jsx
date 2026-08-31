@@ -3,6 +3,7 @@ import {
   acceptSosFanta,
   acceptSosFantaFormations,
   acceptSosFantaSetPieces,
+  applySosFantaGoalkeepers,
   applyPlayerList,
   checkPlayerList,
   checkSosFanta,
@@ -15,12 +16,15 @@ import {
   getSosFantaStatus,
   getSosFantaFormationStatus,
   getSosFantaSetPieceStatus,
+  getSosFantaGoalkeeperStatus,
   playerListStateLabel,
   sosFantaGuideUrl,
   sosFantaFormationsUrl,
   sosFantaPenaltyUrl,
   sosFantaSetPieceUrl,
+  sosFantaGoalkeepersUrl,
   checkSosFantaSetPieces,
+  checkSosFantaGoalkeepers,
   uploadPlayerListCandidate,
   updateStateLabel,
 } from "./updates-client.js";
@@ -572,6 +576,60 @@ function SetPieceUpdates({ profile, apiBase }) {
   );
 }
 
+function GoalkeeperUpdates({ profile, apiBase }) {
+  const [result, setResult] = useState(null);
+  const [busy, setBusy] = useState("");
+  const [message, setMessage] = useState("");
+  const [problem, setProblem] = useState("");
+  const sequence = useRef(0);
+  const season = profile?.season?.season;
+  const sourceUrl = result?.source_url || sosFantaGoalkeepersUrl();
+
+  useEffect(() => {
+    let active = true;
+    const request = ++sequence.current;
+    getSosFantaGoalkeeperStatus(profile, { apiBase }).then((next) => {
+      if (active && request === sequence.current) setResult(next);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [apiBase, profile?.profile_id, season]);
+
+  const run = async (action) => {
+    const request = ++sequence.current;
+    setBusy(action); setMessage(""); setProblem("");
+    try {
+      const options = { apiBase, contentHash: result?.content_hash };
+      const next = action === "check"
+        ? await checkSosFantaGoalkeepers(profile, options)
+        : await applySosFantaGoalkeepers(profile, options);
+      if (request !== sequence.current) return;
+      setResult((current) => ({ ...current, ...next, changes: action === "check" ? next.changes : [], change_count: action === "check" ? next.change_count : 0 }));
+      setMessage(action === "apply" ? `titolari.csv aggiornato: ${next.updated_rows} righe verificate, ${next.added_rows} aggiunte; ${next.skipped?.length || 0} slot lasciati vuoti.` : next.state === "changed" ? `${next.change_count} squadre modificate.` : "Verifica completata.");
+    } catch (error) {
+      if (request !== sequence.current) return;
+      setProblem(error?.code || "request_failed");
+      setMessage(error instanceof Error ? error.message : "Operazione non completata.");
+    } finally { if (request === sequence.current) setBusy(""); }
+  };
+
+  return (
+    <article className="update-source-card">
+      <header><div><span className="source-index">05</span><h2>SOS Fanta Gerarchie Portieri</h2></div><span className={`update-state ${result?.state || "idle"}`}>{updateStateLabel(result?.state)}</span></header>
+      <div className="update-source-meta"><div><span>Stagione</span><strong>{season}</strong></div><div><span>Ambito</span><strong>Primo, secondo e terzo portiere</strong></div><div><span>Ultimo controllo</span><strong>{result?.checked_at?.slice(0, 16).replace("T", " ") || "Mai"}</strong></div></div>
+      <a className="source-url" href={sourceUrl} target="_blank" rel="noreferrer">{sourceUrl}</a>
+      <div className="update-actions">
+        <button className="update-check-button" onClick={() => run("check")} disabled={Boolean(busy)}><ActionIcon name="refresh" /><span>{busy === "check" ? "Controllo in corso..." : "Controlla gerarchie"}</span></button>
+        {result?.content_hash && <button className="update-download-button" onClick={() => run("apply")} disabled={Boolean(busy)}><ActionIcon name="check" /><span>{busy === "apply" ? "Applicazione..." : "Applica a titolari.csv"}</span></button>}
+      </div>
+      <p className="accept-warning">L’applicazione usa il listone come fonte principale: i portieri non ancora presenti restano slot vuoti e potranno essere acquisiti in un aggiornamento futuro.</p>
+      {message && <p className={`update-message ${problem ? "error" : ""}`} role={problem ? "alert" : "status"}>{message}</p>}
+      {result?.starters_path && <p className="update-message"><code>{result.starters_path}</code><br />SHA-256: <code>{result.starters_hash}</code></p>}
+      {result?.skipped?.length > 0 && <div className="update-diff"><div className="diff-title"><span>SLOT VUOTI</span><strong>{result.skipped.length}</strong></div>{result.skipped.map((item) => <p key={`${item.team}-${item.rank}`}><strong>{item.team} · {item.rank}</strong> {item.value}</p>)}</div>}
+      {result?.changes?.length > 0 && <div className="update-diff"><div className="diff-title"><span>DIFF GERARCHIE</span><strong>{result.change_count} squadre</strong></div>{result.changes.map((change) => <details key={change.team}><summary><span>{change.team}</span><b>{change.change}</b></summary><div className="diff-columns"><div><small>PRIMA</small><p>{JSON.stringify(change.old)}</p></div><div><small>DOPO</small><p>{JSON.stringify(change.new)}</p></div></div></details>)}</div>}
+    </article>
+  );
+}
+
 export function Updates({
   profile,
   apiBase = "",
@@ -744,6 +802,8 @@ export function Updates({
 
       <SetPieceUpdates profile={profile} apiBase={apiBase} />
 
+      <GoalkeeperUpdates profile={profile} apiBase={apiBase} />
+
       <PlayerListUpdates
         profile={profile}
         apiBase={apiBase}
@@ -753,7 +813,7 @@ export function Updates({
 
       <aside className="update-method-note">
         <strong>Metodo</strong>
-        <p>I controlli confrontano solo i contenuti editoriali rilevanti. Menu, pubblicità e notizie correlate vengono escluse dagli hash. Nessuna riga CSV viene modificata da questa schermata.</p>
+        <p>I controlli confrontano solo i contenuti editoriali rilevanti. Menu, pubblicità e notizie correlate vengono escluse dagli hash. Solo le azioni Applica modificano le fonti locali e rigenerano il dataset.</p>
       </aside>
     </section>
   );

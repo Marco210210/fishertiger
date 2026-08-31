@@ -37,6 +37,9 @@ export const sosFantaSetPieceUrl = (season) => {
 export const sosFantaPenaltyUrl = () =>
   "https://www.sosfanta.com/asta-fantacalcio/fantacalcio-asta-tutti-rigoristi-seriea-venti-squadre-campionato/";
 
+export const sosFantaGoalkeepersUrl = () =>
+  "https://www.sosfanta.com/consigli-fantacalcio/portieri/fantacalcio-asta-tutti-portieri-gerarchie-seriea-venti-squadre-campionato/";
+
 const updateRequest = async (provider, action, profile, {
   apiBase = "", fetchImpl = globalThis.fetch, contentHash = "", candidateHash = "",
   profileHash = "", activeHash = "", startersHash = "", auditHash = "",
@@ -94,6 +97,10 @@ export const checkSosFantaSetPieces = (profile, options) => updateRequest("sosfa
 export const getSosFantaSetPieceStatus = (profile, options) => updateRequest("sosfanta-set-pieces", "status", profile, options);
 export const acceptSosFantaSetPieces = (profile, options) => updateRequest("sosfanta-set-pieces", "accept", profile, options);
 export const fetchSosFantaSetPieceBundle = (profile, options) => updateRequest("sosfanta-set-pieces", "bundle", profile, options);
+export const checkSosFantaGoalkeepers = (profile, options) => updateRequest("sosfanta-goalkeepers", "check", profile, options);
+export const getSosFantaGoalkeeperStatus = (profile, options) => updateRequest("sosfanta-goalkeepers", "status", profile, options);
+export const acceptSosFantaGoalkeepers = (profile, options) => updateRequest("sosfanta-goalkeepers", "accept", profile, options);
+export const applySosFantaGoalkeepers = (profile, options) => updateRequest("sosfanta-goalkeepers", "apply", profile, options);
 
 const seasonParts = (season) => {
   const match = String(season || "").trim().match(/^(\d{4})\/(\d{2}|\d{4})$/);
