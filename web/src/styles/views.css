@@ -567,8 +567,8 @@
   display: inline-grid;
   flex: 0 0 auto;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
   border: 1px solid var(--c-line);
   border-radius: var(--r-sm);
   background: var(--c-raised);
@@ -579,8 +579,8 @@
 }
 
 .club-badge img {
-  width: 25px;
-  height: 25px;
+  width: 20px;
+  height: 20px;
   object-fit: contain;
 }
 

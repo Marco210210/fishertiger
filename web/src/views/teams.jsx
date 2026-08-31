@@ -102,7 +102,6 @@ export default function TeamsView({
             scrollLeft: event.currentTarget.scrollLeft,
           };
           setIsDragging(true);
-          event.currentTarget.setPointerCapture(event.pointerId);
         }}
         onPointerMove={(event) => {
           const drag = chipRail.current;
@@ -114,7 +113,6 @@ export default function TeamsView({
         onPointerUp={(event) => {
           chipRail.current.active = false;
           setIsDragging(false);
-          event.currentTarget.releasePointerCapture(event.pointerId);
         }}
         onPointerCancel={() => {
           chipRail.current.active = false;
