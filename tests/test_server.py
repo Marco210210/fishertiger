@@ -10,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 
 from advisor.league_profile import LeagueProfile
+from advisor.league_calendar import build_legacy_calendar_template, parse_legacy_two_block_frame
 from advisor.pipeline import LISTONE_COLUMNS
 from advisor.server import create_server, profile_response
 
@@ -32,8 +33,8 @@ class LocalApiServerTests(unittest.TestCase):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text('{"generated":true}', encoding="utf-8")
 
-        def simulator(profile, output_dir, iterations, seed):
-            self.calls.append((profile, output_dir, iterations, seed))
+        def simulator(profile, output_dir, iterations, seed, rosters):
+            self.calls.append((profile, output_dir, iterations, seed, rosters))
             return {"iterations": iterations, "diagnostics": {"seed": seed}, "teams": {}, "scenarios": {}, "rosters": {}}
 
         def update_fetcher(url):
@@ -91,6 +92,8 @@ class LocalApiServerTests(unittest.TestCase):
             parsed = None
         elif response.getheader("Content-Type", "").startswith("application/json"):
             parsed = json.loads(payload)
+        elif response.getheader("Content-Type", "").startswith("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"):
+            parsed = payload
         else:
             parsed = payload.decode("utf-8")
         return response, parsed
@@ -355,11 +358,32 @@ class LocalApiServerTests(unittest.TestCase):
         self.assertEqual(response.status, 200)
         self.assertEqual(payload["iterations"], 2000)
         self.assertEqual(payload["diagnostics"]["seed"], 42)
-        self.assertEqual(self.calls[-1][2:], (2000, 42))
+        self.assertEqual(self.calls[-1][2:], (2000, 42, None))
 
         response, payload = self.request("POST", "/api/simulate", json.dumps({"profile": self.profile, "iterations": 99}).encode("utf-8"), {"Content-Type": "application/json"})
         self.assertEqual(response.status, 400)
         self.assertEqual(payload["error"]["code"], "invalid_iterations")
+
+    def test_simulation_forwards_real_auction_rosters_and_rejects_malformed_values(self):
+        rosters = {"Alpha": [1, 2], "Beta": [3, 4]}
+        response, payload = self.request(
+            "POST",
+            "/api/simulate",
+            json.dumps({"profile": self.profile, "roster_mode": "auction", "rosters": rosters}).encode("utf-8"),
+            {"Content-Type": "application/json"},
+        )
+
+        self.assertEqual(response.status, 200)
+        self.assertEqual(self.calls[-1][-1], rosters)
+
+        response, payload = self.request(
+            "POST",
+            "/api/simulate",
+            json.dumps({"profile": self.profile, "roster_mode": "auction", "rosters": {"Alpha": [True]}}).encode("utf-8"),
+            {"Content-Type": "application/json"},
+        )
+        self.assertEqual(response.status, 400)
+        self.assertEqual(payload["error"]["code"], "invalid_rosters")
 
     def test_dataset_read_rejects_unsafe_or_missing_paths(self):
         response, payload = self.request("GET", "/api/datasets/%2E%2E/secret.json")
@@ -485,6 +509,8 @@ class LocalApiServerTests(unittest.TestCase):
         self.assertEqual(response.status, 200)
         self.assertEqual(initial["state"], "baseline_missing")
         self.assertEqual(initial["audit"]["summary"]["issue_count"], 0)
+        self.assertEqual(initial["audit"]["sources"]["starters"]["path"], str(starters_path.resolve()))
+        self.assertEqual(len(initial["audit"]["sources"]["player_list"]["sha256"]), 64)
         self.assertTrue(initial["bundle_available"])
 
         stale = json.dumps({
@@ -570,6 +596,52 @@ class LocalApiServerTests(unittest.TestCase):
         )
         self.assertEqual(response.status, 400)
         self.assertEqual(payload["error"]["code"], "invalid_upload_type")
+
+    def test_league_calendar_upload_validates_before_replacing_existing_file(self):
+        headers = {"Content-Type": "application/octet-stream", "X-Filename": "calendar.xlsx"}
+        response, uploaded = self.request(
+            "PUT",
+            "/api/uploads/my-team/current_sources/league_calendar",
+            build_legacy_calendar_template(),
+            headers,
+        )
+        self.assertEqual(response.status, 200)
+        target = Path(uploaded["path"])
+        original = target.read_bytes()
+
+        response, payload = self.request(
+            "PUT",
+            "/api/uploads/my-team/current_sources/league_calendar",
+            b"not an xlsx workbook",
+            headers,
+        )
+
+        self.assertEqual(response.status, 422)
+        self.assertEqual(payload["error"]["code"], "invalid_league_calendar")
+        self.assertIn("Download the calendar template", payload["error"]["message"])
+        self.assertEqual(target.read_bytes(), original)
+
+    def test_invalid_first_league_calendar_upload_is_not_stored(self):
+        response, payload = self.request(
+            "PUT",
+            "/api/uploads/my-team/current_sources/league_calendar",
+            b"not an xlsx workbook",
+            {"Content-Type": "application/octet-stream", "X-Filename": "calendar.xlsx"},
+        )
+
+        self.assertEqual(response.status, 422)
+        self.assertEqual(payload["error"]["code"], "invalid_league_calendar")
+        target = Path(self.temp_dir.name) / "data/uploads/my-team/current_sources/league_calendar.xlsx"
+        self.assertFalse(target.exists())
+
+    def test_league_calendar_template_endpoint_returns_parseable_workbook(self):
+        response, workbook = self.request("GET", "/api/templates/league-calendar.xlsx")
+
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.getheader("Content-Disposition"), 'attachment; filename="calendario_lega_template.xlsx"')
+        frame = pd.read_excel(io.BytesIO(workbook), sheet_name="Calendario", header=None)
+        calendar = parse_legacy_two_block_frame(frame, "example")
+        self.assertEqual(len(calendar["matchdays"]), 36)
 
     def test_player_list_check_upload_status_and_apply(self):
         root = Path(self.temp_dir.name)

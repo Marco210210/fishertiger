@@ -150,6 +150,8 @@ def parse_public_players(html: str, season: str) -> list[dict[str, object]]:
         role = str(role_node.get("data-value", "") if role_node else "") or _field(row, ("role", "ruolo", "r"), header_indexes)
         role = role.upper()
         name = _field(row, ("name", "nome", "player-name"), header_indexes) or (link.get_text(" ", strip=True) if link else "")
+        if name.rstrip().endswith("*"):
+            continue
         team_match = re.search(r"/squadre/([^/]+)/", href)
         team = team_match.group(1).replace("-", " ") if team_match else _field(row, ("player-team", "team", "squadra"), header_indexes)
         quotation = _field(row, ("player-classic-current-price", "quotation", "quotazione", "qt.a", "qta"), header_indexes)

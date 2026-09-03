@@ -15,6 +15,7 @@ import re
 import sys
 import tempfile
 import traceback
+from zipfile import BadZipFile
 from collections.abc import Callable
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -31,6 +32,8 @@ from .generate import (
     resolve_profile,
 )
 from .freshness import dataset_configuration_hash, simulation_configuration_hash, source_fingerprints
+from .league_calendar import build_legacy_calendar_template, preprocess_legacy_calendar
+from .simulation import RosterValidationError
 from .player_list_updates import (
     FetchPage as PlayerListFetchPage,
     PlayerListUpdateError,
@@ -107,7 +110,7 @@ FIXED_SOURCE_SUFFIXES = {
 }
 VITE_ORIGIN = re.compile(r"https?://(?:localhost|127\.0\.0\.1)(?::\d+)?\Z")
 ProfileLoader = Callable[[dict[str, Any]], Any]
-SimulationRunner = Callable[[Any, Path, int, int], dict[str, Any]]
+SimulationRunner = Callable[[Any, Path, int, int, dict[str, list[int]] | None], dict[str, Any]]
 
 
 class LocalApiServer(ThreadingHTTPServer):
@@ -181,6 +184,8 @@ class LocalApiHandler(BaseHTTPRequestHandler):
             self._get_profile(path.removeprefix("/api/profiles/"))
         elif path == "/api/datasets/manifest":
             self._dataset_manifest()
+        elif path == "/api/templates/league-calendar.xlsx":
+            self._league_calendar_template()
         elif path.startswith("/api/datasets/"):
             self._get_dataset(path.removeprefix("/api/datasets/"))
         elif self.server.static_dir is not None and not path.startswith("/api/"):
@@ -322,9 +327,28 @@ class LocalApiHandler(BaseHTTPRequestHandler):
         if isinstance(seed, bool) or not isinstance(seed, int):
             self._error(HTTPStatus.BAD_REQUEST, "invalid_seed", "Seed must be an integer.")
             return
+        roster_mode = request.get("roster_mode", "sample")
+        if roster_mode not in {"sample", "auction"}:
+            self._error(HTTPStatus.BAD_REQUEST, "invalid_roster_mode", "roster_mode must be 'sample' or 'auction'.")
+            return
+        rosters = request.get("rosters")
+        if roster_mode == "auction":
+            if not isinstance(rosters, dict):
+                self._error(HTTPStatus.BAD_REQUEST, "invalid_rosters", "Auction simulation requires a roster object.")
+                return
+            if any(not isinstance(team, str) or not isinstance(roster, list) or any(isinstance(player_id, bool) or not isinstance(player_id, int) for player_id in roster) for team, roster in rosters.items()):
+                self._error(HTTPStatus.BAD_REQUEST, "invalid_rosters", "Rosters must map team names to arrays of integer player IDs.")
+                return
+        elif "rosters" in request:
+            self._error(HTTPStatus.BAD_REQUEST, "invalid_rosters", "Sample simulation does not accept custom rosters.")
+            return
         try:
             output_dir = self.server.datasets_dir / profile.profile_id / profile.season.season.replace("/", "-")
-            result = self.server.simulator(profile, output_dir, iterations, seed)
+            with profile_transaction(self.server.updates_dir, profile.profile_id):
+                result = self.server.simulator(profile, output_dir, iterations, seed, rosters if roster_mode == "auction" else None)
+        except RosterValidationError as error:
+            self._error(HTTPStatus.UNPROCESSABLE_ENTITY, "invalid_rosters", str(error))
+            return
         except (FileNotFoundError, ValueError) as error:
             self._error(HTTPStatus.UNPROCESSABLE_ENTITY, "invalid_source_data", str(error))
             return
@@ -427,17 +451,39 @@ class LocalApiHandler(BaseHTTPRequestHandler):
             return
         profile_id, group, source_name = parts
         target = self.server.uploads_dir / profile_id / group / f"{source_name}{suffix}"
+        temporary_path: Path | None = None
         try:
             with profile_transaction(self.server.updates_dir, profile_id):
                 target.parent.mkdir(parents=True, exist_ok=True)
                 with tempfile.NamedTemporaryFile("wb", dir=target.parent, delete=False) as handle:
                     handle.write(self.rfile.read(content_length))
                     temporary_path = Path(handle.name)
+                if group == "current_sources" and source_name == "league_calendar":
+                    try:
+                        preprocess_legacy_calendar(temporary_path, profile_id)
+                    except (BadZipFile, KeyError, OSError, ValueError) as error:
+                        self._error(
+                            HTTPStatus.UNPROCESSABLE_ENTITY,
+                            "invalid_league_calendar",
+                            f"{error}. Download the calendar template and keep the worksheet named 'Calendario'.",
+                        )
+                        return
                 temporary_path.replace(target)
         except OSError:
             self._error(HTTPStatus.INTERNAL_SERVER_ERROR, "upload_failed", "The source file could not be stored.")
             return
+        finally:
+            if temporary_path is not None:
+                temporary_path.unlink(missing_ok=True)
         self._send_json(HTTPStatus.OK, {"path": target.as_posix(), "filename": Path(filename).name, "size": content_length})
+
+    def _league_calendar_template(self) -> None:
+        self._send_bytes(
+            HTTPStatus.OK,
+            build_legacy_calendar_template(),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "calendario_lega_template.xlsx",
+        )
 
     def _source_status(self) -> None:
         value = self._read_json_object()
@@ -1095,11 +1141,11 @@ def create_server(
     return LocalApiServer(address, profiles_dir=profiles_dir, datasets_dir=datasets_dir, uploads_dir=uploads_dir, updates_dir=updates_dir, default_profile_path=default_profile_path, static_dir=static_dir, auth_username=auth_username, auth_password=auth_password, generator=generator, simulator=simulator, profile_loader=profile_loader, update_fetcher=update_fetcher, formations_fetcher=formations_fetcher, set_piece_fetcher=set_piece_fetcher, goalkeeper_fetcher=goalkeeper_fetcher, player_list_fetcher=player_list_fetcher)
 
 
-def _simulate_current_dataset(profile: Any, output_dir: Path, iterations: int, seed: int) -> dict[str, Any]:
+def _simulate_current_dataset(profile: Any, output_dir: Path, iterations: int, seed: int, rosters: dict[str, list[int]] | None = None) -> dict[str, Any]:
     from .simulate import run_simulation
     from .config import LeagueConfig
 
-    return run_simulation(output_dir, iterations=iterations, seed=seed, league=LeagueConfig.from_profile(profile), profile=profile)
+    return run_simulation(output_dir, iterations=iterations, seed=seed, rosters=rosters, league=LeagueConfig.from_profile(profile), profile=profile)
 
 
 def main(argv: list[str] | None = None) -> None:

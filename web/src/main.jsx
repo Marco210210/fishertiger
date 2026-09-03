@@ -9,6 +9,8 @@ import { datasetFreshness, simulationFreshness } from "./dataset-freshness.js";
 import { emptyDraft } from "./auction-state.js";
 import { Updates } from "./updates.jsx";
 import { clearProfileBrowserData } from "./profile-storage.js";
+import { useAuctionBoard } from "./use-auction-store.js";
+import { auctionSimulationInput } from "./auction-simulation.js";
 import {
   apiUrl,
   auctionDatasetPath,
@@ -339,6 +341,8 @@ function App() {
   const data = dataset?.data || null;
   const activeProfileId = dataset?.profileId || "default";
   const activeRules = rulesFor(dataset?.profile ?? profile, data || {});
+  const auctionBoard = useAuctionBoard(activeProfileId, data?.players || [], activeRules, Boolean(data));
+  const auctionInput = auctionSimulationInput(auctionBoard, data?.calendario_lega, activeRules);
 
   const updateProfile = async (nextProfile, generate = false) => {
     setProfileError("");
@@ -632,7 +636,7 @@ function App() {
       },
     });
 
-  const rerunSimulation = async () => {
+  const rerunSimulation = async ({ rosterMode = "sample", rosters = null } = {}) => {
     if (isSimulating) return;
     const request = latestProfileRequest();
     const operation = simulationRequests.current.claim();
@@ -642,7 +646,7 @@ function App() {
       const response = await fetch(apiUrl("/api/simulate", apiBase), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile, iterations: 1000, seed: 202627 }),
+        body: JSON.stringify({ profile, iterations: 1000, seed: 202627, roster_mode: rosterMode, ...(rosterMode === "auction" ? { rosters } : {}) }),
       });
       const result = await response.json();
       if (!response.ok)
@@ -654,12 +658,12 @@ function App() {
         return;
       setSeason(result);
       setSimulationStatus("Simulazione aggiornata.");
-    } catch {
+    } catch (error) {
       if (
         isCurrentProfileRequest(request) &&
         simulationRequests.current.isCurrent(operation)
       )
-        setSimulationStatus("Simulazione non riuscita.");
+        setSimulationStatus(error.message || "Simulazione non riuscita.");
     } finally {
       if (simulationRequests.current.isCurrent(operation))
         setIsSimulating(false);
@@ -681,8 +685,9 @@ function App() {
             <span className="kicker">Configurazione iniziale</span>
             <h1>Genera il tuo dataset</h1>
             <p>
-              Carica il calendario della tua lega in Impostazioni e genera i
-              dati per iniziare.
+              Puoi generare subito dati, proiezioni e strumenti d'asta con le
+              fonti incluse. Carica il calendario della tua lega e rigenera i
+              dati solo quando vuoi simulare la stagione.
             </p>
           </div>
           {profilePicker}
@@ -703,7 +708,7 @@ function App() {
     );
 
   const datasetState = datasetFreshness(profile, data, currentSourceFingerprints);
-  const simulationState = simulationFreshness(profile, data, season);
+  const simulationState = simulationFreshness(profile, data, season, auctionInput);
   const datasetStale = datasetState !== "dataset corrente";
   const tab = tabOf(view);
   const moreActive = !MOBILE_PRIMARY_IDS.has(tab.id);
@@ -800,6 +805,7 @@ function App() {
               onRerun={rerunSimulation}
               isSimulating={isSimulating}
               simulationStatus={simulationStatus}
+              auctionInput={auctionInput}
             />
           ) : null}
           {view === "auction" ? (

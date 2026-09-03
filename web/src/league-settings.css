@@ -322,6 +322,24 @@
 .ls-source-status.checking i {
   background: var(--c-warn);
 }
+.ls-source-help,
+.ls-source-error {
+  grid-column: 1 / -1;
+  margin: -5px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.ls-source-help {
+  color: var(--muted);
+}
+.ls-source-help a {
+  color: var(--lime);
+  font-weight: 800;
+}
+.ls-source-error {
+  color: var(--danger);
+  font-weight: 700;
+}
 .league-settings .ls-upload {
   position: relative;
   display: inline-flex;

@@ -383,6 +383,7 @@ export function LeagueSettings({
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [sourceStatuses, setSourceStatuses] = useState({});
+  const [sourceErrors, setSourceErrors] = useState({});
   const changePolicy = profileChangePolicy(mergeProfile(initialProfile, leagueCalendar), profile);
   const errorRef = useRef(null);
   const saveRequest = useRef(0);
@@ -609,7 +610,9 @@ export function LeagueSettings({
     if (!file) return;
     const source = profile[group][index];
     const key = `${group}:${source.name}`;
+    const previousStatus = sourceStatuses[key];
     setSourceStatuses((current) => ({ ...current, [key]: "uploading" }));
+    setSourceErrors((current) => ({ ...current, [key]: "" }));
     setStatus("");
     try {
       const response = await fetch(
@@ -630,9 +633,15 @@ export function LeagueSettings({
         throw new Error(payload.error?.message || `Errore ${response.status}`);
       update([group, index, "path"], payload.path);
       setSourceStatuses((current) => ({ ...current, [key]: "present" }));
+      setSourceErrors((current) => ({ ...current, [key]: "" }));
       setStatus(`${sourceLabels[source.name] || source.name}: file caricato correttamente.`);
     } catch (error) {
-      setSourceStatuses((current) => ({ ...current, [key]: "missing" }));
+      const retained = previousStatus === "present";
+      setSourceStatuses((current) => ({ ...current, [key]: retained ? "present" : "missing" }));
+      setSourceErrors((current) => ({
+        ...current,
+        [key]: `${error.message}${retained ? " Il file precedente è stato mantenuto." : ""}`,
+      }));
       setStatus(`Impossibile caricare ${sourceLabels[source.name] || source.name}: ${error.message}.`);
     }
   };
@@ -675,6 +684,17 @@ export function LeagueSettings({
             />
             <span>Scegli file</span>
           </label>
+          {source.name === "league_calendar" ? (
+            <p className="ls-source-help">
+              Facoltativo per generare dati, necessario per la simulazione. {" "}
+              <a href={endpoint("/api/templates/league-calendar.xlsx")}>Scarica modello</a>
+            </p>
+          ) : null}
+          {sourceErrors[`${key}:${source.name}`] ? (
+            <p className="ls-source-error" role="alert">
+              {sourceErrors[`${key}:${source.name}`]}
+            </p>
+          ) : null}
         </div>
       ))}
     </div>

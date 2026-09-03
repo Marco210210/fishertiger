@@ -52,15 +52,23 @@ def _text(tag: Tag) -> str:
     return re.sub(r"\s+", " ", tag.get_text(" ", strip=True)).strip()
 
 
+def _season_in_title(season: str, title: str) -> bool:
+    start, end = _season_years(season)
+    short_end = str(end)[-2:]
+    return any(value in title for value in (
+        f"{start}/{short_end}", f"{start}/{end}",
+        f"{start}-{short_end}", f"{start}-{end}",
+    ))
+
+
 def extract_set_pieces(html: str, season: str) -> list[dict[str, object]]:
     if not isinstance(html, str) or len(html.encode("utf-8")) > MAX_PAGE_BYTES:
         raise SosFantaError("SOS Fanta returned an invalid or unexpectedly large page.")
     soup = BeautifulSoup(html, "html.parser")
     article = soup.select_one("#article-content")
     title = soup.select_one("h1")
-    start, end = _season_years(season)
     title_text = _text(title) if title else ""
-    if article is None or not any(value in title_text for value in (f"{start}/{str(end)[-2:]}", f"{start}/{end}")):
+    if article is None or not _season_in_title(season, title_text):
         raise SosFantaError("The SOS Fanta page does not contain the requested set-piece article.")
 
     teams: list[dict[str, object]] = []
@@ -102,9 +110,8 @@ def extract_penalties(html: str, season: str) -> list[dict[str, object]]:
     soup = BeautifulSoup(html, "html.parser")
     article = soup.select_one("#article-content")
     title = soup.select_one("h1")
-    start, end = _season_years(season)
     title_text = _text(title) if title else ""
-    if article is None or "rigoristi" not in title_text.lower() or not any(value in title_text for value in (f"{start}/{str(end)[-2:]}", f"{start}/{end}")):
+    if article is None or "rigoristi" not in title_text.lower() or not _season_in_title(season, title_text):
         raise SosFantaError("The SOS Fanta page does not contain the requested penalty-taker article.")
 
     teams: list[dict[str, object]] = []

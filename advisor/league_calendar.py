@@ -7,12 +7,14 @@ API is :func:`preprocess_legacy_calendar` for files and
 from __future__ import annotations
 
 import argparse
+from io import BytesIO
 import json
 import re
 from pathlib import Path
 from typing import Any, Mapping
 
 import pandas as pd
+from openpyxl import Workbook
 
 SCHEMA_VERSION = "1.0"
 _LEAGUE_DAY = re.compile(r"(\d+)ª\s+Giornata\s+lega", re.IGNORECASE)
@@ -142,12 +144,60 @@ def parse_legacy_two_block_frame(frame: pd.DataFrame, league_id: str) -> dict[st
 
 def load_legacy_calendar(source: str | Path, sheet_name: str = "Calendario") -> pd.DataFrame:
     """Load a legacy spreadsheet, keeping file I/O separate from parsing."""
-    return pd.read_excel(source, sheet_name=sheet_name, header=None)
+    try:
+        return pd.read_excel(source, sheet_name=sheet_name, header=None)
+    except ValueError as error:
+        if "Worksheet named" in str(error) and "not found" in str(error):
+            raise ValueError("legacy calendar: worksheet 'Calendario' is required") from error
+        raise
 
 
 def preprocess_legacy_calendar(source: str | Path, league_id: str, sheet_name: str = "Calendario") -> dict[str, Any]:
     """Read a legacy workbook and return its validated canonical calendar."""
     return parse_legacy_two_block_frame(load_legacy_calendar(source, sheet_name), league_id)
+
+
+def _round_robin_fixtures(teams: list[str]) -> list[list[tuple[str, str]]]:
+    """Build one complete round robin for an even number of teams."""
+    rotation = teams[:]
+    rounds = []
+    for _ in range(len(teams) - 1):
+        rounds.append([(rotation[index], rotation[-index - 1]) for index in range(len(teams) // 2)])
+        rotation = [rotation[0], rotation[-1], *rotation[1:-1]]
+    return rounds
+
+
+def build_legacy_calendar_template(participants: int = 8, matchdays: int = 36) -> bytes:
+    """Return a sanitized legacy-layout workbook suitable for the default profile."""
+    if participants < 2 or participants % 2:
+        raise ValueError("calendar template: participants must be an even number of at least 2")
+    if matchdays < 1:
+        raise ValueError("calendar template: matchdays must be positive")
+
+    teams = [f"Squadra {number}" for number in range(1, participants + 1)]
+    rounds = _round_robin_fixtures(teams)
+    workbook = Workbook()
+    instructions = workbook.active
+    instructions.title = "Istruzioni"
+    instructions.append(["Modello calendario della lega"])
+    instructions.append(["Compila il foglio Calendario senza rinominarlo."])
+    instructions.append(["Le squadre nelle colonne A/D e G/J devono corrispondere al profilo."])
+    instructions.append(["Ogni giornata usa i titoli 'Nª Giornata lega' e 'Mª Giornata serie a'."])
+    calendar = workbook.create_sheet("Calendario")
+    for matchday in range(1, matchdays + 1):
+        start = 1 if matchday % 2 else 7
+        row = ((matchday - 1) // 2) * (participants // 2 + 1) + 1
+        calendar.cell(row, start, f"{matchday}ª Giornata lega")
+        calendar.cell(row, start + 2, f"{matchday}ª Giornata serie a")
+        for fixture_row, (home, away) in enumerate(rounds[(matchday - 1) % len(rounds)], start=row + 1):
+            calendar.cell(fixture_row, start, home)
+            calendar.cell(fixture_row, start + 3, away)
+    calendar.freeze_panes = "A2"
+    for column in ("A", "D", "G", "J"):
+        calendar.column_dimensions[column].width = 20
+    output = BytesIO()
+    workbook.save(output)
+    return output.getvalue()
 
 
 def main(argv: list[str] | None = None) -> int:

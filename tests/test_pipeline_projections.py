@@ -1,7 +1,11 @@
+import json
+from pathlib import Path
+
 import pandas as pd
 import pytest
 
-from advisor.pipeline import _clean_record, anonymize_public_calendar, fixture_projection_arrays, normalize, vote_standard_deviation, weighted_history, weighted_rate_per_appearance
+from advisor.league_profile import LeagueProfile
+from advisor.pipeline import _clean_record, anonymize_public_calendar, build_projections, fixture_projection_arrays, normalize, vote_standard_deviation, weighted_history, weighted_rate_per_appearance
 
 
 def history(mv: float, appearances: int, goals: int = 0) -> pd.DataFrame:
@@ -39,6 +43,24 @@ def test_clean_record_converts_blank_csv_cells_to_json_null():
     result = _clean_record({"status": "TITOLARE", "nota": float("nan")})
 
     assert result == {"status": "TITOLARE", "nota": None}
+
+
+def test_generation_without_league_calendar_writes_strict_json(tmp_path):
+    root = Path(__file__).parents[1]
+    source = json.loads((root / "config/default_profile.json").read_text(encoding="utf-8"))
+    calendar = next(item for item in source["current_sources"] if item["name"] == "league_calendar")
+    calendar["path"] = str(tmp_path / "missing-calendar.xlsx")
+
+    payload = build_projections(
+        raw=root / "data/raw",
+        output=tmp_path / "processed",
+        profile=LeagueProfile.from_dict(source),
+    )
+
+    serialized = (tmp_path / "processed/example-2026-27/2026-27/auction_data.json").read_text(encoding="utf-8")
+    decoded = json.loads(serialized, parse_constant=lambda value: (_ for _ in ()).throw(ValueError(value)))
+    assert payload["calendario_lega"] is None
+    assert decoded["calendario_lega"] is None
 
 
 def test_fixture_projections_vary_by_opponent_venue_and_rotation():

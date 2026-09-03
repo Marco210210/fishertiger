@@ -208,17 +208,58 @@ def make_sample_rosters(payload: dict[str, Any], league: LeagueConfig = LeagueCo
     return rosters
 
 
-def validate_rosters(rosters: dict[str, list[int]], players: dict[int, dict[str, Any]], league: LeagueConfig) -> None:
+class RosterValidationError(ValueError):
+    """A caller-supplied roster cannot be simulated with the active dataset."""
+
+
+def normalize_rosters(payload: dict[str, Any], rosters: Any, league: LeagueConfig) -> dict[str, list[int]]:
+    """Validate rosters and return stable calendar-ordered player assignments."""
+    if not isinstance(rosters, dict):
+        raise RosterValidationError("Rosters must be an object keyed by calendar team name")
+    names = _calendar_teams(payload)
+    if len(names) != league.participants:
+        raise RosterValidationError(f"Expected {league.participants} fantasy teams in the league calendar")
+    missing, unexpected = sorted(set(names) - set(rosters)), sorted(set(rosters) - set(names))
+    if missing or unexpected:
+        details = []
+        if missing:
+            details.append(f"missing {missing}")
+        if unexpected:
+            details.append(f"unexpected {unexpected}")
+        raise RosterValidationError(f"Rosters must contain exactly the calendar teams: {', '.join(details)}")
+    player_rows = payload.get("players")
+    if not isinstance(player_rows, list):
+        raise RosterValidationError("Dataset players are unavailable")
+    players: dict[int, dict[str, Any]] = {}
+    for player in player_rows:
+        player_id = player.get("id") if isinstance(player, dict) else None
+        if isinstance(player_id, bool) or not isinstance(player_id, int) or player_id in players:
+            raise RosterValidationError("Dataset player IDs must be unique integers")
+        players[player_id] = player
+
     assigned: set[int] = set()
-    for team, roster in rosters.items():
-        if len(roster) != sum(league.roster_slots.values()):
-            raise ValueError(f"{team}: invalid roster size")
+    normalized = {}
+    expected_size = sum(league.roster_slots.values())
+    for team in names:
+        roster = rosters[team]
+        if not isinstance(roster, list):
+            raise RosterValidationError(f"{team}: roster must be a list of player IDs")
+        if any(isinstance(player_id, bool) or not isinstance(player_id, int) for player_id in roster):
+            raise RosterValidationError(f"{team}: player IDs must be integers")
+        if len(roster) != expected_size:
+            raise RosterValidationError(f"{team}: expected {expected_size} players, received {len(roster)}")
+        unknown = next((player_id for player_id in roster if player_id not in players), None)
+        if unknown is not None:
+            raise RosterValidationError(f"{team}: unknown player ID {unknown}")
         if len(set(roster)) != len(roster) or assigned.intersection(roster):
-            raise ValueError(f"{team}: duplicate player within or across rosters")
+            raise RosterValidationError(f"{team}: duplicate player within or across rosters")
         assigned.update(roster)
         for role, count in league.roster_slots.items():
             if sum(players[player_id]["ruolo"] == role for player_id in roster) != count:
-                raise ValueError(f"{team}: invalid {role} count")
+                received = sum(players[player_id]["ruolo"] == role for player_id in roster)
+                raise RosterValidationError(f"{team}: expected {count} {role} players, received {received}")
+        normalized[team] = sorted(roster)
+    return normalized
 
 
 def _formation_counts(formation: str) -> dict[str, int]:
@@ -411,14 +452,14 @@ def _standing_keys(
 def simulate_season(payload: dict[str, Any], rosters: dict[str, list[int]], iterations: int = 2000, seed: int = 202627, league: LeagueConfig | None = None) -> SimulationResult:
     """Simulate the configured calendar and return rank, payout, score and points distributions."""
     league = league or LeagueConfig()
+    rosters = normalize_rosters(payload, rosters, league)
     players = {player["id"]: player for player in payload["players"]}
-    validate_rosters(rosters, players, league)
     fixtures_by_day = _calendar_matchdays(payload)
     expected_days = set(range(1, len(fixtures_by_day) + 1))
     if set(fixtures_by_day) != expected_days:
         raise ValueError("League calendar matchdays must be consecutive starting at 1")
     rng = np.random.default_rng(seed)
-    names = list(rosters)
+    names = _calendar_teams(payload)
     ranks = {name: np.zeros(league.participants, dtype=int) for name in names}
     utilities = {name: [] for name in names}
     points_outcomes = {name: [] for name in names}

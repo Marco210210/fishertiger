@@ -136,12 +136,13 @@ const migrateLegacy = (profileId, players, rules) => {
 
 const loadAuction = (profileId, players, rules) => {
   const currentRead = readKey(auctionStorageKey(profileId));
-  if (!currentRead.ok) return { ok: false, state: emptyAuction(rules) };
+  if (!currentRead.ok) return { ok: false, state: emptyAuction(rules), status: "unreadable" };
   const current = rehydrateAuction(parsed(currentRead.value), players, rules);
-  if (current) return { ok: true, state: current };
+  if (current) return { ok: true, state: current, status: "valid" };
+  if (currentRead.value) return { ok: true, state: emptyAuction(rules), status: "incompatible" };
   const legacy = migrateLegacy(profileId, players, rules);
-  if (!legacy.ok) return { ok: false, state: emptyAuction(rules) };
-  return { ok: true, state: legacy.state || emptyAuction(rules) };
+  if (!legacy.ok) return { ok: false, state: emptyAuction(rules), status: "unreadable" };
+  return { ok: true, state: legacy.state || emptyAuction(rules), status: legacy.state ? "valid" : "missing" };
 };
 
 export const readAuction = (profileId, players, rules) =>
@@ -165,6 +166,7 @@ export const readAuctionBoard = (profileId, players, rules) => {
     activeRole: activeNominationRole(state.teams, rules),
     userTeamIndex: readUserTeamIndex(profileId, rules),
     storageReadOk: loaded.ok,
+    auctionStatus: loaded.status,
   };
 };
 
