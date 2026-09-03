@@ -9,6 +9,7 @@ from pathlib import Path
 import pandas as pd
 
 from advisor.league_profile import LeagueProfile
+from advisor.league_calendar import build_legacy_calendar_template, parse_legacy_two_block_frame
 from advisor.pipeline import LISTONE_COLUMNS
 from advisor.server import create_server, profile_response
 
@@ -89,6 +90,8 @@ class LocalApiServerTests(unittest.TestCase):
             parsed = None
         elif response.getheader("Content-Type", "").startswith("application/json"):
             parsed = json.loads(payload)
+        elif response.getheader("Content-Type", "").startswith("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"):
+            parsed = payload
         else:
             parsed = payload.decode("utf-8")
         return response, parsed
@@ -547,6 +550,52 @@ class LocalApiServerTests(unittest.TestCase):
         )
         self.assertEqual(response.status, 400)
         self.assertEqual(payload["error"]["code"], "invalid_upload_type")
+
+    def test_league_calendar_upload_validates_before_replacing_existing_file(self):
+        headers = {"Content-Type": "application/octet-stream", "X-Filename": "calendar.xlsx"}
+        response, uploaded = self.request(
+            "PUT",
+            "/api/uploads/my-team/current_sources/league_calendar",
+            build_legacy_calendar_template(),
+            headers,
+        )
+        self.assertEqual(response.status, 200)
+        target = Path(uploaded["path"])
+        original = target.read_bytes()
+
+        response, payload = self.request(
+            "PUT",
+            "/api/uploads/my-team/current_sources/league_calendar",
+            b"not an xlsx workbook",
+            headers,
+        )
+
+        self.assertEqual(response.status, 422)
+        self.assertEqual(payload["error"]["code"], "invalid_league_calendar")
+        self.assertIn("Download the calendar template", payload["error"]["message"])
+        self.assertEqual(target.read_bytes(), original)
+
+    def test_invalid_first_league_calendar_upload_is_not_stored(self):
+        response, payload = self.request(
+            "PUT",
+            "/api/uploads/my-team/current_sources/league_calendar",
+            b"not an xlsx workbook",
+            {"Content-Type": "application/octet-stream", "X-Filename": "calendar.xlsx"},
+        )
+
+        self.assertEqual(response.status, 422)
+        self.assertEqual(payload["error"]["code"], "invalid_league_calendar")
+        target = Path(self.temp_dir.name) / "data/uploads/my-team/current_sources/league_calendar.xlsx"
+        self.assertFalse(target.exists())
+
+    def test_league_calendar_template_endpoint_returns_parseable_workbook(self):
+        response, workbook = self.request("GET", "/api/templates/league-calendar.xlsx")
+
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.getheader("Content-Disposition"), 'attachment; filename="calendario_lega_template.xlsx"')
+        frame = pd.read_excel(io.BytesIO(workbook), sheet_name="Calendario", header=None)
+        calendar = parse_legacy_two_block_frame(frame, "example")
+        self.assertEqual(len(calendar["matchdays"]), 36)
 
     def test_player_list_check_upload_status_and_apply(self):
         root = Path(self.temp_dir.name)

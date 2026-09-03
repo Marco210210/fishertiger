@@ -5,6 +5,7 @@ import json
 import argparse
 import copy
 import re
+import tempfile
 import unicodedata
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -544,8 +545,18 @@ def build_projections(raw: Path = RAW, output: Path = PROCESSED, config: ModelCo
         "current_league": {"serie_a_matchdays": current_matchdays, "label": f"lega corrente {len(current_matchdays)}"},
     }
     payload = {"schema_version": "1.0", "model_version": "1.6", "players": players, "teams": team_records, "set_pieces": set_piece_records, "league_rules": league_rules, "calendario_serie_a": calendar_records, "calendario_lega": league_calendar, "meta": {"generato_il": datetime.now(timezone.utc).isoformat(), "versione_modello": "1.6", "profile": profile_meta, "horizons": horizons, "assunzioni": "75 minuti per voto; disponibilita da status e storico; gerarchia portieri esplicita; malus portieri incluso; lineup auto nel simulatore"}}
-    with (output / "auction_data.json").open("w", encoding="utf-8") as handle:
-        json.dump(payload, handle, ensure_ascii=False, default=str, separators=(",", ":"), allow_nan=False)
+    output.mkdir(parents=True, exist_ok=True)
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=output, delete=False) as handle:
+            temporary_path = Path(handle.name)
+            json.dump(payload, handle, ensure_ascii=False, default=str, separators=(",", ":"), allow_nan=False)
+    except Exception:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+        raise
+    assert temporary_path is not None
+    temporary_path.replace(output / "auction_data.json")
     if web_export_dir is not None:
         web_export = web_export_dir / "auction_data.json"
         web_export.parent.mkdir(parents=True, exist_ok=True)

@@ -675,8 +675,9 @@ function App() {
             <span className="kicker">Configurazione iniziale</span>
             <h1>Genera il tuo dataset</h1>
             <p>
-              Carica il calendario della tua lega in Impostazioni e genera i
-              dati per iniziare.
+              Puoi generare subito dati, proiezioni e strumenti d'asta con le
+              fonti incluse. Carica il calendario della tua lega e rigenera i
+              dati solo quando vuoi simulare la stagione.
             </p>
           </div>
           {profilePicker}

@@ -38,8 +38,10 @@ npm run dev
 ```
 
 Open the Vite URL. On first launch the application opens **Impostazioni**.
-Upload your private `calendario_lega.xlsx`, verify participants and sources,
-then use **Genera dati**. Generated datasets and simulations stay local under
+The included sources are enough to use **Genera dati** for the dashboard,
+projections, and auction tools. Upload a compatible private
+`calendario_lega.xlsx` and regenerate the dataset only before running the
+season simulation. Generated datasets and simulations stay local under
 `data/processed/<profile_id>/<season>/`.
 
 ## Inputs And Profiles
@@ -49,8 +51,9 @@ serves it to the client; there is no duplicate browser profile.
 
 The repository includes base inputs in `data/raw/`. The only excluded input is
 `data/raw/calendario_lega.xlsx`, because it identifies a user's fantasy league.
-It must be uploaded locally. The profile source declarations identify the
-expected files and seasons.
+It is optional for generation and required for season simulation. Download the
+sanitized model from **Impostazioni** when needed. The profile source
+declarations identify the expected files and seasons.
 
 The Serie A input is always a 20-team, 38-matchday, 380-match calendar. The
 fantasy league can use a shorter configured interval through
@@ -58,8 +61,8 @@ fantasy league can use a shorter configured interval through
 
 ## CLI
 
-The UI is the normal workflow. These commands are useful for local automation
-after a matching private calendar has been supplied:
+The UI is the normal workflow. The pipeline command works with the included
+sources; supply a matching private calendar before the simulation command:
 
 ```bash
 .venv/bin/python -m advisor.pipeline --profile config/default_profile.json --raw-dir data/raw --output-dir data/processed

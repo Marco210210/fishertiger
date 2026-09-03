@@ -11,6 +11,7 @@ import re
 import sys
 import tempfile
 import traceback
+from zipfile import BadZipFile
 from collections.abc import Callable
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -27,6 +28,7 @@ from .generate import (
     resolve_profile,
 )
 from .freshness import dataset_configuration_hash, simulation_configuration_hash, source_fingerprints
+from .league_calendar import build_legacy_calendar_template, preprocess_legacy_calendar
 from .player_list_updates import (
     FetchPage as PlayerListFetchPage,
     PlayerListUpdateError,
@@ -164,6 +166,8 @@ class LocalApiHandler(BaseHTTPRequestHandler):
             self._get_profile(path.removeprefix("/api/profiles/"))
         elif path == "/api/datasets/manifest":
             self._dataset_manifest()
+        elif path == "/api/templates/league-calendar.xlsx":
+            self._league_calendar_template()
         elif path.startswith("/api/datasets/"):
             self._get_dataset(path.removeprefix("/api/datasets/"))
         else:
@@ -402,17 +406,39 @@ class LocalApiHandler(BaseHTTPRequestHandler):
             return
         profile_id, group, source_name = parts
         target = self.server.uploads_dir / profile_id / group / f"{source_name}{suffix}"
+        temporary_path: Path | None = None
         try:
             with profile_transaction(self.server.updates_dir, profile_id):
                 target.parent.mkdir(parents=True, exist_ok=True)
                 with tempfile.NamedTemporaryFile("wb", dir=target.parent, delete=False) as handle:
                     handle.write(self.rfile.read(content_length))
                     temporary_path = Path(handle.name)
+                if group == "current_sources" and source_name == "league_calendar":
+                    try:
+                        preprocess_legacy_calendar(temporary_path, profile_id)
+                    except (BadZipFile, KeyError, OSError, ValueError) as error:
+                        self._error(
+                            HTTPStatus.UNPROCESSABLE_ENTITY,
+                            "invalid_league_calendar",
+                            f"{error}. Download the calendar template and keep the worksheet named 'Calendario'.",
+                        )
+                        return
                 temporary_path.replace(target)
         except OSError:
             self._error(HTTPStatus.INTERNAL_SERVER_ERROR, "upload_failed", "The source file could not be stored.")
             return
+        finally:
+            if temporary_path is not None:
+                temporary_path.unlink(missing_ok=True)
         self._send_json(HTTPStatus.OK, {"path": target.as_posix(), "filename": Path(filename).name, "size": content_length})
+
+    def _league_calendar_template(self) -> None:
+        self._send_bytes(
+            HTTPStatus.OK,
+            build_legacy_calendar_template(),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "calendario_lega_template.xlsx",
+        )
 
     def _source_status(self) -> None:
         value = self._read_json_object()

@@ -1,7 +1,9 @@
 import json
+from io import BytesIO
 
 import pandas as pd
 import pytest
+from openpyxl import Workbook
 
 from advisor import league_calendar
 
@@ -49,3 +51,23 @@ def test_cli_uses_reader_and_writes_canonical_json(monkeypatch, tmp_path):
     assert league_calendar.main(["calendar.xlsx", str(destination), "--league-id", "friends"]) == 0
     assert calls == [(league_calendar.Path("calendar.xlsx"), "Calendario", None)]
     assert json.loads(destination.read_text(encoding="utf-8"))["participants_count"] == 4
+
+
+def test_generated_template_is_accepted_by_the_legacy_parser():
+    frame = pd.read_excel(BytesIO(league_calendar.build_legacy_calendar_template()), sheet_name="Calendario", header=None)
+
+    calendar = league_calendar.parse_legacy_two_block_frame(frame, "example")
+
+    assert calendar["teams"] == [f"Squadra {number}" for number in range(1, 9)]
+    assert [day["number"] for day in calendar["matchdays"]] == list(range(1, 37))
+    assert all(len(day["fixtures"]) == 4 for day in calendar["matchdays"])
+
+
+def test_reader_reports_missing_calendario_sheet_clearly(tmp_path):
+    workbook = Workbook()
+    workbook.active.title = "Altro"
+    source = tmp_path / "calendar.xlsx"
+    workbook.save(source)
+
+    with pytest.raises(ValueError, match="worksheet 'Calendario' is required"):
+        league_calendar.preprocess_legacy_calendar(source, "example")
