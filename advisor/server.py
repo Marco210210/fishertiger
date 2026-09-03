@@ -96,6 +96,7 @@ FIXED_SOURCE_SUFFIXES = {
         "starters": ".csv",
         "set_pieces": ".csv",
         "auction_guide": ".csv",
+        "official_snapshot": ".json",
         "league_calendar": ".xlsx",
     },
     "history_sources": {

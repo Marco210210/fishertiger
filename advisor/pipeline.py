@@ -18,6 +18,7 @@ from .config import LeagueConfig, ModelConfig
 from .league_calendar import preprocess_legacy_calendar, validate_calendar
 from .league_profile import LeagueProfile
 from .freshness import dataset_configuration_hash, dataset_input_hash, source_fingerprints
+from .official_snapshot import blend_current, load_snapshot
 
 RAW = Path("data/raw")
 PROCESSED = Path("data/processed")
@@ -123,7 +124,7 @@ def _required_source(sources: dict[str, object], name: str, raw: Path, fallback:
     raise ValueError(f"profile current_sources must declare a {name!r} source")
 
 
-def load_raw(raw: Path = RAW, profile: LeagueProfile | None = None) -> tuple[pd.DataFrame, list[tuple[str, pd.DataFrame]], pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_raw(raw: Path = RAW, profile: LeagueProfile | None = None) -> tuple[pd.DataFrame, list[tuple[str, pd.DataFrame]], pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, int]:
     sources = _source_map(profile, raw)
     listone_path = _required_source(sources, "player_list", raw, "listone_2026_27.xlsx")
     listone = pd.read_excel(listone_path, sheet_name="Tutti", header=1)
@@ -132,6 +133,16 @@ def load_raw(raw: Path = RAW, profile: LeagueProfile | None = None) -> tuple[pd.
     if listone.Id.isna().any() or listone.Id.duplicated().any():
         raise ValueError("listone: Id must be present and unique")
     _require_columns(ceduti, {"Id"}, "ceduti")
+    current_stats = pd.DataFrame(columns=sorted(STATS_COLUMNS))
+    observed_matchdays = 0
+    official_source = sources.get("official_snapshot")
+    if official_source:
+        official_players, current_stats, observed_matchdays = load_snapshot(
+            _resolve_source(official_source, raw), profile.season.season
+        )
+        listone = official_players
+        # Live official membership wins over a stale transferred-player sheet.
+        ceduti = ceduti.loc[~ceduti.Id.isin(set(listone.Id))].copy()
     history_sources = profile.history_sources if profile else tuple()
     if not history_sources:
         from .league_profile import SourceDeclaration
@@ -155,9 +166,18 @@ def load_raw(raw: Path = RAW, profile: LeagueProfile | None = None) -> tuple[pd.
     if invalid_statuses:
         raise ValueError(f"titolari: invalid status values {invalid_statuses}")
     starters = starters.copy()
+    canonical_teams = {normalize(name): name for name in teams.squadra}
+    unknown_teams = sorted({str(name) for name in listone.Squadra if normalize(name) not in canonical_teams})
+    if unknown_teams:
+        raise ValueError(f"squadre.csv lacks {unknown_teams}")
+    listone = listone.copy()
+    listone["Squadra"] = listone.Squadra.map(lambda name: canonical_teams[normalize(name)])
+    current_stats = current_stats.copy()
+    if not current_stats.empty:
+        current_stats["Squadra"] = current_stats.Squadra.map(lambda name: canonical_teams[normalize(name)])
     starters["status"] = starters.status.astype(str).str.strip().str.upper()
     starters["gerarchia_portiere"] = starters.gerarchia_portiere.map(normalize_goalkeeper_hierarchy)
-    return listone, histories, calendar, teams, starters, set_pieces, ceduti
+    return listone, histories, calendar, teams, starters, set_pieces, ceduti, current_stats, observed_matchdays
 
 
 def load_league_calendar(raw: Path = RAW) -> pd.DataFrame:
@@ -420,7 +440,7 @@ def build_projections(raw: Path = RAW, output: Path = PROCESSED, config: ModelCo
     league = LeagueConfig.from_profile(profile) if profile else (league or LeagueConfig())
     if profile:
         config = replace(config, season_days=profile.season.serie_a_matchdays)
-    listone, history_entries, calendar, teams, starters, set_pieces, ceduti = load_raw(raw, profile)
+    listone, history_entries, calendar, teams, starters, set_pieces, ceduti, current_stats, observed_matchdays = load_raw(raw, profile)
     histories = [frame for _, frame in history_entries]
     league_calendar = load_canonical_league_calendar(raw, profile)
     # Retain display names while making league fixtures joinable on stable IDs.
@@ -486,6 +506,10 @@ def build_projections(raw: Path = RAW, output: Path = PROCESSED, config: ModelCo
         starter_entry = starter_status[starter_status.id_matched == player.Id]
         status = starter_entry.status
         historical_p_play = weighted_history(int(player.Id), histories, "Pv", np.nan, config.history_weights) / 38
+        current_row = current_stats[current_stats.Id == player.Id]
+        current_appearances = float(current_row.iloc[0].Pv) if not current_row.empty else 0.0
+        if not current_row.empty and observed_matchdays > 0 and not np.isnan(historical_p_play):
+            historical_p_play = blend_current(historical_p_play, current_appearances / observed_matchdays, observed_matchdays)
         if not status.empty:
             status_p_play = {"TITOLARE": .85, "BALLOTTAGGIO": .55, "RISERVA": .15}.get(status.iloc[0], .30)
             p_play = status_p_play if np.isnan(historical_p_play) else .65 * status_p_play + .35 * historical_p_play
@@ -499,9 +523,16 @@ def build_projections(raw: Path = RAW, output: Path = PROCESSED, config: ModelCo
         p_play = float(np.clip(p_play, .05, .95))
         team_prior = (float(team.rating_att) - 5.5) * .045
         mv = weighted_history(int(player.Id), histories, "Mv", 6.0 + team_prior, config.history_weights)
+        if not current_row.empty and current_appearances > 0:
+            mv = blend_current(mv, float(current_row.iloc[0].Mv), current_appearances)
         std = vote_standard_deviation(int(player.Id), histories, config.default_std[player.R])
         # 75 minutes per rated appearance is the documented approximation.
-        per90 = lambda col: weighted_rate_per_appearance(int(player.Id), histories, col, config.history_weights)
+        def per90(col: str) -> float:
+            baseline = weighted_rate_per_appearance(int(player.Id), histories, col, config.history_weights)
+            if current_row.empty or current_appearances <= 0:
+                return baseline
+            current_rate = float(current_row.iloc[0][col]) / current_appearances / (75 / 90)
+            return blend_current(baseline, current_rate, current_appearances)
         goal, assist = per90("Gf"), per90("Ass")
         yellow, red, autogoal = per90("Amm"), per90("Esp"), per90("Au")
         malus = yellow * -league.scoring_yellow_card + red * -league.scoring_red_card + autogoal * -league.scoring_own_goal
@@ -526,6 +557,10 @@ def build_projections(raw: Path = RAW, output: Path = PROCESSED, config: ModelCo
             rows = frame[frame.Id == player.Id]
             if not rows.empty:
                 historical[season] = _clean_record(rows.iloc[0][["Pv", "Mv", "Fm", "Gf", "Gs", "Rp", "Rc", "R+", "R-", "Ass", "Amm", "Esp", "Au"]].to_dict())
+        if not current_row.empty:
+            historical[profile.season.season if profile else "current"] = _clean_record(
+                current_row.iloc[0][["Pv", "Mv", "Fm", "Gf", "Gs", "Rp", "Rc", "R+", "R-", "Ass", "Amm", "Esp", "Au"]].to_dict()
+            )
         event_rates = {"gol": round(goal, 4), "assist": round(assist, 4), "ammonizioni": round(yellow, 4), "espulsioni": round(red, 4), "autogol": round(autogoal, 4), "gol_subiti": round(conceded, 4), "rigori_sbagliati": round(penalty_missed, 4), "rigori_parati": round(penalty_saved, 4)}
         daily_play, daily_vote, daily_std, daily_bonus = fixture_projection_arrays(p_play, mv, std, bonus, team, fixtures_by_team.get(player.Squadra, {}), teams_by_key, config.season_days)
         hierarchy = _clean_value(starter_entry.iloc[0].gerarchia_portiere) if not starter_entry.empty else None

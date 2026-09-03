@@ -55,6 +55,7 @@ const currentSources = [
   { name: "starters", label: "Probabili titolari", path: "data/raw/titolari.csv", format: "csv", required: true },
   { name: "set_pieces", label: "Gerarchie piazzati", path: "data/raw/piazzati.csv", format: "csv", required: true },
   { name: "auction_guide", label: "Guida asta", path: "data/raw/guide_asta_sosfanta.csv", format: "csv", required: true },
+  { name: "official_snapshot", label: "Dati ufficiali aggiornati", path: "data/raw/fantacalcio_2026_27.json", format: "json", required: true },
   { name: "league_calendar", label: "Calendario della lega", path: "data/raw/calendario_lega.xlsx", format: "xlsx", required: false },
 ];
 const historySources = [

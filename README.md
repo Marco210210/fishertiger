@@ -52,6 +52,17 @@ The repository includes base inputs in `data/raw/`. The only excluded input is
 It must be uploaded locally. The profile source declarations identify the
 expected files and seasons.
 
+Quotations and current-season statistics are stored in the public JSON
+snapshot `data/raw/fantacalcio_2026_27.json`. Refresh it from Fantacalcio's
+public pages with:
+
+```bash
+.venv/bin/python -m scripts.update_official_data
+```
+
+On GitHub the **Update official Fantacalcio data** workflow performs the same
+check every day and commits only when the public data actually changed.
+
 The Serie A input is always a 20-team, 38-matchday, 380-match calendar. The
 fantasy league can use a shorter configured interval through
 `fantasy_start_matchday`, `fantasy_end_matchday`, and `fantasy_matchdays`.
@@ -83,10 +94,9 @@ configure both as hosting secrets and never commit their values.
 
 Import `render.yaml` from the GitHub fork in Render to create a web service.
 Every commit pushed to the fork's `main` branch triggers a new deployment. The
-included `free` plan is suitable only for trying the deployment: its filesystem
-is ephemeral, so saved profiles, uploads, and generated datasets disappear on
-restart or redeploy. For durable multi-league use, switch to a paid web-service
-plan and attach a persistent disk mounted at `/var/data`.
+included `free` plan keeps the deployment free. Its filesystem is ephemeral,
+so export each league profile from the application and re-import it after a
+restart or redeploy; committed source data remains available from GitHub.
 
 Keep the fork connected to the original repository with two remotes:
 
