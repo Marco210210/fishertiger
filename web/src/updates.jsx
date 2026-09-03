@@ -291,8 +291,12 @@ function FormationUpdates({ profile, apiBase }) {
   const [problem, setProblem] = useState("");
   const sequence = useRef(0);
   const season = profile?.season?.season;
+  const auditSourceSignature = ["starters", "player_list"]
+    .map((name) => profile?.current_sources?.find((source) => source.name === name)?.path || "")
+    .join("|");
   const sourceUrl = result?.source_url || sosFantaFormationsUrl(season);
   const auditSummary = result?.audit?.summary;
+  const auditSources = result?.audit?.sources || {};
   const findings = result?.audit?.findings || [];
 
   useEffect(() => {
@@ -308,7 +312,7 @@ function FormationUpdates({ profile, apiBase }) {
       })
       .catch(() => {});
     return () => { active = false; };
-  }, [apiBase, profile?.profile_id, season]);
+  }, [apiBase, profile?.profile_id, season, auditSourceSignature]);
 
   const run = async (action) => {
     const request = ++sequence.current;
@@ -423,6 +427,12 @@ function FormationUpdates({ profile, apiBase }) {
       {auditSummary && (
         <div className="update-diff">
           <div className="diff-title"><span>AUDIT CSV</span><strong>{auditSummary.issue_count || 0} problemi</strong></div>
+          <div className="update-source-meta">
+            <div><span>Titolari attivi</span><strong><code>{auditSources.starters?.path || "-"}</code></strong></div>
+            <div><span>Listone attivo</span><strong><code>{auditSources.player_list?.path || "-"}</code></strong></div>
+            <div><span>Versioni</span><strong><code>{auditSources.starters?.sha256?.slice(0, 8) || "-"} / {auditSources.player_list?.sha256?.slice(0, 8) || "-"}</code></strong></div>
+          </div>
+          <p className="accept-warning">L’audit usa esclusivamente queste fonti attive del profilo. Per sostituirle carica i file in Impostazioni e salva o rigenera il profilo; modificare una copia con un percorso diverso non aggiorna l’audit.</p>
           <div className="listone-summary-grid">
             {Object.entries(FORMATION_AUDIT_LABELS).map(([key, label]) => (
               <div key={key}><strong>{auditSummary[key] || 0}</strong><span>{label}</span></div>

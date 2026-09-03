@@ -460,6 +460,8 @@ class LocalApiServerTests(unittest.TestCase):
         self.assertEqual(response.status, 200)
         self.assertEqual(initial["state"], "baseline_missing")
         self.assertEqual(initial["audit"]["summary"]["issue_count"], 0)
+        self.assertEqual(initial["audit"]["sources"]["starters"]["path"], str(starters_path.resolve()))
+        self.assertEqual(len(initial["audit"]["sources"]["player_list"]["sha256"]), 64)
         self.assertTrue(initial["bundle_available"])
 
         stale = json.dumps({

@@ -284,6 +284,14 @@ def _clean_cell(value: object) -> str:
     return "" if pd.isna(value) else str(value).strip()
 
 
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _load_audit_sources(starters_path: Path, player_list_path: Path) -> tuple[pd.DataFrame, pd.DataFrame, list[dict[str, object]], list[dict[str, object]]]:
     try:
         starters = pd.read_csv(starters_path, dtype=str, keep_default_na=False)
@@ -435,6 +443,10 @@ def audit_starters(snapshot: dict[str, object], starters_path: Path, player_list
     return {
         "audit_hash": audit_hash,
         "summary": {"candidates": len(article_rows), "corroborated": corroborated, **counts, "issue_count": len(findings)},
+        "sources": {
+            "starters": {"path": str(starters_path.resolve()), "sha256": _file_sha256(starters_path)},
+            "player_list": {"path": str(player_list_path.resolve()), "sha256": _file_sha256(player_list_path)},
+        },
         "findings": findings,
         "resolved_identities": resolved,
         "current_rows": canonical_starters,
@@ -453,6 +465,7 @@ def _response(season: str, accepted: dict[str, object] | None, latest: dict[str,
         "audit": {
             "audit_hash": audit["audit_hash"],
             "summary": audit["summary"],
+            "sources": audit["sources"],
             "findings": audit["findings"],
         },
         "audit_hash": audit["audit_hash"], "bundle_available": bundle_available,

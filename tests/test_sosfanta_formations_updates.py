@@ -132,6 +132,8 @@ class SosFantaFormationsUpdatesTests(unittest.TestCase):
             self.assertEqual(audit["summary"]["status_mismatch"], 1)
             self.assertEqual(audit["summary"]["invalid_status"], 1)
             self.assertTrue(audit["audit_hash"])
+            self.assertEqual(audit["sources"]["starters"]["path"], str(starters.resolve()))
+            self.assertEqual(len(audit["sources"]["player_list"]["sha256"]), 64)
             self.assertIn("formation_text", audit["findings"][0])
 
             rows = pd.read_csv(starters, dtype=str)
