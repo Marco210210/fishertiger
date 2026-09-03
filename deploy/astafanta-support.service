@@ -1,0 +1,24 @@
+[Unit]
+Description=AstaFanta Support
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/progetti/astafanta-support
+EnvironmentFile=/etc/astafanta-support.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/ubuntu/progetti/astafanta-support/.venv/bin/python -m advisor.server --host 127.0.0.1 --port 8092 --static-dir web/dist --profiles-dir /var/lib/astafanta-support/profiles --datasets-dir /var/lib/astafanta-support/processed --uploads-dir /var/lib/astafanta-support/uploads --updates-dir /var/lib/astafanta-support/updates
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/var/lib/astafanta-support
+
+[Install]
+WantedBy=multi-user.target

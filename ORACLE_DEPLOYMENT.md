@@ -1,5 +1,32 @@
 # Oracle Cloud deployment
 
+## Server currently deployed
+
+The live installation on the existing Oracle VM uses the host Caddy and a
+systemd service, so it does not conflict with the other applications already
+running on ports 80 and 443:
+
+- public URL: `https://astafanta.130.110.16.97.sslip.io`;
+- checkout: `/home/ubuntu/progetti/astafanta-support`;
+- persistent data: `/var/lib/astafanta-support`;
+- internal listener: `127.0.0.1:8092`;
+- service: `astafanta-support.service`.
+
+After changes have been merged and pushed to the fork, update this installation
+with:
+
+```bash
+cd /home/ubuntu/progetti/astafanta-support
+bash deploy/update-oracle-systemd.sh
+```
+
+The script performs a fast-forward pull, updates dependencies only when needed,
+builds the web application, restarts the service and checks the protected local
+endpoint. Profile and auction data are not inside the Git checkout and are not
+overwritten.
+
+## Standalone Docker alternative
+
 The production stack runs AstaFanta Support behind Caddy and keeps profiles,
 generated datasets and auction-support caches in `./runtime`. It works on an
 Always Free Ampere (ARM64) VM because every image used here is multi-platform.
