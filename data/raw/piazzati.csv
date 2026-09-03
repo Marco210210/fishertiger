@@ -11,26 +11,35 @@ Bologna,Orsolini,PUNIZIONI,1
 Bologna,Bernardeschi,PUNIZIONI,2
 Bologna,Orsolini,CORNER,1
 Bologna,Bernardeschi,CORNER,2
-Cagliari,Fazzini,RIGORI,1
-Cagliari,Mina,RIGORI,2
+Cagliari,Nzola,RIGORI,1
+Cagliari,Fazzini,RIGORI,2
+Cagliari,Deiola,RIGORI,3
 Cagliari,Maldini,PUNIZIONI,1
 Cagliari,Fazzini,PUNIZIONI,2
 Cagliari,Fazzini,CORNER,1
 Cagliari,Obert,CORNER,2
 Como,Da Cunha,RIGORI,1
-Como,Nico Paz,RIGORI,2
+Como,Kean,RIGORI,2
+Como,Nico Paz,RIGORI,3
+Como,Douvikas,RIGORI,4
+Como,Baturina,RIGORI,5
 Como,Nico Paz,PUNIZIONI,1
 Como,Milla,PUNIZIONI,2
 Como,Milla,CORNER,1
 Como,Baturina,CORNER,2
-Fiorentina,Kean,RIGORI,1
-Fiorentina,Gudmundsson,RIGORI,2
-Fiorentina,Gudmundsson,PUNIZIONI,1
-Fiorentina,Mastantuono,PUNIZIONI,2
-Fiorentina,Gudmundsson,CORNER,1
-Fiorentina,Mastantuono,CORNER,2
+Fiorentina,Mastantuono,RIGORI,1
+Fiorentina,Pellegrino M.,RIGORI,2
+Fiorentina,Beto,RIGORI,3
+Fiorentina,Mastantuono,PUNIZIONI,1
+Fiorentina,Fagioli,PUNIZIONI,2
+Fiorentina,Goncalves,PUNIZIONI,3
+Fiorentina,Mastantuono,CORNER,1
+Fiorentina,Fagioli,CORNER,2
+Fiorentina,Goncalves,CORNER,3
+Fiorentina,Jimenez,CORNER,4
 Frosinone,Schmid,RIGORI,1
 Frosinone,Calò,RIGORI,2
+Frosinone,Bobcek,RIGORI,3
 Frosinone,Calò,PUNIZIONI,1
 Frosinone,Ghedjemis,PUNIZIONI,2
 Frosinone,Calò,CORNER,1
@@ -49,27 +58,35 @@ Inter,Calhanoglu,CORNER,1
 Inter,Dimarco,CORNER,2
 Juventus,Kolo Muani,RIGORI,1
 Juventus,Locatelli,RIGORI,2
-Juventus,Yildiz,RIGORI,3
+Juventus,Woltemade,RIGORI,3
+Juventus,Yildiz,RIGORI,4
 Juventus,Yildiz,PUNIZIONI,1
 Juventus,Cambiaso,PUNIZIONI,2
 Juventus,Yildiz,CORNER,1
 Juventus,Cambiaso,CORNER,2
+Juventus,Locatelli,CORNER,3
+Juventus,Koopmeiners,CORNER,4
 Lazio,Zaccagni,RIGORI,1
 Lazio,Kenneth Taylor,RIGORI,2
 Lazio,Pinamonti,RIGORI,3
 Lazio,Zaccagni,PUNIZIONI,1
-Lazio,Cataldi,PUNIZIONI,2
+Lazio,Gudmundsson,PUNIZIONI,2
+Lazio,Cataldi,PUNIZIONI,3
+Lazio,Taylor,PUNIZIONI,4
+Lazio,Rovella,PUNIZIONI,5
 Lazio,Zaccagni,CORNER,1
 Lazio,Taylor,CORNER,2
 Lecce,Geubbels,RIGORI,1
 Lecce,Stulic,RIGORI,2
-Lecce,Gallo,PUNIZIONI,1
-Lecce,Pierotti,PUNIZIONI,2
-Lecce,Gallo,CORNER,1
-Lecce,Pierotti,CORNER,2
+Lecce,Gallo,PUNIZIONI,2
+Lecce,Berisha,PUNIZIONI,3
+Lecce,Pierotti,PUNIZIONI,4
+Lecce,Gallo,CORNER,2
+Lecce,Berisha,CORNER,3
+Lecce,Pierotti,CORNER,4
 Milan,Gonçalo Ramos,RIGORI,1
 Milan,Pulisic,RIGORI,2
-Milan,Leao,RIGORI,3
+Milan,Modric,RIGORI,3
 Milan,Modric,PUNIZIONI,1
 Milan,Pulisic,PUNIZIONI,2
 Milan,Modric,CORNER,1
@@ -99,17 +116,27 @@ Roma,Soulé,PUNIZIONI,2
 Roma,Dybala,CORNER,1
 Roma,Soulé,CORNER,2
 Sassuolo,Berardi,RIGORI,1
-Sassuolo,Laurienté,RIGORI,2
+Sassuolo,Sebastiano Esposito,RIGORI,2
+Sassuolo,Laurienté,RIGORI,3
+Sassuolo,Bowie,RIGORI,4
 Sassuolo,Berardi,PUNIZIONI,1
 Sassuolo,Laurienté,PUNIZIONI,2
+Sassuolo,Sebastiano Esposito,PUNIZIONI,3
+Sassuolo,Volpato,PUNIZIONI,4
 Sassuolo,Berardi,CORNER,1
 Sassuolo,Laurienté,CORNER,2
+Sassuolo,Volpato,CORNER,3
 Torino,Vlasic,RIGORI,1
 Torino,Kulenovic,RIGORI,2
+Torino,Zapata D.,RIGORI,3
+Torino,Ricardo Rodriguez,RIGORI,4
 Torino,Vlasic,PUNIZIONI,1
-Torino,Fitz-Jim,PUNIZIONI,2
+Torino,Mandragora,PUNIZIONI,2
+Torino,Fitz-Jim,PUNIZIONI,3
+Torino,Coco,PUNIZIONI,4
 Torino,Vlasic,CORNER,1
 Torino,Fitz-Jim,CORNER,2
+Torino,Mandragora,CORNER,3
 Udinese,Davis,RIGORI,1
 Udinese,Solet,RIGORI,2
 Udinese,Zaniolo,PUNIZIONI,1
