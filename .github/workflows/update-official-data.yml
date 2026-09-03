@@ -17,16 +17,18 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install beautifulsoup4 pandas
+      - run: pip install -r requirements.txt
       - run: python -m scripts.update_official_data
+      - run: python -m advisor.pipeline --profile config/default_profile.json --raw-dir data/raw --output-dir data/processed
+      - run: python -m scripts.update_scout_ai --official-only
       - name: Commit changed public data
         run: |
-          if git diff --quiet -- data/raw/fantacalcio_2026_27.json; then
+          if git diff --quiet -- data/raw/fantacalcio_2026_27.json data/raw/scout_ai_2026_27.json; then
             echo "Official data are already current."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/raw/fantacalcio_2026_27.json
-          git commit -m "Update official Fantacalcio data"
+          git add data/raw/fantacalcio_2026_27.json data/raw/scout_ai_2026_27.json
+          git commit -m "Update official Fantacalcio and injury data"
           git push

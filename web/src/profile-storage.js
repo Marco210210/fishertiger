@@ -2,6 +2,7 @@ import { clearAuctionData } from "./auction-store.js";
 import { playerNotesStorageKey } from "./player-notes.js";
 import { playerFiltersStorageKey } from "./player-filters.js";
 import { playerInjuriesStorageKey } from "./player-injuries.js";
+import { fantalabConnectionKey } from "./fantalab-live.js";
 
 
 export const clearProfileBrowserData = (profileId) => {
@@ -12,6 +13,7 @@ export const clearProfileBrowserData = (profileId) => {
     playerNotesStorageKey(id),
     playerFiltersStorageKey(id),
     playerInjuriesStorageKey(id),
+    fantalabConnectionKey(id),
   ]) {
     try {
       localStorage.removeItem(key);

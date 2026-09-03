@@ -13,6 +13,7 @@ data/uploads/
 data/updates/
 config/profiles/
 data/backups/
+runtime/
 
 .idea/
 *.iml

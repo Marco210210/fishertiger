@@ -16,7 +16,8 @@ const percentile = (sorted, value) =>
     : 0;
 
 export const sourceFvm = (player) =>
-  finite(player?.fvm_original, finite(player?.fvm_scaled) / 0.75);
+  finite(player?.fvm_original, finite(player?.fvm_scaled) / 0.75) *
+  Math.max(0.6, Math.min(1.12, finite(player?.scout_multiplier, 1)));
 
 export const projectedContribution = (player, matchdayIndices = null) => {
   const chances = Array.isArray(player?.p_gioca_per_giornata)

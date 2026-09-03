@@ -255,6 +255,73 @@ export const assignPlayer = (profileId, players, rules, request) => {
   );
 };
 
+/** Merge the authoritative FantaLab purchase ledger into the local auction.
+ * Existing assignments are never overwritten: a disagreement is reported and
+ * left for the operator to resolve instead of silently corrupting a roster. */
+export const syncLiveAssignments = (
+  profileId,
+  players,
+  rules,
+  purchases,
+  teamMap,
+) => {
+  let state = mutationState(profileId, players, rules);
+  if (!state) return { ...readFailure(), synced: 0, pending: 0, conflicts: 0 };
+  let history = state.history.slice();
+  let synced = 0;
+  let pending = 0;
+  let conflicts = 0;
+
+  for (const purchase of purchases || []) {
+    if (purchase?.unsold || Number(purchase?.price) < rules.auction.minPrice)
+      continue;
+    const player = playerFrom(players, purchase?.player_id);
+    const owner = Number(teamMap?.[purchase?.buyer_team_id]);
+    if (!player || !Number.isInteger(owner) || !state.teams[owner]) {
+      pending += 1;
+      continue;
+    }
+    const existing = state.assigned[playerIdKey(player.id)];
+    if (existing) {
+      if (existing.owner !== owner || existing.price !== Number(purchase.price))
+        conflicts += 1;
+      continue;
+    }
+    const candidate = payloadFrom(state, {
+      history: [...history, { playerId: player.id, owner, price: Number(purchase.price) }],
+      undone: [],
+    });
+    const next = rehydrateAuction(candidate, players, rules);
+    if (!next) {
+      conflicts += 1;
+      continue;
+    }
+    history = next.history;
+    state = next;
+    synced += 1;
+  }
+
+  if (!synced)
+    return {
+      ok: conflicts === 0,
+      message: conflicts
+        ? `${conflicts} acquisti FantaLab non coincidono con l'asta locale.`
+        : "",
+      synced,
+      pending,
+      conflicts,
+    };
+
+  const result = persist(
+    profileId,
+    payloadFrom(state, { history, undone: [] }),
+    players,
+    rules,
+    `${synced} ${synced === 1 ? "acquisto importato" : "acquisti importati"} da FantaLab.`,
+  );
+  return { ...result, synced, pending, conflicts };
+};
+
 export const releasePlayer = (profileId, players, rules, playerId) => {
   const state = mutationState(profileId, players, rules);
   if (!state) return readFailure();

@@ -4,6 +4,18 @@ Local-first advisor for a Classic Fantacalcio Serie A auction. It builds player
 projections, supports a live auction, replays randomized auctions, and runs a
 season-level Monte Carlo simulation using the configured league rules.
 
+The **FantaLab live** screen can read the current lot, price, leader and
+authoritative purchase ledger directly from a FantaLab room. Purchases are
+merged into the local league board, so opponent credits, roster needs,
+scarcity, observed inflation and the recommended walk-away price update while
+the auction is running. The connector is read-only and a complete manual mode
+always remains available.
+
+**Scout AI** stores source-linked, dated news outside the live path and applies
+a deliberately bounded adjustment to player value. Claude Code is supported
+for a pre-auction refresh; if it is unavailable, the updater falls back to the
+official Fantacalcio.it injury list. No AI failure can stop an auction.
+
 ## License
 
 - Software: [MIT](LICENSE)
@@ -64,7 +76,15 @@ public pages with:
 ```
 
 On GitHub the **Update official Fantacalcio data** workflow performs the same
-check every day and commits only when the public data actually changed.
+check every day, refreshes the official injury snapshot, and commits only when
+the public data actually changed.
+
+Run a manual Scout AI refresh with a Claude subscription authenticated in
+Claude Code:
+
+```bash
+.venv/bin/python -m scripts.update_scout_ai
+```
 
 The Serie A input is always a 20-team, 38-matchday, 380-match calendar. The
 fantasy league can use a shorter configured interval through
@@ -108,3 +128,9 @@ git fetch upstream
 git merge upstream/main
 git push origin main
 ```
+
+For the persistent, free Oracle Cloud deployment use
+[`compose.oracle.yaml`](compose.oracle.yaml) and follow
+[`ORACLE_DEPLOYMENT.md`](ORACLE_DEPLOYMENT.md). Third-party attribution for the
+Fantabot-derived integration is recorded in
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ImageIcon, Radio, Star, StickyNote } from "lucide-react";
+import { scoutStatusLabel, scoutTone } from "../scout-ai.js";
 import { createRoleValuation, sourceFvm } from "../player-valuation.js";
 import { normalizeRules } from "../league-rules.js";
 import {
@@ -565,6 +566,24 @@ export function PlayerDetail({
 
       {auction ? <LiveAuctionPanel player={player} {...auction} /> : null}
 
+      {player.scout_ai ? (
+        <div className={`notice notice--${scoutTone(player.scout_ai.status)} scout-card`}>
+          <div className="scout-card__head">
+            <b>Scout AI · {scoutStatusLabel(player.scout_ai.status)}</b>
+            <span>{player.scout_ai.impact_percent > 0 ? "+" : ""}{player.scout_ai.impact_percent}% sul valore</span>
+          </div>
+          <strong>{player.scout_ai.headline}</strong>
+          <p>{player.scout_ai.summary}</p>
+          {player.scout_ai.sources?.length ? (
+            <span className="scout-card__sources">
+              {player.scout_ai.sources.map((source, index) => (
+                <a href={source} target="_blank" rel="noreferrer" key={source}>Fonte {index + 1}</a>
+              ))}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
       <label className="field" htmlFor="player-note">
         <span className="field-label">Le mie note</span>
         <textarea
@@ -583,7 +602,9 @@ export function PlayerDetail({
 
       <div className="detail-figures">
         <div className="stat">
-          <span className="stat-label">FVM fonte</span>
+          <span className="stat-label">
+            {player.scout_ai ? "FVM corretto Scout" : "FVM fonte"}
+          </span>
           <span className="stat-value">{sourceFvm(player).toFixed(2)}</span>
         </div>
         <div className="stat">

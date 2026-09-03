@@ -1,0 +1,79 @@
+.live-connect {
+  display: grid;
+  gap: var(--s-4);
+}
+
+.live-connect__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-4);
+}
+
+.live-connect__head h1 { margin: var(--s-1) 0; }
+
+.live-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  white-space: nowrap;
+  color: var(--color-fanta-muted);
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.live-state i {
+  width: .65rem;
+  height: .65rem;
+  border-radius: 999px;
+  background: var(--color-fanta-stop);
+}
+
+.live-state.is-online i {
+  background: var(--color-fanta-go);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--color-fanta-go) 16%, transparent);
+}
+
+.live-connect__form {
+  display: grid;
+  gap: var(--s-3);
+  align-items: end;
+}
+
+.live-lot {
+  display: grid;
+  gap: var(--s-4);
+  padding: clamp(1rem, 4vw, 1.75rem);
+  border: 1px solid color-mix(in srgb, var(--color-fanta-brand) 50%, var(--color-fanta-border));
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-fanta-brand) 18%, var(--color-fanta-surface)), var(--color-fanta-surface));
+}
+
+.live-lot > div:first-child { display: grid; gap: var(--s-1); }
+.live-lot > div:first-child strong { font-size: clamp(1.4rem, 7vw, 2.35rem); line-height: 1; }
+.live-lot.is-closed { opacity: .72; }
+
+.live-lot__numbers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-2);
+}
+
+.live-lot__numbers span {
+  display: grid;
+  gap: 2px;
+  padding: var(--s-3);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-fanta-bg) 60%, transparent);
+}
+
+.live-lot__numbers small { color: var(--color-fanta-muted); }
+.live-lot__numbers b { overflow: hidden; text-overflow: ellipsis; font-size: 1.1rem; }
+.live-team-map { display: grid; gap: var(--s-3); }
+
+@media (min-width: 720px) {
+  .live-connect__form { grid-template-columns: minmax(0, 1fr) 9rem auto; }
+  .live-team-map { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .live-lot { grid-template-columns: minmax(0, 1fr) minmax(22rem, .8fr); align-items: center; }
+}

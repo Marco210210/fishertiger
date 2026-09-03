@@ -132,6 +132,36 @@ class LocalApiServerTests(unittest.TestCase):
         self.assertEqual(asset.status, 200)
         self.assertEqual(asset_payload, "console.log('ready')")
 
+    def test_fantalab_status_never_exposes_a_token(self):
+        response, payload = self.request("GET", "/api/fantalab/status")
+
+        self.assertEqual(response.status, 200)
+        self.assertTrue(payload["available"])
+        self.assertTrue(payload["read_only"])
+        self.assertIn("token_configured", payload)
+        self.assertNotIn("token", payload)
+
+    def test_fantalab_snapshot_uses_the_injected_reader(self):
+        self.server.fantalab_reader = lambda request: {
+            "room_id": request["room_id"],
+            "db": 4,
+            "read_only": True,
+            "lot": None,
+            "purchases": [],
+        }
+        body = json.dumps({"room_id": "room", "db": 4}).encode("utf-8")
+
+        response, payload = self.request(
+            "POST",
+            "/api/fantalab/snapshot",
+            body=body,
+            headers={"Content-Type": "application/json"},
+        )
+
+        self.assertEqual(response.status, 200)
+        self.assertEqual(payload["room_id"], "room")
+        self.assertTrue(payload["read_only"])
+
     def set_piece_article(self, first="Alpha, Beta"):
         teams = [
             "ATALANTA", "BOLOGNA", "CAGLIARI", "COMO", "FIORENTINA", "FROSINONE", "GENOA",

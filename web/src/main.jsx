@@ -1,4 +1,4 @@
-import { Component, StrictMode, useEffect, useRef, useState } from "react";
+import { Component, StrictMode, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Download, Trash2, Upload } from "lucide-react";
 import "./index.css";
@@ -11,6 +11,7 @@ import { Updates } from "./updates.jsx";
 import { clearProfileBrowserData } from "./profile-storage.js";
 import { useAuctionBoard } from "./use-auction-store.js";
 import { auctionSimulationInput } from "./auction-simulation.js";
+import { enrichPlayersWithScout, loadScoutAi } from "./scout-ai.js";
 import {
   apiUrl,
   auctionDatasetPath,
@@ -30,6 +31,8 @@ import PlayersView from "./views/players.jsx";
 import TeamsView, { SetPiecesView } from "./views/teams.jsx";
 import SimulationView from "./views/simulation.jsx";
 import AuctionView from "./views/auction.jsx";
+import LiveAuctionView from "./views/live-auction.jsx";
+import ScoutAiView from "./views/scout-ai.jsx";
 
 const TABS = [
   {
@@ -49,7 +52,10 @@ const TABS = [
     label: "Asta",
     icon: "gavel",
     hero: true,
-    views: [["auction", "Asta"]],
+    views: [
+      ["live", "FantaLab live"],
+      ["auction", "Manuale"],
+    ],
   },
   {
     id: "squadre",
@@ -66,6 +72,7 @@ const TABS = [
     icon: "chart",
     views: [["simulation", "Simulazione"]],
   },
+  { id: "scout", label: "Scout AI", icon: "search", views: [["scout", "Scout AI"]] },
   { id: "updates", label: "Aggiornamenti", icon: "refresh", views: [["updates", "Aggiornamenti"]] },
   { id: "settings", label: "Impostazioni", icon: "sliders", views: [["settings", "Impostazioni"]] },
 ];
@@ -117,6 +124,7 @@ function App() {
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationStatus, setSimulationStatus] = useState("");
   const [currentSourceFingerprints, setCurrentSourceFingerprints] = useState(null);
+  const [scout, setScout] = useState(null);
   const [view, setView] = useState("overview");
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [selectedTeam, setSelectedTeam] = useState(null);
@@ -290,6 +298,15 @@ function App() {
     };
   }, [apiBase, profile, statusOpen]);
 
+  useEffect(() => {
+    let active = true;
+    setScout(null);
+    loadScoutAi(profile, { apiBase })
+      .then((value) => active && setScout(value))
+      .catch(() => active && setScout(null));
+    return () => { active = false; };
+  }, [apiBase, profile?.season?.season]);
+
   const applyRoute = (route) => {
     setView(route.view);
     setSelectedPlayer(route.player);
@@ -338,7 +355,13 @@ function App() {
     setListRole(role);
     navigate("players", { player: null });
   };
-  const data = dataset?.data || null;
+  const baseData = dataset?.data || null;
+  const data = useMemo(
+    () => baseData
+      ? { ...baseData, players: enrichPlayersWithScout(baseData.players, scout) }
+      : null,
+    [baseData, scout],
+  );
   const activeProfileId = dataset?.profileId || "default";
   const activeRules = rulesFor(dataset?.profile ?? profile, data || {});
   const auctionBoard = useAuctionBoard(activeProfileId, data?.players || [], activeRules, Boolean(data));
@@ -816,6 +839,20 @@ function App() {
               profileId={activeProfileId}
               draft={auctionDraft}
               setDraft={setAuctionDraft}
+            />
+          ) : null}
+          {view === "scout" ? (
+            <ScoutAiView data={data} snapshot={scout} openPlayer={openPlayer} />
+          ) : null}
+          {view === "live" ? (
+            <LiveAuctionView
+              data={data}
+              openPlayer={openPlayer}
+              rules={activeRules}
+              profileId={activeProfileId}
+              draft={auctionDraft}
+              setDraft={setAuctionDraft}
+              apiBase={apiBase}
             />
           ) : null}
           {view === "updates" ? (

@@ -1,0 +1,36 @@
+.scout-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-3);
+}
+
+.scout-summary div { display: grid; gap: 3px; }
+.scout-summary small { color: var(--color-fanta-muted); }
+.scout-summary b { overflow: hidden; text-overflow: ellipsis; }
+.scout-filter { overflow-x: auto; }
+.scout-rows { gap: var(--s-3); }
+
+.scout-row {
+  display: grid;
+  gap: var(--s-2);
+  width: 100%;
+  padding: var(--s-3);
+  border: 1px solid var(--color-fanta-border);
+  border-radius: var(--radius-md);
+  background: var(--color-fanta-surface);
+  color: inherit;
+  text-align: left;
+}
+
+.scout-row .player-row { pointer-events: none; padding: 0; border: 0; }
+.scout-row .pill { justify-self: start; }
+.scout-row__copy { display: grid; gap: 3px; color: var(--color-fanta-muted); font-size: .9rem; }
+.scout-row__copy b { color: var(--color-fanta-text); }
+
+.scout-card { display: grid; gap: var(--s-2); }
+.scout-card__head { display: flex; justify-content: space-between; gap: var(--s-3); align-items: center; }
+.scout-card__sources { display: flex; flex-wrap: wrap; gap: var(--s-2); font-size: .8rem; }
+
+@media (max-width: 520px) {
+  .scout-summary { grid-template-columns: 1fr; }
+}

@@ -32,6 +32,8 @@ from .generate import (
     resolve_profile,
 )
 from .freshness import dataset_configuration_hash, simulation_configuration_hash, source_fingerprints
+from .fantalab_live import FantaLabError, live_snapshot
+from .scout import load_scout_snapshot
 from .league_calendar import build_legacy_calendar_template, preprocess_legacy_calendar
 from .simulation import RosterValidationError
 from .player_list_updates import (
@@ -111,6 +113,7 @@ FIXED_SOURCE_SUFFIXES = {
 VITE_ORIGIN = re.compile(r"https?://(?:localhost|127\.0\.0\.1)(?::\d+)?\Z")
 ProfileLoader = Callable[[dict[str, Any]], Any]
 SimulationRunner = Callable[[Any, Path, int, int, dict[str, list[int]] | None], dict[str, Any]]
+FantaLabReader = Callable[[dict[str, Any]], dict[str, Any]]
 
 
 class LocalApiServer(ThreadingHTTPServer):
@@ -125,6 +128,7 @@ class LocalApiServer(ThreadingHTTPServer):
         uploads_dir: Path | str = Path("data/uploads"),
         updates_dir: Path | str = Path("data/updates"),
         default_profile_path: Path | str = Path("config/default_profile.json"),
+        raw_dir: Path | str = Path("data/raw"),
         static_dir: Path | str | None = None,
         auth_username: str | None = None,
         auth_password: str | None = None,
@@ -136,12 +140,14 @@ class LocalApiServer(ThreadingHTTPServer):
         set_piece_fetcher: FetchPage = fetch_page,
         goalkeeper_fetcher: FetchPage = fetch_page,
         player_list_fetcher: PlayerListFetchPage = fetch_public_page,
+        fantalab_reader: FantaLabReader | None = None,
     ) -> None:
         self.profiles_dir = Path(profiles_dir)
         self.datasets_dir = Path(datasets_dir)
         self.uploads_dir = Path(uploads_dir)
         self.updates_dir = Path(updates_dir)
         self.default_profile_path = Path(default_profile_path)
+        self.raw_dir = Path(raw_dir)
         self.static_dir = Path(static_dir).resolve() if static_dir is not None else None
         if bool(auth_username) != bool(auth_password):
             raise ValueError("auth_username and auth_password must be configured together")
@@ -155,6 +161,7 @@ class LocalApiServer(ThreadingHTTPServer):
         self.set_piece_fetcher = set_piece_fetcher
         self.goalkeeper_fetcher = goalkeeper_fetcher
         self.player_list_fetcher = player_list_fetcher
+        self.fantalab_reader = fantalab_reader
         super().__init__(address, LocalApiHandler)
 
     def handle_error(self, request: Any, client_address: Any) -> None:
@@ -180,6 +187,10 @@ class LocalApiHandler(BaseHTTPRequestHandler):
             self._profile_index()
         elif path == "/api/default-profile":
             self._default_profile()
+        elif path == "/api/fantalab/status":
+            self._fantalab_status()
+        elif path.startswith("/api/scout/"):
+            self._scout_snapshot(path.removeprefix("/api/scout/"))
         elif path.startswith("/api/profiles/"):
             self._get_profile(path.removeprefix("/api/profiles/"))
         elif path == "/api/datasets/manifest":
@@ -278,6 +289,9 @@ class LocalApiHandler(BaseHTTPRequestHandler):
         if self._path() == "/api/sources/status":
             self._source_status()
             return
+        if self._path() == "/api/fantalab/snapshot":
+            self._fantalab_snapshot()
+            return
         if self._path() == "/api/simulate":
             self._simulate()
             return
@@ -355,6 +369,55 @@ class LocalApiHandler(BaseHTTPRequestHandler):
         except Exception:
             traceback.print_exc(file=sys.stderr)
             self._error(HTTPStatus.INTERNAL_SERVER_ERROR, "simulation_failed", "Simulation failed.")
+            return
+        self._send_json(HTTPStatus.OK, result)
+
+    def _fantalab_status(self) -> None:
+        """Report capabilities without ever returning the configured credential."""
+        self._send_json(
+            HTTPStatus.OK,
+            {
+                "available": True,
+                "read_only": True,
+                "token_configured": bool(os.environ.get("FISHERTIGER_FANTALAB_TOKEN")),
+            },
+        )
+
+    def _scout_snapshot(self, season_slug: str) -> None:
+        try:
+            value = load_scout_snapshot(
+                season_slug,
+                raw_dir=self.server.raw_dir,
+                updates_dir=self.server.updates_dir,
+            )
+        except ValueError:
+            self._error(HTTPStatus.BAD_REQUEST, "invalid_season", "La stagione richiesta non è valida.")
+            return
+        self._send_json(HTTPStatus.OK, value)
+
+    def _fantalab_snapshot(self) -> None:
+        request = self._read_json_object()
+        if request is None:
+            return
+        try:
+            if self.server.fantalab_reader is not None:
+                result = self.server.fantalab_reader(request)
+            else:
+                result = live_snapshot(
+                    request,
+                    cache_path=self.server.updates_dir / "fantalab" / "listone.json",
+                    token=os.environ.get("FISHERTIGER_FANTALAB_TOKEN"),
+                )
+        except FantaLabError as error:
+            self._error(HTTPStatus.BAD_GATEWAY, "fantalab_unavailable", str(error))
+            return
+        except Exception:
+            traceback.print_exc(file=sys.stderr)
+            self._error(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                "fantalab_failed",
+                "La sincronizzazione con FantaLab non è riuscita.",
+            )
             return
         self._send_json(HTTPStatus.OK, result)
 
@@ -1125,6 +1188,7 @@ def create_server(
     uploads_dir: Path | str = Path("data/uploads"),
     updates_dir: Path | str = Path("data/updates"),
     default_profile_path: Path | str = Path("config/default_profile.json"),
+    raw_dir: Path | str = Path("data/raw"),
     static_dir: Path | str | None = None,
     auth_username: str | None = None,
     auth_password: str | None = None,
@@ -1136,9 +1200,10 @@ def create_server(
     set_piece_fetcher: FetchPage = fetch_page,
     goalkeeper_fetcher: FetchPage = fetch_page,
     player_list_fetcher: PlayerListFetchPage = fetch_public_page,
+    fantalab_reader: FantaLabReader | None = None,
 ) -> LocalApiServer:
     """Create a local API server; inject a pipeline generator for tests or embedding."""
-    return LocalApiServer(address, profiles_dir=profiles_dir, datasets_dir=datasets_dir, uploads_dir=uploads_dir, updates_dir=updates_dir, default_profile_path=default_profile_path, static_dir=static_dir, auth_username=auth_username, auth_password=auth_password, generator=generator, simulator=simulator, profile_loader=profile_loader, update_fetcher=update_fetcher, formations_fetcher=formations_fetcher, set_piece_fetcher=set_piece_fetcher, goalkeeper_fetcher=goalkeeper_fetcher, player_list_fetcher=player_list_fetcher)
+    return LocalApiServer(address, profiles_dir=profiles_dir, datasets_dir=datasets_dir, uploads_dir=uploads_dir, updates_dir=updates_dir, default_profile_path=default_profile_path, raw_dir=raw_dir, static_dir=static_dir, auth_username=auth_username, auth_password=auth_password, generator=generator, simulator=simulator, profile_loader=profile_loader, update_fetcher=update_fetcher, formations_fetcher=formations_fetcher, set_piece_fetcher=set_piece_fetcher, goalkeeper_fetcher=goalkeeper_fetcher, player_list_fetcher=player_list_fetcher, fantalab_reader=fantalab_reader)
 
 
 def _simulate_current_dataset(profile: Any, output_dir: Path, iterations: int, seed: int, rosters: dict[str, list[int]] | None = None) -> dict[str, Any]:

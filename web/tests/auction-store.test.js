@@ -44,6 +44,7 @@ const {
   resetAuction,
   setStartingCredits,
   subscribeAuctionChanges,
+  syncLiveAssignments,
   undoAssignment,
   userTeamStorageKey,
   writeUserTeamIndex,
@@ -562,4 +563,31 @@ test("clearing a profile removes its auction and its chosen team", () => {
   clearAuctionData(PROFILE);
   assert.equal(store.has(auctionStorageKey(PROFILE)), false);
   assert.equal(store.has(userTeamStorageKey(PROFILE)), false);
+});
+
+test("FantaLab ledger imports are idempotent and never overwrite a conflict", () => {
+  resetStore();
+  const purchases = [
+    { purchase_id: "one", player_id: 1, buyer_team_id: "ext-a", price: 4 },
+    { purchase_id: "two", player_id: 2, buyer_team_id: "unknown", price: 3 },
+    { purchase_id: "skip", player_id: 2, buyer_team_id: null, price: 0, unsold: true },
+  ];
+
+  const first = syncLiveAssignments(PROFILE, livePlayers, liveRules, purchases, { "ext-a": 0 });
+  const second = syncLiveAssignments(PROFILE, livePlayers, liveRules, purchases, { "ext-a": 0 });
+
+  assert.equal(first.synced, 1);
+  assert.equal(first.pending, 1);
+  assert.equal(second.synced, 0);
+  assert.equal(readAuctionBoard(PROFILE, livePlayers, liveRules).taken, 1);
+
+  const conflict = syncLiveAssignments(
+    PROFILE,
+    livePlayers,
+    liveRules,
+    [{ player_id: 1, buyer_team_id: "ext-b", price: 9 }],
+    { "ext-b": 1 },
+  );
+  assert.equal(conflict.conflicts, 1);
+  assert.equal(readAuctionBoard(PROFILE, livePlayers, liveRules).assigned["1"].owner, 0);
 });
