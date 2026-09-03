@@ -1,3 +1,5 @@
+import { sameAuctionRosters } from "./auction-simulation.js";
+
 const list = (value) => (Array.isArray(value) ? value : []);
 
 const missesRequiredSource = (profile, fingerprints) => {
@@ -33,12 +35,15 @@ export const datasetFreshness = (profile, data, currentSources) => {
   return "dataset corrente";
 };
 
-export const simulationFreshness = (profile, data, season) => {
+export const simulationFreshness = (profile, data, season, auction = null) => {
   const datasetHash = data?.meta?.profile?.dataset_input_hash;
-  return datasetHash &&
+  const current = datasetHash &&
     season?.meta?.dataset_input_hash === datasetHash &&
     season?.meta?.simulation_configuration_hash ===
       profile?.simulation_configuration_hash
+  if (!current) return "simulazione da aggiornare";
+  if (season?.meta?.roster_mode !== "auction") return "simulazione corrente";
+  return auction?.complete && sameAuctionRosters(season.rosters, auction.rosters)
     ? "simulazione corrente"
     : "simulazione da aggiornare";
 };

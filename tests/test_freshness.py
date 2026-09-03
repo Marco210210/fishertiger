@@ -4,6 +4,7 @@ from pathlib import Path
 from advisor.freshness import (
     dataset_configuration_hash,
     dataset_input_hash,
+    roster_input_hash,
     simulation_configuration_hash,
 )
 from advisor.league_profile import LeagueProfile
@@ -40,3 +41,12 @@ def test_dataset_input_hash_ignores_mtime_when_content_is_identical():
     second = [{**first[0], "modified_at": "2026-01-02T00:00:00Z"}]
 
     assert dataset_input_hash(profile(), first) == dataset_input_hash(profile(), second)
+
+
+def test_roster_input_hash_ignores_order_but_tracks_ownership():
+    first = {"Alpha": [2, 1], "Beta": [4, 3]}
+    reordered = {"Beta": [3, 4], "Alpha": [1, 2]}
+    moved = {"Alpha": [1, 3], "Beta": [2, 4]}
+
+    assert roster_input_hash(first) == roster_input_hash(reordered)
+    assert roster_input_hash(first) != roster_input_hash(moved)

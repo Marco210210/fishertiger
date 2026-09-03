@@ -31,8 +31,8 @@ class LocalApiServerTests(unittest.TestCase):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text('{"generated":true}', encoding="utf-8")
 
-        def simulator(profile, output_dir, iterations, seed):
-            self.calls.append((profile, output_dir, iterations, seed))
+        def simulator(profile, output_dir, iterations, seed, rosters):
+            self.calls.append((profile, output_dir, iterations, seed, rosters))
             return {"iterations": iterations, "diagnostics": {"seed": seed}, "teams": {}, "scenarios": {}, "rosters": {}}
 
         def update_fetcher(url):
@@ -333,11 +333,32 @@ class LocalApiServerTests(unittest.TestCase):
         self.assertEqual(response.status, 200)
         self.assertEqual(payload["iterations"], 2000)
         self.assertEqual(payload["diagnostics"]["seed"], 42)
-        self.assertEqual(self.calls[-1][2:], (2000, 42))
+        self.assertEqual(self.calls[-1][2:], (2000, 42, None))
 
         response, payload = self.request("POST", "/api/simulate", json.dumps({"profile": self.profile, "iterations": 99}).encode("utf-8"), {"Content-Type": "application/json"})
         self.assertEqual(response.status, 400)
         self.assertEqual(payload["error"]["code"], "invalid_iterations")
+
+    def test_simulation_forwards_real_auction_rosters_and_rejects_malformed_values(self):
+        rosters = {"Alpha": [1, 2], "Beta": [3, 4]}
+        response, payload = self.request(
+            "POST",
+            "/api/simulate",
+            json.dumps({"profile": self.profile, "roster_mode": "auction", "rosters": rosters}).encode("utf-8"),
+            {"Content-Type": "application/json"},
+        )
+
+        self.assertEqual(response.status, 200)
+        self.assertEqual(self.calls[-1][-1], rosters)
+
+        response, payload = self.request(
+            "POST",
+            "/api/simulate",
+            json.dumps({"profile": self.profile, "roster_mode": "auction", "rosters": {"Alpha": [True]}}).encode("utf-8"),
+            {"Content-Type": "application/json"},
+        )
+        self.assertEqual(response.status, 400)
+        self.assertEqual(payload["error"]["code"], "invalid_rosters")
 
     def test_dataset_read_rejects_unsafe_or_missing_paths(self):
         response, payload = self.request("GET", "/api/datasets/%2E%2E/secret.json")
