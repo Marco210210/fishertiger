@@ -17,6 +17,7 @@ export default function SimulationView({
   onRerun,
   isSimulating,
   simulationStatus,
+  auctionInput,
 }) {
   const [mode, setMode] = useState("report");
   return (
@@ -37,6 +38,7 @@ export default function SimulationView({
           onRerun={onRerun}
           isSimulating={isSimulating}
           simulationStatus={simulationStatus}
+          auctionInput={auctionInput}
         />
       )}
     </div>
@@ -70,7 +72,7 @@ function SeasonReport({
   onRerun,
   isSimulating,
   simulationStatus,
-  auctionInput,
+  auctionInput = { complete: false, reason: "Asta non disponibile.", rosters: null, aliases: {} },
 }) {
   const [selected, setSelected] = useState(null);
   const [rosterMode, setRosterMode] = useState("sample");
