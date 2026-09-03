@@ -741,7 +741,7 @@ function App() {
       <header className="topbar">
         <button className="brand" onClick={() => navigate("overview")}>
           <span className="brand-mark" aria-hidden="true">
-            FT
+            AF
           </span>
           <span className="brand-text">
             <strong>AstaFanta Support</strong>
