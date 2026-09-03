@@ -744,7 +744,7 @@ function App() {
             FT
           </span>
           <span className="brand-text">
-            <strong>Fishertiger</strong>
+            <strong>AstaFanta Support</strong>
             <span>{profile?.season?.season || "FANTACALCIO"}</span>
           </span>
         </button>

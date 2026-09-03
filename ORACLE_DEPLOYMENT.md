@@ -1,6 +1,6 @@
 # Oracle Cloud deployment
 
-The production stack runs Fishertiger behind Caddy and keeps profiles,
+The production stack runs AstaFanta Support behind Caddy and keeps profiles,
 generated datasets and auction-support caches in `./runtime`. It works on an
 Always Free Ampere (ARM64) VM because every image used here is multi-platform.
 
@@ -50,7 +50,7 @@ the public realtime namespaces once and then reuse the discovered shard. An
 optional server-side `FISHERTIGER_FANTALAB_TOKEN` makes discovery immediate and
 adds official room/team names. It is never returned to the browser or logged.
 
-The integration is deliberately read-only. Fishertiger cannot bid, assign a
+The integration is deliberately read-only. AstaFanta Support cannot bid, assign a
 lot or change the FantaLab room.
 
 ## Scout AI

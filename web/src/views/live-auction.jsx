@@ -167,7 +167,7 @@ export default function LiveAuctionView({
           <div>
             <span className="kicker">FantaLab · sola lettura</span>
             <h1>Asta sincronizzata</h1>
-            <p className="muted">Incolla il link della stanza. Fishertiger leggerà chiamata, prezzo e acquisti senza fare offerte al posto tuo.</p>
+            <p className="muted">Incolla il link della stanza. AstaFanta Support leggerà chiamata, prezzo e acquisti senza fare offerte al posto tuo.</p>
           </div>
           <span className={`live-state ${active && !error ? "is-online" : ""}`}>
             <i /> {active && !error ? "collegata" : active ? "riconnessione" : "disconnessa"}

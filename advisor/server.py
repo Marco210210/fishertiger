@@ -1120,7 +1120,7 @@ class LocalApiHandler(BaseHTTPRequestHandler):
         if hmac.compare_digest(self.headers.get("Authorization", ""), f"Basic {token}"):
             return True
         self.send_response(HTTPStatus.UNAUTHORIZED)
-        self.send_header("WWW-Authenticate", 'Basic realm="fishertiger", charset="UTF-8"')
+        self.send_header("WWW-Authenticate", 'Basic realm="AstaFanta Support", charset="UTF-8"')
         self.send_header("Content-Length", "0")
         self.end_headers()
         return False
