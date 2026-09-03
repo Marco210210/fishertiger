@@ -73,6 +73,12 @@ class SosFantaSetPieceUpdatesTests(unittest.TestCase):
         with self.assertRaises(SosFantaError):
             extract_set_pieces(article().replace("<p><em>Corner</em>: Corner 19, Wide 19</p>", ""), "2026/27")
 
+    def test_accepts_hyphenated_season_in_live_article_titles(self):
+        pieces = article().replace("Tiratori Serie A 2026/27", "Tiratori in Serie A per il fantacalcio 2026-27")
+        penalties = penalty_article().replace("Tutti i rigoristi 2026/27", "Tutti i rigoristi della Serie A per il fantacalcio 2026-27")
+        self.assertEqual(len(extract_set_pieces(pieces, "2026/27")), 20)
+        self.assertEqual(len(extract_penalties(penalties, "2026/27")), 20)
+
     def test_semantic_diff_is_limited_to_changed_team_text(self):
         old = {"teams": extract_set_pieces(article(), "2026/27")}
         new = {"teams": extract_set_pieces(article(first_free_kicks="Beta, Alpha", first_prose="Beta is first choice."), "2026/27")}

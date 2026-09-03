@@ -76,6 +76,7 @@ def test_html_parsing_and_public_id_diff(tmp_path):
     ], ceduti=[2]))
     html = public_html([
         {"Id": 1, "R": "P", "Nome": "New Name", "Squadra": "AAA", "Qt.A": 11, "FVM": 20},
+        {"Id": 2, "R": "D", "Nome": "Departed *", "Squadra": "BBB", "Qt.A": 5, "FVM": 8},
         {"Id": 3, "R": "A", "Nome": "Added", "Squadra": "CCC", "Qt.A": 4, "FVM": 9},
     ])
     parsed = parse_public_players(html, "2026/27")
