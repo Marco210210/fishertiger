@@ -1,3 +1,4 @@
+import base64
 import http.client
 import io
 import json
@@ -17,6 +18,7 @@ class LocalApiServerTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         root = Path(self.temp_dir.name)
+        self.root = root
         self.calls = []
         self.profile = json.loads((Path(__file__).parents[1] / "config/default_profile.json").read_text(encoding="utf-8"))
         self.profile["profile_id"] = "my-team"
@@ -103,6 +105,29 @@ class LocalApiServerTests(unittest.TestCase):
             pd.DataFrame([["Quotazioni Fantacalcio Stagione 2026 27"]]).to_excel(writer, sheet_name="Ceduti", index=False, header=False)
             pd.DataFrame({"Id": list(ceduti)}).to_excel(writer, sheet_name="Ceduti", index=False, startrow=1)
         return output.getvalue()
+
+    def test_health_check_is_public_and_static_spa_is_served(self):
+        static_dir = self.root / "web"
+        static_dir.mkdir()
+        (static_dir / "index.html").write_text("<h1>Fishertiger</h1>", encoding="utf-8")
+        (static_dir / "app.js").write_text("console.log('ready')", encoding="utf-8")
+        self.server.static_dir = static_dir.resolve()
+        self.server.auth_username = "marco"
+        self.server.auth_password = "secret"
+
+        health, health_payload = self.request("GET", "/api/health")
+        unauthorized, _ = self.request("GET", "/")
+        token = base64.b64encode(b"marco:secret").decode("ascii")
+        page, page_payload = self.request("GET", "/squadre", headers={"Authorization": f"Basic {token}"})
+        asset, asset_payload = self.request("GET", "/app.js", headers={"Authorization": f"Basic {token}"})
+
+        self.assertEqual(health.status, 200)
+        self.assertEqual(health_payload, {"status": "ok"})
+        self.assertEqual(unauthorized.status, 401)
+        self.assertEqual(page.status, 200)
+        self.assertEqual(page_payload, "<h1>Fishertiger</h1>")
+        self.assertEqual(asset.status, 200)
+        self.assertEqual(asset_payload, "console.log('ready')")
 
     def set_piece_article(self, first="Alpha, Beta"):
         teams = [

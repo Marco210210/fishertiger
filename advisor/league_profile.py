@@ -124,7 +124,7 @@ class BenchSwitchConfig:
     max_substitutions: int
 
     def __post_init__(self) -> None:
-        _require(self.mode in {"Basic", "Strict", "None"}, "switch mode must be Basic, Strict, or None")
+        _require(self.mode in {"Basic", "Strict", "Traditional", "None"}, "switch mode must be Basic, Strict, Traditional, or None")
         _require(all(role in ROLES for role in self.bench_roles), "bench roles must be P, D, C, or A")
         _positive(self.max_substitutions, "max_substitutions", allow_zero=True)
 
@@ -137,12 +137,18 @@ class ScoringEventValues:
     red_card: float
     own_goal: float
     goalkeeper_conceded_goal: float
+    penalty_missed: float = -3
+    penalty_saved: float = 3
+    clean_sheet: float = 0
 
     def __post_init__(self) -> None:
         _positive(self.goal, "goal value")
         _positive(self.assist, "assist value", allow_zero=True)
         _require(self.yellow_card <= 0 and self.red_card <= 0 and self.own_goal <= 0 and self.goalkeeper_conceded_goal <= 0,
                  "card, own-goal, and goalkeeper-conceded values must be non-positive")
+        _require(self.penalty_missed <= 0, "penalty_missed must be non-positive")
+        _positive(self.penalty_saved, "penalty_saved", allow_zero=True)
+        _positive(self.clean_sheet, "clean_sheet", allow_zero=True)
 
 
 @dataclass(frozen=True)

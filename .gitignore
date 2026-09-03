@@ -12,6 +12,7 @@ data/processed/
 data/uploads/
 data/updates/
 config/profiles/
+data/backups/
 
 .idea/
 *.iml

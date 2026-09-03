@@ -54,6 +54,23 @@ def test_validation_rejects_invalid_profile_rules():
         LeagueProfile.from_dict(value)
 
 
+def test_traditional_substitutions_and_extended_scoring_are_supported():
+    value = json.loads(PROFILE_PATH.read_text())
+    value["bench_switch"]["mode"] = "Traditional"
+    value["scoring"].update(
+        penalty_missed=-3,
+        penalty_saved=3,
+        clean_sheet=1,
+    )
+
+    profile = LeagueProfile.from_dict(value)
+
+    assert profile.bench_switch.mode == "Traditional"
+    assert profile.scoring.penalty_missed == -3
+    assert profile.scoring.penalty_saved == 3
+    assert profile.scoring.clean_sheet == 1
+
+
 def test_auction_nomination_policies_and_legacy_round_robin_are_supported():
     value = json.loads(PROFILE_PATH.read_text())
     assert NOMINATION_POLICIES == ("call", "call_by_role", "random", "random_by_role", "alphabetical", "alphabetical_by_role")

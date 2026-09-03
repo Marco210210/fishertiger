@@ -72,3 +72,26 @@ after a matching private calendar has been supplied:
 .venv/bin/python -m pytest
 cd web && npm test && npm run build
 ```
+
+## Deploy From A GitHub Fork
+
+The repository includes a production `Dockerfile` and a Render Blueprint. The
+container builds the React frontend, serves it from the Python process, and
+keeps the browser and API on the same HTTPS origin. `FISHERTIGER_USERNAME` and
+`FISHERTIGER_PASSWORD` protect the entire application with HTTP Basic auth;
+configure both as hosting secrets and never commit their values.
+
+Import `render.yaml` from the GitHub fork in Render to create a web service.
+Every commit pushed to the fork's `main` branch triggers a new deployment. The
+included `free` plan is suitable only for trying the deployment: its filesystem
+is ephemeral, so saved profiles, uploads, and generated datasets disappear on
+restart or redeploy. For durable multi-league use, switch to a paid web-service
+plan and attach a persistent disk mounted at `/var/data`.
+
+Keep the fork connected to the original repository with two remotes:
+
+```bash
+git fetch upstream
+git merge upstream/main
+git push origin main
+```

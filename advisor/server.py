@@ -6,7 +6,11 @@ the data pipeline and does not select a generator implementation itself.
 from __future__ import annotations
 
 import argparse
+import base64
+import hmac
 import json
+import mimetypes
+import os
 import re
 import sys
 import tempfile
@@ -117,6 +121,9 @@ class LocalApiServer(ThreadingHTTPServer):
         uploads_dir: Path | str = Path("data/uploads"),
         updates_dir: Path | str = Path("data/updates"),
         default_profile_path: Path | str = Path("config/default_profile.json"),
+        static_dir: Path | str | None = None,
+        auth_username: str | None = None,
+        auth_password: str | None = None,
         generator: PipelineGenerator | None = None,
         simulator: SimulationRunner | None = None,
         profile_loader: ProfileLoader = load_profile,
@@ -131,6 +138,11 @@ class LocalApiServer(ThreadingHTTPServer):
         self.uploads_dir = Path(uploads_dir)
         self.updates_dir = Path(updates_dir)
         self.default_profile_path = Path(default_profile_path)
+        self.static_dir = Path(static_dir).resolve() if static_dir is not None else None
+        if bool(auth_username) != bool(auth_password):
+            raise ValueError("auth_username and auth_password must be configured together")
+        self.auth_username = auth_username
+        self.auth_password = auth_password
         self.generator = generator
         self.simulator = simulator or _simulate_current_dataset
         self.profile_loader = profile_loader
@@ -156,7 +168,11 @@ class LocalApiHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         path = self._path()
-        if path == "/api/profiles":
+        if path == "/api/health":
+            self._send_json(HTTPStatus.OK, {"status": "ok"})
+        elif not self._authorize():
+            return
+        elif path == "/api/profiles":
             self._profile_index()
         elif path == "/api/default-profile":
             self._default_profile()
@@ -166,10 +182,14 @@ class LocalApiHandler(BaseHTTPRequestHandler):
             self._dataset_manifest()
         elif path.startswith("/api/datasets/"):
             self._get_dataset(path.removeprefix("/api/datasets/"))
+        elif self.server.static_dir is not None and not path.startswith("/api/"):
+            self._serve_static(path)
         else:
             self._error(HTTPStatus.NOT_FOUND, "not_found", "The requested endpoint does not exist.")
 
     def do_PUT(self) -> None:
+        if not self._authorize():
+            return
         path = self._path()
         if path.startswith("/api/updates/player-list/candidate/"):
             self._put_player_list_candidate(path.removeprefix("/api/updates/player-list/candidate/"))
@@ -181,6 +201,8 @@ class LocalApiHandler(BaseHTTPRequestHandler):
             self._error(HTTPStatus.NOT_FOUND, "not_found", "The requested endpoint does not exist.")
 
     def do_DELETE(self) -> None:
+        if not self._authorize():
+            return
         path = self._path()
         if path.startswith("/api/profiles/"):
             self._delete_profile(path.removeprefix("/api/profiles/"))
@@ -188,6 +210,8 @@ class LocalApiHandler(BaseHTTPRequestHandler):
             self._error(HTTPStatus.NOT_FOUND, "not_found", "The requested endpoint does not exist.")
 
     def do_POST(self) -> None:
+        if not self._authorize():
+            return
         if self._path() == "/api/updates/player-list/check":
             self._check_player_list_updates()
             return
@@ -977,6 +1001,45 @@ class LocalApiHandler(BaseHTTPRequestHandler):
     def _path(self) -> str:
         return unquote(urlparse(self.path).path)
 
+    def _authorize(self) -> bool:
+        username = self.server.auth_username
+        password = self.server.auth_password
+        if not username or not password:
+            return True
+        token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("ascii")
+        if hmac.compare_digest(self.headers.get("Authorization", ""), f"Basic {token}"):
+            return True
+        self.send_response(HTTPStatus.UNAUTHORIZED)
+        self.send_header("WWW-Authenticate", 'Basic realm="fishertiger", charset="UTF-8"')
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+        return False
+
+    def _serve_static(self, request_path: str) -> None:
+        root = self.server.static_dir
+        if root is None:
+            self._error(HTTPStatus.NOT_FOUND, "not_found", "The requested endpoint does not exist.")
+            return
+        relative = request_path.lstrip("/") or "index.html"
+        candidate = (root / relative).resolve()
+        if not candidate.is_relative_to(root):
+            self._error(HTTPStatus.BAD_REQUEST, "invalid_static_path", "Static paths must stay within the web root.")
+            return
+        if not candidate.is_file() and "." not in Path(relative).name:
+            candidate = root / "index.html"
+        try:
+            body = candidate.read_bytes()
+        except FileNotFoundError:
+            self._error(HTTPStatus.NOT_FOUND, "not_found", "The requested file does not exist.")
+            return
+        except OSError:
+            self._error(HTTPStatus.INTERNAL_SERVER_ERROR, "storage_error", "The requested file could not be read.")
+            return
+        content_type = mimetypes.guess_type(candidate.name)[0] or "application/octet-stream"
+        if content_type.startswith("text/") or content_type in {"application/javascript", "application/json"}:
+            content_type += "; charset=utf-8"
+        self._send_bytes(HTTPStatus.OK, body, content_type)
+
     def _error(self, status: HTTPStatus, code: str, message: str) -> None:
         self._send_json(status, {"error": {"code": code, "message": message}})
 
@@ -1015,6 +1078,9 @@ def create_server(
     uploads_dir: Path | str = Path("data/uploads"),
     updates_dir: Path | str = Path("data/updates"),
     default_profile_path: Path | str = Path("config/default_profile.json"),
+    static_dir: Path | str | None = None,
+    auth_username: str | None = None,
+    auth_password: str | None = None,
     generator: PipelineGenerator | None = None,
     simulator: SimulationRunner | None = None,
     profile_loader: ProfileLoader = load_profile,
@@ -1025,7 +1091,7 @@ def create_server(
     player_list_fetcher: PlayerListFetchPage = fetch_public_page,
 ) -> LocalApiServer:
     """Create a local API server; inject a pipeline generator for tests or embedding."""
-    return LocalApiServer(address, profiles_dir=profiles_dir, datasets_dir=datasets_dir, uploads_dir=uploads_dir, updates_dir=updates_dir, default_profile_path=default_profile_path, generator=generator, simulator=simulator, profile_loader=profile_loader, update_fetcher=update_fetcher, formations_fetcher=formations_fetcher, set_piece_fetcher=set_piece_fetcher, goalkeeper_fetcher=goalkeeper_fetcher, player_list_fetcher=player_list_fetcher)
+    return LocalApiServer(address, profiles_dir=profiles_dir, datasets_dir=datasets_dir, uploads_dir=uploads_dir, updates_dir=updates_dir, default_profile_path=default_profile_path, static_dir=static_dir, auth_username=auth_username, auth_password=auth_password, generator=generator, simulator=simulator, profile_loader=profile_loader, update_fetcher=update_fetcher, formations_fetcher=formations_fetcher, set_piece_fetcher=set_piece_fetcher, goalkeeper_fetcher=goalkeeper_fetcher, player_list_fetcher=player_list_fetcher)
 
 
 def _simulate_current_dataset(profile: Any, output_dir: Path, iterations: int, seed: int) -> dict[str, Any]:
@@ -1044,8 +1110,18 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--datasets-dir", type=Path, default=Path("data/processed"))
     parser.add_argument("--uploads-dir", type=Path, default=Path("data/uploads"))
     parser.add_argument("--updates-dir", type=Path, default=Path("data/updates"))
+    parser.add_argument("--static-dir", type=Path)
     args = parser.parse_args(argv)
-    server = create_server((args.host, args.port), profiles_dir=args.profiles_dir, datasets_dir=args.datasets_dir, uploads_dir=args.uploads_dir, updates_dir=args.updates_dir)
+    server = create_server(
+        (args.host, args.port),
+        profiles_dir=args.profiles_dir,
+        datasets_dir=args.datasets_dir,
+        uploads_dir=args.uploads_dir,
+        updates_dir=args.updates_dir,
+        static_dir=args.static_dir,
+        auth_username=os.environ.get("FISHERTIGER_USERNAME"),
+        auth_password=os.environ.get("FISHERTIGER_PASSWORD"),
+    )
     try:
         server.serve_forever()
     except KeyboardInterrupt:

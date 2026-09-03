@@ -1,4 +1,5 @@
 .git
+.github
 .venv
 .env
 .env.*
@@ -9,8 +10,12 @@
 web/dist
 config/profiles
 data/raw/calendario_lega.*
+data/backups
 data/processed
 data/uploads
+data/updates
 graphify-out
 **/__pycache__
 **/*.pyc
+.pytest_cache
+*.log

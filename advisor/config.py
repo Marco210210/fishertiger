@@ -45,6 +45,9 @@ class LeagueConfig:
     scoring_red_card: float = -1
     scoring_own_goal: float = -2
     scoring_goalkeeper_conceded_goal: float = -1
+    scoring_penalty_missed: float = -3
+    scoring_penalty_saved: float = 3
+    scoring_clean_sheet: float = 0
     defense_required_defenders: int = 4
     defense_tiers: tuple[tuple[float, float], ...] = ((6.0, 1), (6.5, 2), (7.0, 3))
     win_points: int = 3
@@ -86,6 +89,9 @@ class LeagueConfig:
             scoring_red_card=profile.scoring.red_card,
             scoring_own_goal=profile.scoring.own_goal,
             scoring_goalkeeper_conceded_goal=profile.scoring.goalkeeper_conceded_goal,
+            scoring_penalty_missed=profile.scoring.penalty_missed,
+            scoring_penalty_saved=profile.scoring.penalty_saved,
+            scoring_clean_sheet=profile.scoring.clean_sheet,
             win_points=profile.standings.win_points,
             draw_points=profile.standings.draw_points,
             loss_points=profile.standings.loss_points,

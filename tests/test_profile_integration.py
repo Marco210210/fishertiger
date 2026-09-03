@@ -18,7 +18,7 @@ def test_profile_adapter_is_the_complete_payload_rule_source():
     source["payouts"]["prizes"] = [{"rank": 1, "amount_eur": 50}]
     source["roster_slots"] = {"P": 1, "D": 3, "C": 3, "A": 5}
     source["bench_switch"] = {"bench_roles": ["P"], "mode": "Basic", "max_substitutions": 1}
-    source["scoring"]["goal"] = 4
+    source["scoring"].update(goal=4, penalty_missed=-3, penalty_saved=3, clean_sheet=1)
     source["virtual_goals"] = {"threshold": 70, "step": 4}
     source["incomplete_lineup"] = {"policy": "allow_partial", "score": 0}
     profile = LeagueProfile.from_dict(source)
@@ -28,6 +28,9 @@ def test_profile_adapter_is_the_complete_payload_rule_source():
     assert rules["team_names"] == ("A", "B")
     assert rules["roster_slots"] == {"P": 1, "D": 3, "C": 3, "A": 5}
     assert rules["scoring_goal"] == 4
+    assert rules["scoring_penalty_missed"] == -3
+    assert rules["scoring_penalty_saved"] == 3
+    assert rules["scoring_clean_sheet"] == 1
     assert rules["score_threshold"] == 70
     assert rules["incomplete_lineup_policy"] == "allow_partial"
 
@@ -44,6 +47,35 @@ def test_incomplete_lineup_policy_does_not_always_zero_scores(monkeypatch):
 
     assert simulation._team_score(list(range(1, 13)), _players(), 0, {}, None, partial)[0] == 100.0
     assert simulation._team_score(list(range(1, 13)), _players(), 0, {}, None, zero)[0] == 0
+
+
+def test_custom_penalty_and_clean_sheet_scoring_is_applied(monkeypatch):
+    def draw(player, day_index, rng, team_factor):
+        is_goalkeeper = player["ruolo"] == "P"
+        events = (0, 0, 0, 0, 0, 0, 1, int(is_goalkeeper), is_goalkeeper)
+        return {
+            "id": player["id"],
+            "ruolo": player["ruolo"],
+            "selection_value": 10.0,
+            "plays": True,
+            "pure": 10.0,
+            "events": events,
+            "fantavote": 10.0,
+        }
+
+    monkeypatch.setattr(simulation, "_draw_outcome", draw)
+    league = LeagueConfig(
+        defense_modifier_enabled=False,
+        scoring_penalty_missed=-3,
+        scoring_penalty_saved=3,
+        scoring_clean_sheet=1,
+    )
+
+    score, _ = simulation._team_score(list(range(1, 13)), _players(), 0, {}, None, league)
+
+    # Every player misses a penalty (-33), while only the goalkeeper saves one
+    # and earns the clean-sheet bonus (+4): 110 - 33 + 4.
+    assert score == 81.0
 
 
 def test_canonical_calendar_json_is_loaded_without_legacy_workbook(tmp_path):

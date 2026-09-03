@@ -84,6 +84,7 @@ const fetchDefaultProfile = (apiBase) =>
     .catch(() => null);
 
 const PROFILE_STORAGE_KEY = "fanta-profile-id";
+const DEFAULT_PROFILE_STORAGE_VALUE = "@default";
 
 const readStoredProfileId = () => {
   try {
@@ -96,7 +97,7 @@ const readStoredProfileId = () => {
 const writeStoredProfileId = (id) => {
   try {
     if (id) localStorage.setItem(PROFILE_STORAGE_KEY, id);
-    else localStorage.removeItem(PROFILE_STORAGE_KEY);
+    else localStorage.setItem(PROFILE_STORAGE_KEY, DEFAULT_PROFILE_STORAGE_VALUE);
   } catch {
     /* The picker still works for this session when storage is unavailable. */
   }
@@ -126,7 +127,8 @@ function App() {
   const [historyIndex, setHistoryIndex] = useState(0);
   // An empty override deliberately enables same-origin requests behind Docker.
   const apiBase =
-    import.meta.env.VITE_LOCAL_API_BASE ?? "http://127.0.0.1:8000";
+    import.meta.env.VITE_LOCAL_API_BASE ??
+    (import.meta.env.PROD ? "" : "http://127.0.0.1:8000");
   const loadedProfileId = useRef(null);
   const profileRequests = useRef(null);
   const generationRequests = useRef(null);
@@ -208,6 +210,10 @@ function App() {
       let next = null;
       if (storedId && names.includes(storedId))
         next = await loadProfile(storedId, { apiBase }).catch(() => null);
+      if (!next && storedId !== DEFAULT_PROFILE_STORAGE_VALUE && names.length === 1) {
+        next = await loadProfile(names[0], { apiBase }).catch(() => null);
+        if (next) writeStoredProfileId(names[0]);
+      }
       if (!next) next = await fetchDefaultProfile(apiBase);
       if (!cancelled && isCurrentProfileRequest(request))
         applyProfileForLoading(next);

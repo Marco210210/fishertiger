@@ -345,9 +345,14 @@ def vote_standard_deviation(player_id: int, histories: list[pd.DataFrame], defau
     return float(np.clip(np.std(annual_means, ddof=1), .35, default))
 
 
+def _clean_value(value):
+    """Convert a pandas scalar null to JSON null while retaining real values."""
+    return None if pd.isna(value) else value
+
+
 def _clean_record(record: dict) -> dict:
     """Convert pandas scalar nulls to JSON nulls while retaining numeric values."""
-    return {key: (None if pd.isna(value) else value) for key, value in record.items()}
+    return {key: _clean_value(value) for key, value in record.items()}
 
 
 def league_rules_payload(league: LeagueConfig) -> dict:
@@ -504,17 +509,29 @@ def build_projections(raw: Path = RAW, output: Path = PROCESSED, config: ModelCo
         if not first_penalty.empty:
             goal += .12  # Expected penalty goals per 90 for the primary taker.
         conceded = per90("Gs") if player.R == "P" else 0.0
-        bonus = goal * league.scoring_goal + assist * league.scoring_assist - malus + conceded * league.scoring_goalkeeper_conceded_goal
+        penalty_missed = per90("R-")
+        penalty_saved = per90("Rp") if player.R == "P" else 0.0
+        clean_sheet = float(np.exp(-conceded)) if player.R == "P" else 0.0
+        bonus = (
+            goal * league.scoring_goal
+            + assist * league.scoring_assist
+            - malus
+            + conceded * league.scoring_goalkeeper_conceded_goal
+            + penalty_missed * league.scoring_penalty_missed
+            + penalty_saved * league.scoring_penalty_saved
+            + clean_sheet * league.scoring_clean_sheet
+        )
         historical = {}
         for season, frame in history_entries:
             rows = frame[frame.Id == player.Id]
             if not rows.empty:
                 historical[season] = _clean_record(rows.iloc[0][["Pv", "Mv", "Fm", "Gf", "Gs", "Rp", "Rc", "R+", "R-", "Ass", "Amm", "Esp", "Au"]].to_dict())
-        event_rates = {"gol": round(goal, 4), "assist": round(assist, 4), "ammonizioni": round(yellow, 4), "espulsioni": round(red, 4), "autogol": round(autogoal, 4), "gol_subiti": round(conceded, 4)}
+        event_rates = {"gol": round(goal, 4), "assist": round(assist, 4), "ammonizioni": round(yellow, 4), "espulsioni": round(red, 4), "autogol": round(autogoal, 4), "gol_subiti": round(conceded, 4), "rigori_sbagliati": round(penalty_missed, 4), "rigori_parati": round(penalty_saved, 4)}
         daily_play, daily_vote, daily_std, daily_bonus = fixture_projection_arrays(p_play, mv, std, bonus, team, fixtures_by_team.get(player.Squadra, {}), teams_by_key, config.season_days)
-        hierarchy = starter_entry.iloc[0].gerarchia_portiere if not starter_entry.empty else None
+        hierarchy = _clean_value(starter_entry.iloc[0].gerarchia_portiere) if not starter_entry.empty else None
+        guide_tier = _clean_value(guide_entry.iloc[0].fascia) if not guide_entry.empty else None
         venues = [fixtures_by_team.get(player.Squadra, {}).get(day, {}).get("venue") for day in range(1, config.season_days + 1)]
-        players.append({"id": int(player.Id), "nome": player.Nome, "ruolo": player.R, "ruoli_mantra": player.RM, "squadra": player.Squadra, "team_id": normalize(player.Squadra), "quotazioni": {"attuale": int(player["Qt.A"]), "iniziale": int(player["Qt.I"]), "differenza": int(player["Diff."])}, "fvm_original": round(float(player.FVM), 2), "fvm_scaled": round(float(player.FVM) * .75, 2), "guida_asta_fascia": guide_entry.iloc[0].fascia if not guide_entry.empty else None, "gerarchia_portiere": hierarchy, "disponibilita": _clean_record({"status": status.iloc[0] if not status.empty else "NON_CLASSIFICATO", "nota": starter_entry.iloc[0].note if not starter_entry.empty else None}), "storico": historical, "proiezione": {"p_gioca": round(p_play, 4), "voto_puro": round(mv, 3), "deviazione": round(std, 3), "bonus": round(bonus, 3), "fantavoto": round(mv + bonus, 3)}, "event_rates": event_rates, "p_gioca_per_giornata": [round(value, 4) for value in daily_play], "voto_puro_mean_per_giornata": [round(value, 3) for value in daily_vote], "voto_puro_std_per_giornata": [round(value, 3) for value in daily_std], "bonus_atteso_per_giornata": [round(value, 3) for value in daily_bonus], "venue_per_giornata": venues})
+        players.append({"id": int(player.Id), "nome": player.Nome, "ruolo": player.R, "ruoli_mantra": _clean_value(player.RM), "squadra": player.Squadra, "team_id": normalize(player.Squadra), "quotazioni": {"attuale": int(player["Qt.A"]), "iniziale": int(player["Qt.I"]), "differenza": int(player["Diff."])}, "fvm_original": round(float(player.FVM), 2), "fvm_scaled": round(float(player.FVM) * .75, 2), "guida_asta_fascia": guide_tier, "gerarchia_portiere": hierarchy, "disponibilita": _clean_record({"status": status.iloc[0] if not status.empty else "NON_CLASSIFICATO", "nota": starter_entry.iloc[0].note if not starter_entry.empty else None}), "storico": historical, "proiezione": {"p_gioca": round(p_play, 4), "voto_puro": round(mv, 3), "deviazione": round(std, 3), "bonus": round(bonus, 3), "fantavoto": round(mv + bonus, 3)}, "event_rates": event_rates, "p_gioca_per_giornata": [round(value, 4) for value in daily_play], "voto_puro_mean_per_giornata": [round(value, 3) for value in daily_vote], "voto_puro_std_per_giornata": [round(value, 3) for value in daily_std], "bonus_atteso_per_giornata": [round(value, 3) for value in daily_bonus], "venue_per_giornata": venues})
     # Browser JSON parsing rejects Python's non-standard NaN spelling in blank score columns.
     calendar_records = calendar.astype(object).where(pd.notna(calendar), None).to_dict(orient="records")
     for match in calendar_records:

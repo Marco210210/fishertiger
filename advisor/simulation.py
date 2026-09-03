@@ -277,7 +277,10 @@ def _draw_outcome(player: dict[str, Any], day_index: int, rng: np.random.Generat
     red = rng.poisson(max(0, rates.get("espulsioni", 0)))
     own_goals = rng.poisson(max(0, rates.get("autogol", 0)))
     conceded = rng.poisson(max(0, rates.get("gol_subiti", 0))) if player["ruolo"] == "P" else 0
-    outcome.update({"pure": pure_vote, "events": (goals, assists, yellow, red, own_goals, conceded), "fantavote": pure_vote + goals * 3 + assists - yellow * .5 - red - own_goals * 2 - conceded, "selection_value": pure_vote + player["bonus_atteso_per_giornata"][day_index]})
+    penalty_missed = rng.poisson(max(0, rates.get("rigori_sbagliati", 0)))
+    penalty_saved = rng.poisson(max(0, rates.get("rigori_parati", 0))) if player["ruolo"] == "P" else 0
+    clean_sheet = player["ruolo"] == "P" and conceded == 0
+    outcome.update({"pure": pure_vote, "events": (goals, assists, yellow, red, own_goals, conceded, penalty_missed, penalty_saved, clean_sheet), "fantavote": pure_vote + goals * 3 + assists - yellow * .5 - red - own_goals * 2 - conceded - penalty_missed * 3 + penalty_saved * 3, "selection_value": pure_vote + player["bonus_atteso_per_giornata"][day_index]})
     return outcome
 
 
@@ -320,8 +323,8 @@ def _team_score(roster: list[int], players: dict[int, dict[str, Any]], day_index
     drawn = {player_id: _draw_outcome(players[player_id], day_index, rng, factors.get(players[player_id]["squadra"], 0)) for player_id in roster}
     for outcome in drawn.values():
         if "events" in outcome:
-            goals, assists, yellow, red, own_goals, conceded = outcome["events"]
-            outcome["fantavote"] = outcome["pure"] + goals * league.scoring_goal + assists * league.scoring_assist + yellow * league.scoring_yellow_card + red * league.scoring_red_card + own_goals * league.scoring_own_goal + conceded * league.scoring_goalkeeper_conceded_goal
+            goals, assists, yellow, red, own_goals, conceded, penalty_missed, penalty_saved, clean_sheet = outcome["events"]
+            outcome["fantavote"] = outcome["pure"] + goals * league.scoring_goal + assists * league.scoring_assist + yellow * league.scoring_yellow_card + red * league.scoring_red_card + own_goals * league.scoring_own_goal + conceded * league.scoring_goalkeeper_conceded_goal + penalty_missed * league.scoring_penalty_missed + penalty_saved * league.scoring_penalty_saved + clean_sheet * league.scoring_clean_sheet
     playing_starters = [drawn[player["id"]] for player in starters if drawn[player["id"]]["plays"]]
     replacements = []
     if league.switch_mode == "None":

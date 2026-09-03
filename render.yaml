@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: fishertiger-marco
+    runtime: docker
+    plan: free
+    autoDeployTrigger: commit
+    healthCheckPath: /api/health
+    envVars:
+      - key: FISHERTIGER_USERNAME
+        sync: false
+      - key: FISHERTIGER_PASSWORD
+        sync: false

@@ -109,6 +109,9 @@ const defaults = {
     red_card: -1,
     own_goal: -2,
     goalkeeper_conceded_goal: -1,
+    penalty_missed: -3,
+    penalty_saved: 3,
+    clean_sheet: 0,
   },
   virtual_goals: { threshold: 66, step: 5 },
   defense_modifier: {
@@ -250,20 +253,11 @@ function validate(profile) {
   );
   if (!profile.formations.allowed.length)
     errors.push("Seleziona almeno un modulo.");
-  const maximumStarters = profile.formations.allowed.reduce(
-    (maximum, formation) => {
-      const [D, C, A] = formation.split("-").map(Number);
-      return { P: 1, D: Math.max(maximum.D, D), C: Math.max(maximum.C, C), A: Math.max(maximum.A, A) };
-    },
-    { P: 1, D: 0, C: 0, A: 0 },
-  );
-  roles.forEach((role) => {
-    const benchSlots = profile.bench_switch.bench_roles.filter((benchRole) => benchRole === role).length;
-    if (profile.roster_slots[role] < maximumStarters[role] + benchSlots)
-      errors.push(
-        `La rosa richiede almeno ${maximumStarters[role] + benchSlots} giocatori ${role}: ${maximumStarters[role]} titolari e ${benchSlots} riserve.`,
-      );
-  });
+  const rosterTotal = roles.reduce((total, role) => total + profile.roster_slots[role], 0);
+  if (profile.bench_switch.bench_roles.length > rosterTotal - 11)
+    errors.push("I posti in panchina non possono superare i giocatori disponibili oltre agli undici titolari.");
+  if (profile.bench_switch.bench_roles.filter((role) => role === "P").length > profile.roster_slots.P)
+    errors.push("La panchina non può contenere più portieri di quelli previsti in rosa.");
   if (profile.bench_switch.max_substitutions > profile.bench_switch.bench_roles.length)
     errors.push("Le sostituzioni massime non possono superare i posti in panchina.");
   positive(profile.scoring.goal, "Valore del gol");
@@ -273,10 +267,13 @@ function validate(profile) {
     red_card: "L'espulsione",
     own_goal: "L'autogol",
     goalkeeper_conceded_goal: "Il gol subito dal portiere",
+    penalty_missed: "Il rigore sbagliato",
   }).forEach(([key, label]) => {
     if (profile.scoring[key] > 0)
       errors.push(`${label} deve essere zero o negativo.`);
   });
+  positive(profile.scoring.penalty_saved, "Valore del rigore parato", true);
+  positive(profile.scoring.clean_sheet, "Valore della porta inviolata", true);
   positive(profile.virtual_goals.threshold, "Soglia dei gol virtuali");
   positive(profile.virtual_goals.step, "Incremento dei gol virtuali");
   positive(profile.defense_modifier.required_defenders, "Difensori richiesti");
@@ -956,6 +953,7 @@ export function LeagueSettings({
             >
               <option value="Basic">Basic</option>
               <option value="Strict">Strict</option>
+              <option value="Traditional">Traditional</option>
               <option value="None">Nessuna</option>
             </select>
           </label>
@@ -1055,6 +1053,18 @@ export function LeagueSettings({
             ["scoring", "goalkeeper_conceded_goal"],
             { type: "number", step: "0.1" },
           )}
+          {input("Rigore sbagliato", ["scoring", "penalty_missed"], {
+            type: "number",
+            step: "0.1",
+          })}
+          {input("Rigore parato", ["scoring", "penalty_saved"], {
+            type: "number",
+            step: "0.1",
+          })}
+          {input("Porta inviolata", ["scoring", "clean_sheet"], {
+            type: "number",
+            step: "0.1",
+          })}
           {input("Soglia dei gol virtuali", ["virtual_goals", "threshold"], {
             type: "number",
             step: "0.1",
