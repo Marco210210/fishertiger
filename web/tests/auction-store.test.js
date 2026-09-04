@@ -612,3 +612,29 @@ test("FantaLab ledger imports are idempotent and never overwrite a conflict", ()
   assert.equal(conflict.conflicts, 1);
   assert.equal(readAuctionBoard(PROFILE, livePlayers, liveRules).assigned["1"].owner, 0);
 });
+
+test("FantaLab imports rival purchases into separate rosters and updates both budgets", () => {
+  resetStore();
+  const multiTeamRules = {
+    ...liveRules,
+    auction: { ...liveRules.auction, nomination: "call" },
+  };
+  const result = syncLiveAssignments(
+    PROFILE,
+    livePlayers,
+    multiTeamRules,
+    [
+      { purchase_id: "ours", player_id: 1, buyer_team_id: "external-a", price: 4 },
+      { purchase_id: "theirs", player_id: 2, buyer_team_id: "external-b", price: 8 },
+    ],
+    { "external-a": 0, "external-b": 1 },
+  );
+
+  const board = readAuctionBoard(PROFILE, livePlayers, multiTeamRules);
+  assert.equal(result.synced, 2);
+  assert.equal(result.pending, 0);
+  assert.equal(board.teams[0].roster.length, 1);
+  assert.equal(board.teams[1].roster.length, 1);
+  assert.equal(board.teams[0].credits, board.teams[0].startingCredits - 4);
+  assert.equal(board.teams[1].credits, board.teams[1].startingCredits - 8);
+});

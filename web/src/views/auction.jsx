@@ -60,6 +60,7 @@ export default function AuctionView({
   profileId,
   draft,
   setDraft,
+  liveOwnerIndex = null,
 }) {
   const activeRules = normalizeRules(
     rules ?? data.league_rules ?? { startingCredits: 750 },
@@ -118,6 +119,18 @@ export default function AuctionView({
   }, [storageKey, rulesSignature, defaultUserTeamIndex]);
 
   useEffect(() => setOwner(userTeamIndex), [userTeamIndex]);
+
+  // In the FantaLab view the buyer selector is not a personal preference: it
+  // must follow the team currently leading the external lot. Previously it
+  // stayed on `userTeamIndex`, which made every rival bid look like our own.
+  useEffect(() => {
+    if (
+      Number.isInteger(liveOwnerIndex) &&
+      liveOwnerIndex >= 0 &&
+      liveOwnerIndex < board.teams.length
+    )
+      setOwner(liveOwnerIndex);
+  }, [liveOwnerIndex, board.teams.length]);
 
   useEffect(() => {
     setDraft((current) => reconcileAuctionDraft(current, data.players, board));

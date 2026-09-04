@@ -43,11 +43,11 @@ def test_live_snapshot_normalizes_lot_ledger_and_teams(tmp_path: Path) -> None:
         if url.endswith("/v2/listone"):
             return {"players": [{"player_id": "fl-player", "fantacalcio_id": 42, "name": "Bomber", "team_name": "MIL", "role": "A"}]}
         if f"/auction/{ROOM}.json" in url:
-            return {"player_id": "fl-player", "price": 37, "fantateam_id": "team-a", "last_update": 20, "last_bid_time": 10, "timeToPass": 8, "update_type": "raise"}
+            return {"player_id": "fl-player", "price": 37, "fantateam_id": "team-a", "user_id": "user-a", "last_update": 20, "last_bid_time": 10, "timeToPass": 8, "update_type": "raise"}
         if f"/assign/{ROOM}.json" in url:
             return None
         if f"/purchases/{ROOM}.json" in url:
-            return {"sale-1": {"player_id": "fl-player", "price": 35, "fantateam_id": "team-a", "created_at": 1}}
+            return {"sale-1": {"player_id": "fl-player", "price": 35, "fantateam_id": "team-a", "user_id": "user-a", "created_at": 1}}
         raise AssertionError(url)
 
     result = live_snapshot(
@@ -65,8 +65,11 @@ def test_live_snapshot_normalizes_lot_ledger_and_teams(tmp_path: Path) -> None:
     assert result["teams"][0]["name"] == "Tigri"
     assert result["lot"]["player_id"] == 42
     assert result["lot"]["price"] == 37
+    assert result["lot"]["leader_team_id"] == "team-a"
+    assert result["lot"]["leader_user_id"] == "user-a"
     assert result["purchases"][0]["purchase_id"] == "sale-1"
     assert result["purchases"][0]["player_id"] == 42
+    assert result["purchases"][0]["buyer_user_id"] == "user-a"
 
 
 def test_explicit_shard_needs_no_token(tmp_path: Path) -> None:

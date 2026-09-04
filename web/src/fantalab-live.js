@@ -84,7 +84,36 @@ export const autoTeamMap = (externalTeams, localTeams, current = {}) => {
     if (missingExternal.length === 1 && missingLocal.length === 1)
       result[missingExternal[0].id] = missingLocal[0].index;
   }
+
+  // The public RTDB deliberately omits team names and only reveals a team
+  // once it leads a lot or buys a player. Leaving those ids unmapped meant the
+  // corresponding purchases stayed pending forever, so rival rosters and
+  // credits appeared frozen. Give every newly observed external id the first
+  // unused local seat. The backend returns external ids in a stable order and
+  // `current` is persisted per league, therefore the pairing never moves on a
+  // later poll. A user can still correct the displayed name/seat once from the
+  // mapping controls.
+  const used = new Set(
+    Object.values(result)
+      .map(Number)
+      .filter((index) => Number.isInteger(index)),
+  );
+  for (const external of externalRows) {
+    if (!external?.id || Number.isInteger(Number(result[external.id]))) continue;
+    const local = localRows.find((team) => !used.has(Number(team.index)));
+    if (!local) break;
+    result[external.id] = Number(local.index);
+    used.add(Number(local.index));
+  }
   return result;
+};
+
+export const mappedTeamIndex = (externalId, teamMap, teamCount) => {
+  if (!externalId) return null;
+  const index = Number(teamMap?.[externalId]);
+  return Number.isInteger(index) && index >= 0 && index < Number(teamCount)
+    ? index
+    : null;
 };
 
 export const secondsRemaining = (lot, serverTimeMs, nowMs) => {

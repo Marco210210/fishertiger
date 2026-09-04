@@ -29,6 +29,7 @@ DEFAULT_DATABASE = "https://fantalab-79eaa-default-rtdb.europe-west1.firebasedat
 REGIONAL_DATABASE = "https://fantalab-{shard}.europe-west1.firebasedatabase.app"
 UUID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 LISTONE_MAX_AGE_SECONDS = 12 * 60 * 60
+LISTONE_RETRY_AGE_SECONDS = 60
 JsonRequester = Callable[[str, str, Mapping[str, Any] | None, Mapping[str, str] | None], Any]
 
 
@@ -185,9 +186,13 @@ def discover_database(room_id: str, requester: JsonRequester) -> tuple[int | Non
     )
 
 
-def _load_cached_listone(path: Path) -> dict[str, Any] | None:
+def _load_cached_listone(
+    path: Path,
+    *,
+    max_age_seconds: int = LISTONE_MAX_AGE_SECONDS,
+) -> dict[str, Any] | None:
     try:
-        if time.time() - path.stat().st_mtime > LISTONE_MAX_AGE_SECONDS:
+        if time.time() - path.stat().st_mtime > max_age_seconds:
             return None
         value = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -195,8 +200,13 @@ def _load_cached_listone(path: Path) -> dict[str, Any] | None:
     return value if isinstance(value, dict) and value.get("players") else None
 
 
-def load_listone(path: Path, requester: JsonRequester) -> dict[str, dict[str, Any]]:
-    payload = _load_cached_listone(path)
+def load_listone(
+    path: Path,
+    requester: JsonRequester,
+    *,
+    max_age_seconds: int = LISTONE_MAX_AGE_SECONDS,
+) -> dict[str, dict[str, Any]]:
+    payload = _load_cached_listone(path, max_age_seconds=max_age_seconds)
     if payload is None:
         try:
             fetched = requester("GET", LISTONE_URL, None, None)
@@ -253,6 +263,7 @@ def _normalize_lot(raw: Mapping[str, Any] | None, bridge: Mapping[str, Mapping[s
         **player,
         "price": price if isinstance(price, int) and not isinstance(price, bool) else 0,
         "leader_team_id": raw.get("fantateam_id") if isinstance(raw.get("fantateam_id"), str) else None,
+        "leader_user_id": raw.get("user_id") if isinstance(raw.get("user_id"), str) else None,
         "update_type": raw.get("update_type") if isinstance(raw.get("update_type"), str) else None,
         "closed": raw.get("asta_state") == "closed" or raw.get("update_type") == "close_auction",
         "last_bid_time": raw.get("last_bid_time") if isinstance(raw.get("last_bid_time"), int) else None,
@@ -277,6 +288,7 @@ def _normalize_purchases(raw: Any, bridge: Mapping[str, Mapping[str, Any]]) -> l
             **_normalize_player(record["player_id"], bridge),
             "price": price,
             "buyer_team_id": record.get("fantateam_id") if isinstance(record.get("fantateam_id"), str) else None,
+            "buyer_user_id": record.get("user_id") if isinstance(record.get("user_id"), str) else None,
             "created_at": record.get("created_at") if isinstance(record.get("created_at"), int) else None,
             "unsold": price <= 0 or not isinstance(record.get("fantateam_id"), str),
         })
@@ -347,6 +359,26 @@ def live_snapshot(
     bridge = load_listone(cache_path, requester)
     purchases = _normalize_purchases(nodes.get("purchases"), bridge)
     lot = _normalize_lot(_latest_lot(nodes), bridge)
+    unmapped_players = sum(1 for item in purchases if item["player_id"] is None) + (
+        1 if lot and lot["player_id"] is None else 0
+    )
+    # FantaLab can add a player UUID during the evening. Fantabot learned this
+    # from live rooms and refreshes its id bridge when a new UUID cannot be
+    # resolved. Retry at most once a minute so the 1.2 s room polling never
+    # hammers the listone endpoint, then resolve the same frame immediately.
+    if unmapped_players and bridge:
+        refreshed = load_listone(
+            cache_path,
+            requester,
+            max_age_seconds=LISTONE_RETRY_AGE_SECONDS,
+        )
+        if refreshed != bridge:
+            bridge = refreshed
+            purchases = _normalize_purchases(nodes.get("purchases"), bridge)
+            lot = _normalize_lot(_latest_lot(nodes), bridge)
+            unmapped_players = sum(
+                1 for item in purchases if item["player_id"] is None
+            ) + (1 if lot and lot["player_id"] is None else 0)
     return {
         "room_id": room_id,
         "db": "default" if db is None else db,
@@ -363,5 +395,5 @@ def live_snapshot(
         "teams": _team_rows(config, purchases, lot),
         "lot": lot,
         "purchases": purchases,
-        "unmapped_players": sum(1 for item in purchases if item["player_id"] is None) + (1 if lot and lot["player_id"] is None else 0),
+        "unmapped_players": unmapped_players,
     }

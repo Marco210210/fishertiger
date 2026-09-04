@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { autoTeamMap, readFantalabConnection, secondsRemaining, writeFantalabConnection } from "../src/fantalab-live.js";
+import { autoTeamMap, mappedTeamIndex, readFantalabConnection, secondsRemaining, writeFantalabConnection } from "../src/fantalab-live.js";
 
 const memory = () => {
   const values = new Map();
@@ -50,6 +50,33 @@ test("the only remaining team is paired once the complete public room is visible
     ),
     { mine: 0, other: 1 },
   );
+});
+
+test("anonymous teams are assigned stable free seats as soon as they appear", () => {
+  const local = [
+    { index: 0, name: "Mia" },
+    { index: 1, name: "Rivale A" },
+    { index: 2, name: "Rivale B" },
+  ];
+  const first = autoTeamMap([{ id: "external-b" }], local, { "external-a": 0 });
+  assert.deepEqual(first, { "external-a": 0, "external-b": 1 });
+
+  const second = autoTeamMap(
+    [{ id: "external-b" }, { id: "external-c" }],
+    local,
+    first,
+  );
+  assert.deepEqual(second, {
+    "external-a": 0,
+    "external-b": 1,
+    "external-c": 2,
+  });
+});
+
+test("the live leader resolves to its mapped local team", () => {
+  assert.equal(mappedTeamIndex("rival", { mine: 0, rival: 1 }, 2), 1);
+  assert.equal(mappedTeamIndex("unknown", { mine: 0 }, 2), null);
+  assert.equal(mappedTeamIndex("bad", { bad: 4 }, 2), null);
 });
 
 test("the live timer uses the server clock and never goes negative", () => {

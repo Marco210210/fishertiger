@@ -9,6 +9,7 @@ import {
 import { useAuctionBoard } from "../use-auction-store.js";
 import {
   autoTeamMap,
+  mappedTeamIndex,
   readFantalabConnection,
   secondsRemaining,
   writeFantalabConnection,
@@ -243,6 +244,11 @@ export default function LiveAuctionView({
     [snapshot?.teams, connection.teamMap, board.teams],
   );
   const currentLeader = teamNames[snapshot?.lot?.leader_team_id] || shortId(snapshot?.lot?.leader_team_id);
+  const liveOwnerIndex = mappedTeamIndex(
+    snapshot?.lot?.leader_team_id,
+    connection.teamMap,
+    board.teams.length,
+  );
   const unmappedTeams = (snapshot?.teams || []).filter(
     (team) => !Number.isInteger(Number(connection.teamMap?.[team.id])),
   );
@@ -349,9 +355,9 @@ export default function LiveAuctionView({
       {snapshot?.teams?.length ? (
         <section className="card stack">
           <div>
-            <span className="kicker">{unmappedTeams.length ? "Richiesto una volta sola" : "Collegamento salvato"}</span>
-            <h2>Abbina le squadre FantaLab</h2>
-            <p className="muted">FantaLab rende anonimi i nomi nella lettura pubblica. Usa gli acquisti mostrati come riferimento: l’abbinamento viene salvato solo per questa asta.</p>
+            <span className="kicker">{unmappedTeams.length ? "Da controllare" : "Sincronizzazione automatica"}</span>
+            <h2>Squadre FantaLab riconosciute</h2>
+            <p className="muted">FantaLab nasconde i nomi nella lettura pubblica: ogni nuovo ID viene assegnato automaticamente a una squadra libera e resta stabile. Se il nome locale non corrisponde, correggilo qui una sola volta.</p>
           </div>
           <div className="live-team-map">
             {snapshot.teams.map((team) => (
@@ -383,6 +389,7 @@ export default function LiveAuctionView({
         profileId={profileId}
         draft={draft}
         setDraft={setDraft}
+        liveOwnerIndex={liveOwnerIndex}
       />
     </div>
   );
