@@ -17,7 +17,7 @@ npm run build
 
 sudo systemctl restart astafanta-support
 for attempt in 1 2 3 4 5; do
-    status="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8092/ || true)"
+    status="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8092/ || true)"
     if [ "$status" = "401" ]; then
         echo "AstaFanta Support aggiornato e attivo."
         exit 0
