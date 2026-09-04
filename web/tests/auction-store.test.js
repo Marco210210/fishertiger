@@ -654,6 +654,36 @@ test("a purchase deleted from FantaLab's ledger is retracted from the local rost
   assert.equal(readAuctionBoard(PROFILE, livePlayers, liveRules).assigned["1"].owner, 1);
 });
 
+test("resetting the auction also clears stale FantaLab provenance", () => {
+  resetStore();
+  const teamMap = { "ext-a": 0 };
+  syncLiveAssignments(
+    PROFILE,
+    livePlayers,
+    liveRules,
+    [{ purchase_id: "reused-id", player_id: 1, buyer_team_id: "ext-a", price: 4 }],
+    teamMap,
+  );
+  assert.equal(readAuctionBoard(PROFILE, livePlayers, liveRules).taken, 1);
+
+  assert.equal(resetAuction(PROFILE, livePlayers, liveRules).ok, true);
+  assert.equal(readAuctionBoard(PROFILE, livePlayers, liveRules).taken, 0);
+
+  // FantaLab can reuse the same ledger key across unrelated test rounds; a
+  // provenance entry left over from before the reset must not make this
+  // fresh sync look like a no-op.
+  const after = syncLiveAssignments(
+    PROFILE,
+    livePlayers,
+    liveRules,
+    [{ purchase_id: "reused-id", player_id: 1, buyer_team_id: "ext-a", price: 4 }],
+    teamMap,
+  );
+  assert.equal(after.synced, 1);
+  assert.equal(after.retracted, 0);
+  assert.equal(readAuctionBoard(PROFILE, livePlayers, liveRules).taken, 1);
+});
+
 test("FantaLab imports rival purchases into separate rosters and updates both budgets", () => {
   resetStore();
   const multiTeamRules = {

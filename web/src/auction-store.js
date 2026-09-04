@@ -456,6 +456,11 @@ export const redoAssignment = (profileId, players, rules) => {
 
 export const resetAuction = (profileId, players, rules) => {
   if (!mutationState(profileId, players, rules)) return readFailure();
+  // A wiped auction has no history left for any FantaLab provenance entry to
+  // point at; leaving it behind would let a stale entry from a previous test
+  // round skip the retraction check on the next sync (it looks "still live"
+  // by coincidence) or otherwise shadow a fresh purchase for the same player.
+  writeFantalabProvenance(profileId, {});
   return persist(
     profileId,
     serializeAuction(emptyAuction(rules)),
