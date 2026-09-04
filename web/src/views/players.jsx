@@ -5,6 +5,7 @@ import {
   ClubCrest,
   PlayerPortrait,
   PlayerSignals,
+  ScoutAiCard,
   setPiecesForPlayer,
 } from "../player-intelligence.jsx";
 import { normalizeRules } from "../league-rules.js";
@@ -147,9 +148,12 @@ export default function PlayersView({
   useEffect(() => setLimit(PAGE), [query, role, team, onlyTargets]);
 
   const board = useAuctionBoard(profileId, data.players, activeRules);
-  /* The panel drives assignment and notes, so every active filter must still
-     admit an explicitly selected player. */
-  const reconciledPlayer = reconcileSelectedPlayer(selected, rows);
+  /* Reconciled against the whole dataset, not the filtered rows: a player
+     opened from elsewhere (search, overview, auction) must appear right
+     away even if a leftover search/role/team filter here would otherwise
+     hide it from the list. It only drops back to nothing once the player
+     genuinely no longer exists in this dataset (e.g. a season switch). */
+  const reconciledPlayer = reconcileSelectedPlayer(selected, data.players);
   const player = selected ? reconciledPlayer : rows[0];
   const mark = player ? playerMark(notes, player.id) : null;
   const live = playerAuctionStatus(board, player);
@@ -489,9 +493,11 @@ export function PlayerDetail({
         </span>
       </div>
 
+      <ScoutAiCard player={player} />
+
       {auction ? <LiveAuctionPanel player={player} {...auction} /> : null}
 
-      <PlayerSignals player={player} setPieces={setPieces} />
+      <PlayerSignals player={player} setPieces={setPieces} showScout={false} />
 
       <label className="field" htmlFor="player-note">
         <span className="field-label">Le mie note</span>

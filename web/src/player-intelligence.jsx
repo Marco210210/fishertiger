@@ -87,10 +87,46 @@ const pieceLabel = (piece) => {
   return `${name.charAt(0).toLocaleUpperCase("it")}${name.slice(1)}${piece.priority ? ` · ${piece.priority}ª scelta` : ""}`;
 };
 
-/** Compact, shared intelligence block used by both the list and live auction. */
-export function PlayerSignals({ player, setPieces = [], compact = false }) {
+/** Scout AI's read on a player — an injury/monitor flag when there is no
+ * scout note, the scout note itself otherwise. Rendered by callers ahead of
+ * everything else about the player: it is the one signal that can change
+ * whether the rest of the numbers still apply. */
+export function ScoutAiCard({ player }) {
   const injury = automaticInjury(player);
   const scout = player?.scout_ai;
+  if (scout)
+    return (
+      <div className={`notice notice--${scoutTone(scout.status)} scout-card`}>
+        <div className="scout-card__head">
+          <b>Scout AI · {scoutStatusLabel(scout.status)}</b>
+          <span>{scout.impact_percent > 0 ? "+" : ""}{scout.impact_percent}% sul valore</span>
+        </div>
+        <strong>{scout.headline}</strong>
+        <p>{scout.summary}</p>
+        {scout.sources?.length ? (
+          <span className="scout-card__sources">
+            {scout.sources.map((source, index) => (
+              <a href={source} target="_blank" rel="noreferrer" key={source}>Fonte {index + 1}</a>
+            ))}
+          </span>
+        ) : null}
+      </div>
+    );
+  if (injury.active)
+    return (
+      <div className={`notice notice--${scoutTone(injury.status)}`}>
+        <b>{injury.label}</b>
+        {injury.note ? <p>{injury.note}</p> : null}
+      </div>
+    );
+  return null;
+}
+
+/** Compact, shared intelligence block used by both the list and live auction.
+ * `showScout` defaults to true for standalone callers; a caller that already
+ * renders `ScoutAiCard` up front (ahead of everything else) passes false to
+ * avoid showing the same note twice. */
+export function PlayerSignals({ player, setPieces = [], compact = false, showScout = true }) {
   const events = player?.event_rates || {};
   return (
     <div className={`player-signals${compact ? " player-signals--compact" : ""}`}>
@@ -114,30 +150,7 @@ export function PlayerSignals({ player, setPieces = [], compact = false }) {
         <p className="micro">Nessuna gerarchia rilevata su rigori, punizioni o corner.</p>
       )}
 
-      {injury.active && !scout ? (
-        <div className={`notice notice--${scoutTone(injury.status)}`}>
-          <b>{injury.label}</b>
-          {injury.note ? <p>{injury.note}</p> : null}
-        </div>
-      ) : null}
-
-      {scout ? (
-        <div className={`notice notice--${scoutTone(scout.status)} scout-card`}>
-          <div className="scout-card__head">
-            <b>Scout AI · {scoutStatusLabel(scout.status)}</b>
-            <span>{scout.impact_percent > 0 ? "+" : ""}{scout.impact_percent}% sul valore</span>
-          </div>
-          <strong>{scout.headline}</strong>
-          <p>{scout.summary}</p>
-          {scout.sources?.length ? (
-            <span className="scout-card__sources">
-              {scout.sources.map((source, index) => (
-                <a href={source} target="_blank" rel="noreferrer" key={source}>Fonte {index + 1}</a>
-              ))}
-            </span>
-          ) : null}
-        </div>
-      ) : null}
+      {showScout ? <ScoutAiCard player={player} /> : null}
     </div>
   );
 }

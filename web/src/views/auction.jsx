@@ -32,6 +32,7 @@ import {
   ClubCrest,
   PlayerPortrait,
   PlayerSignals,
+  ScoutAiCard,
   setPiecesForPlayer,
 } from "../player-intelligence.jsx";
 import {
@@ -635,6 +636,8 @@ function VerdictCard({
         </button>
       </div>
 
+      <ScoutAiCard player={player} />
+
       <div className="verdict-call">
         <strong className="verdict-word">{headline}</strong>
         <span className="verdict-sub">
@@ -654,7 +657,7 @@ function VerdictCard({
 
       <BidGauge advice={advice} price={price} rules={rules} legalMax={legalMax} />
 
-      <PlayerSignals player={player} setPieces={setPieces} compact />
+      <PlayerSignals player={player} setPieces={setPieces} compact showScout={false} />
 
       <div className="bidbar">
         <PriceStepper
