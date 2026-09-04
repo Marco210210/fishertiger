@@ -5,6 +5,7 @@ import json
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 import pandas as pd
@@ -141,6 +142,47 @@ class LocalApiServerTests(unittest.TestCase):
         self.assertTrue(payload["read_only"])
         self.assertIn("token_configured", payload)
         self.assertNotIn("token", payload)
+
+    def test_each_web_user_can_connect_and_disconnect_a_personal_fantalab_account(self):
+        body = json.dumps({"refresh_token": "personal-secret"}).encode("utf-8")
+
+        def store_personal(value, *, api_key, cache_path):
+            self.assertEqual(value, "personal-secret")
+            self.assertEqual(api_key, "public-firebase-key")
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            cache_path.write_text(
+                json.dumps({
+                    "refresh_token": "rotated-secret",
+                    "id_token": "short-id-token",
+                    "expires_at": 9_999_999_999,
+                }),
+                encoding="utf-8",
+            )
+
+        with patch.dict(
+            "os.environ",
+            {"FISHERTIGER_FANTALAB_FIREBASE_API_KEY": "public-firebase-key"},
+            clear=False,
+        ), patch("advisor.server.store_fantalab_refresh_token", side_effect=store_personal):
+            connected, connected_payload = self.request(
+                "PUT",
+                "/api/fantalab/credentials",
+                body=body,
+                headers={"Content-Type": "application/json"},
+            )
+            status, status_payload = self.request("GET", "/api/fantalab/status")
+            disconnected, disconnected_payload = self.request(
+                "DELETE", "/api/fantalab/credentials"
+            )
+            status_after, status_after_payload = self.request("GET", "/api/fantalab/status")
+
+        self.assertEqual(connected.status, 200)
+        self.assertEqual(connected_payload, {"connected": True})
+        self.assertTrue(status_payload["personal_token_configured"])
+        self.assertNotIn("personal-secret", json.dumps(status_payload))
+        self.assertEqual(disconnected.status, 200)
+        self.assertEqual(disconnected_payload, {"connected": False})
+        self.assertFalse(status_after_payload["personal_token_configured"])
 
     def test_fantalab_snapshot_uses_the_injected_reader(self):
         self.server.fantalab_reader = lambda request: {

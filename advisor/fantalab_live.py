@@ -11,6 +11,8 @@ The wire format was documented and tested by Silvio Baratto's MIT-licensed
 from __future__ import annotations
 
 import json
+import hashlib
+import os
 import re
 import time
 from collections.abc import Callable, Mapping
@@ -198,6 +200,58 @@ def _save_cached_credentials(path: Path, value: Mapping[str, Any]) -> None:
         pass
 
 
+def personal_credentials_path(updates_dir: Path, username: str) -> Path:
+    """Return a non-identifying, path-safe credential file for one web user."""
+    digest = hashlib.sha256(username.encode("utf-8")).hexdigest()
+    return updates_dir / "fantalab" / "users" / f"{digest}.json"
+
+
+def fantalab_credentials_available(path: Path) -> bool:
+    """Report whether a usable cached session exists, without exposing it."""
+    return _load_cached_credentials(path) is not None
+
+
+def store_fantalab_refresh_token(
+    refresh_token: str,
+    *,
+    api_key: str,
+    cache_path: Path,
+    requester: FormRequester = _request_form,
+    now: float | None = None,
+) -> None:
+    """Validate and atomically install one user's long-lived FantaLab session."""
+    if not isinstance(refresh_token, str) or not refresh_token.strip():
+        raise FantaLabError("Incolla un refresh token FantaLab valido.")
+    if len(refresh_token) > 16_384:
+        raise FantaLabError("Il refresh token FantaLab è troppo lungo.")
+    current_time = time.time() if now is None else now
+    response = _refresh_id_token(
+        refresh_token.strip(), api_key=api_key, requester=requester
+    )
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = cache_path.with_name(f".{cache_path.name}.{os.getpid()}.tmp")
+    try:
+        temporary.write_text(
+            json.dumps(
+                {
+                    "refresh_token": response["refresh_token"],
+                    "id_token": response["id_token"],
+                    "expires_at": current_time + int(response["expires_in"]),
+                }
+            ),
+            encoding="utf-8",
+        )
+        try:
+            os.chmod(temporary, 0o600)
+        except OSError:
+            pass
+        os.replace(temporary, cache_path)
+    except OSError:
+        raise FantaLabError("Non riesco a salvare l'accesso FantaLab sul server.") from None
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def resolve_fantalab_id_token(
     *,
     bootstrap_refresh_token: str | None,
@@ -214,14 +268,19 @@ def resolve_fantalab_id_token(
     server restarts, without ever needing a new manual capture — only the
     very first ``bootstrap_refresh_token`` has to come from the browser.
     """
-    if not bootstrap_refresh_token or not api_key:
+    if not api_key:
         return None
     current_time = time.time() if now is None else now
     cached = _load_cached_credentials(cache_path)
+    if not cached and not bootstrap_refresh_token:
+        return None
     if cached and cached["expires_at"] - ID_TOKEN_SAFETY_MARGIN_SECONDS > current_time:
         return cached["id_token"]
 
-    for candidate in ([cached["refresh_token"]] if cached else []) + [bootstrap_refresh_token]:
+    candidates = ([cached["refresh_token"]] if cached else []) + (
+        [bootstrap_refresh_token] if bootstrap_refresh_token else []
+    )
+    for candidate in candidates:
         try:
             response = _refresh_id_token(candidate, api_key=api_key, requester=requester)
         except FantaLabError:

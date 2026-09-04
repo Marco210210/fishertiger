@@ -36,7 +36,14 @@ from .generate import (
 )
 from .auth import AccountError, CredentialStore
 from .freshness import dataset_configuration_hash, simulation_configuration_hash, source_fingerprints
-from .fantalab_live import FantaLabError, live_snapshot, resolve_fantalab_id_token
+from .fantalab_live import (
+    FantaLabError,
+    fantalab_credentials_available,
+    live_snapshot,
+    personal_credentials_path,
+    resolve_fantalab_id_token,
+    store_fantalab_refresh_token,
+)
 from .scout import load_scout_snapshot, load_scout_snapshot_claude
 from .scout_refresh import refresh_official_scout
 from .league_calendar import build_legacy_calendar_template, preprocess_legacy_calendar
@@ -235,6 +242,8 @@ class LocalApiHandler(BaseHTTPRequestHandler):
         path = self._path()
         if path == "/api/auth/password":
             self._change_password()
+        elif path == "/api/fantalab/credentials":
+            self._put_fantalab_credentials()
         elif path.startswith("/api/auction-state/"):
             self._put_auction_state(path.removeprefix("/api/auction-state/"))
         elif path.startswith("/api/updates/player-list/candidate/"):
@@ -252,6 +261,8 @@ class LocalApiHandler(BaseHTTPRequestHandler):
         path = self._path()
         if path.startswith("/api/auth/users/"):
             self._delete_auth_user(path.removeprefix("/api/auth/users/"))
+        elif path == "/api/fantalab/credentials":
+            self._delete_fantalab_credentials()
         elif path.startswith("/api/profiles/"):
             self._delete_profile(path.removeprefix("/api/profiles/"))
         else:
@@ -414,17 +425,60 @@ class LocalApiHandler(BaseHTTPRequestHandler):
 
     def _fantalab_status(self) -> None:
         """Report capabilities without ever returning the configured credential."""
+        personal = fantalab_credentials_available(self._personal_fantalab_path())
+        shared = bool(
+            os.environ.get("FISHERTIGER_FANTALAB_REFRESH_TOKEN")
+            or os.environ.get("FISHERTIGER_FANTALAB_TOKEN")
+        )
         self._send_json(
             HTTPStatus.OK,
             {
                 "available": True,
                 "read_only": True,
-                "token_configured": bool(
-                    os.environ.get("FISHERTIGER_FANTALAB_REFRESH_TOKEN")
-                    or os.environ.get("FISHERTIGER_FANTALAB_TOKEN")
-                ),
+                "token_configured": personal or shared,
+                "personal_token_configured": personal,
+                "shared_token_configured": shared,
             },
         )
+
+    def _personal_fantalab_path(self) -> Path:
+        username = (self._authenticated_user or {}).get("username") or "local"
+        return personal_credentials_path(self.server.updates_dir, str(username))
+
+    def _put_fantalab_credentials(self) -> None:
+        request = self._read_json_object()
+        if request is None:
+            return
+        api_key = os.environ.get("FISHERTIGER_FANTALAB_FIREBASE_API_KEY")
+        if not api_key:
+            self._error(
+                HTTPStatus.SERVICE_UNAVAILABLE,
+                "fantalab_auth_unavailable",
+                "Il server non ha la chiave pubblica Firebase necessaria per collegare account FantaLab.",
+            )
+            return
+        try:
+            store_fantalab_refresh_token(
+                request.get("refresh_token"),
+                api_key=api_key,
+                cache_path=self._personal_fantalab_path(),
+            )
+        except FantaLabError as error:
+            self._error(HTTPStatus.BAD_REQUEST, "invalid_fantalab_token", str(error))
+            return
+        self._send_json(HTTPStatus.OK, {"connected": True})
+
+    def _delete_fantalab_credentials(self) -> None:
+        try:
+            self._personal_fantalab_path().unlink(missing_ok=True)
+        except OSError:
+            self._error(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                "fantalab_disconnect_failed",
+                "Non riesco a scollegare l'account FantaLab.",
+            )
+            return
+        self._send_json(HTTPStatus.OK, {"connected": False})
 
     def _scout_snapshot(self, season_slug: str) -> None:
         try:
@@ -458,15 +512,25 @@ class LocalApiHandler(BaseHTTPRequestHandler):
             if self.server.fantalab_reader is not None:
                 result = self.server.fantalab_reader(request)
             else:
+                api_key = os.environ.get("FISHERTIGER_FANTALAB_FIREBASE_API_KEY")
+                personal_token = resolve_fantalab_id_token(
+                    bootstrap_refresh_token=None,
+                    api_key=api_key,
+                    cache_path=self._personal_fantalab_path(),
+                )
                 renewed_token = resolve_fantalab_id_token(
                     bootstrap_refresh_token=os.environ.get("FISHERTIGER_FANTALAB_REFRESH_TOKEN"),
-                    api_key=os.environ.get("FISHERTIGER_FANTALAB_FIREBASE_API_KEY"),
+                    api_key=api_key,
                     cache_path=self.server.updates_dir / "fantalab" / "credentials.json",
                 )
                 result = live_snapshot(
                     request,
                     cache_path=self.server.updates_dir / "fantalab" / "listone.json",
-                    token=renewed_token or os.environ.get("FISHERTIGER_FANTALAB_TOKEN"),
+                    token=(
+                        personal_token
+                        or renewed_token
+                        or os.environ.get("FISHERTIGER_FANTALAB_TOKEN")
+                    ),
                 )
         except FantaLabError as error:
             self._error(HTTPStatus.BAD_GATEWAY, "fantalab_unavailable", str(error))
@@ -1597,6 +1661,12 @@ class LocalApiHandler(BaseHTTPRequestHandler):
             status = HTTPStatus.NOT_FOUND if error.code == "user_not_found" else HTTPStatus.BAD_REQUEST
             self._error(status, error.code, str(error))
             return
+        try:
+            personal_credentials_path(self.server.updates_dir, username).unlink(missing_ok=True)
+        except OSError:
+            # The account is already gone; a stale, unreadable credential file
+            # must not turn a successful account deletion into a false failure.
+            pass
         self._send_json(HTTPStatus.OK, {"deleted": True})
 
     def _serve_static(self, request_path: str) -> None:

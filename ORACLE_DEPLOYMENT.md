@@ -158,6 +158,15 @@ all, because the code runs in that page's own security context.
 The integration is deliberately read-only. AstaFanta Support cannot bid, assign a
 lot or change the FantaLab room.
 
+Each AstaFanta web account can also connect its own FantaLab account from the
+**Asta live** screen. The personal refresh token is validated before replacing
+an existing credential, stored in a separate mode-0600 server file keyed by a
+one-way hash of the AstaFanta username, and never returned by the API. A
+personal credential takes priority over the shared server credential only for
+that logged-in user; deleting either the FantaLab connection or the AstaFanta
+account removes its file. This lets two collaborators follow two private rooms
+at the same time with their respective FantaLab memberships.
+
 ## Scout AI
 
 The committed snapshot is refreshed daily from Fantacalcio.it by GitHub

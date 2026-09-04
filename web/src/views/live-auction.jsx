@@ -28,6 +28,7 @@ const errorMessage = async (response) => {
 
 const shortId = (value) => (value ? `…${String(value).slice(-6)}` : "sconosciuta");
 const POLL_INTERVAL_MS = 1200;
+const FANTALAB_TOKEN_CAPTURE = `(async()=>{const direct=localStorage.getItem("refresh_token");if(direct){copy(direct);console.log("Token FantaLab copiato.");return;}for(const {name} of await indexedDB.databases()){if(!/firebase/i.test(name))continue;const db=await new Promise((ok,no)=>{const r=indexedDB.open(name);r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});for(const store of db.objectStoreNames){const rows=await new Promise((ok,no)=>{const r=db.transaction(store).objectStore(store).getAll();r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});for(const row of rows){const token=row?.value?.stsTokenManager?.refreshToken;if(token){copy(token);console.log("Token FantaLab copiato.");return;}}}}console.log("Token non trovato: accedi prima a FantaLab.");})();`;
 
 const importRoomSetup = (profileId, players, rules, board, snapshot, teamMap) => {
   const participants = Number(snapshot.room?.participants);
@@ -75,6 +76,14 @@ export default function LiveAuctionView({
   const [roomNotice, setRoomNotice] = useState("");
   const [now, setNow] = useState(Date.now());
   const [showMapping, setShowMapping] = useState(false);
+  const [accountStatus, setAccountStatus] = useState({
+    loading: true,
+    personal: false,
+    shared: false,
+  });
+  const [refreshToken, setRefreshToken] = useState("");
+  const [accountBusy, setAccountBusy] = useState(false);
+  const [accountMessage, setAccountMessage] = useState(null);
   const board = useAuctionBoard(profileId, data.players, rules);
   const teamMapRef = useRef(connection.teamMap);
   const liveRef = useRef({ players: data.players, rules, board });
@@ -98,6 +107,98 @@ export default function LiveAuctionView({
     const timer = window.setInterval(() => setNow(Date.now()), 250);
     return () => window.clearInterval(timer);
   }, []);
+
+  const loadAccountStatus = async () => {
+    try {
+      const response = await fetch(apiUrl("/api/fantalab/status", apiBase));
+      if (!response.ok) throw new Error(await errorMessage(response));
+      const result = await response.json();
+      setAccountStatus({
+        loading: false,
+        personal: Boolean(result.personal_token_configured),
+        shared: Boolean(result.shared_token_configured),
+      });
+    } catch (failure) {
+      setAccountStatus((current) => ({ ...current, loading: false }));
+      setAccountMessage({
+        tone: "stop",
+        text: failure instanceof Error
+          ? failure.message
+          : "Non riesco a verificare l'accesso FantaLab.",
+      });
+    }
+  };
+
+  useEffect(() => {
+    loadAccountStatus();
+  }, [apiBase]);
+
+  const connectPersonalAccount = async () => {
+    if (!refreshToken.trim()) {
+      setAccountMessage({ tone: "stop", text: "Incolla prima il refresh token del tuo account FantaLab." });
+      return;
+    }
+    setAccountBusy(true);
+    setAccountMessage(null);
+    try {
+      const response = await fetch(apiUrl("/api/fantalab/credentials", apiBase), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken.trim() }),
+      });
+      if (!response.ok) throw new Error(await errorMessage(response));
+      setRefreshToken("");
+      await loadAccountStatus();
+      setAccountMessage({
+        tone: "go",
+        text: "Account FantaLab personale collegato. Ora puoi usare tutte le aste a cui partecipa questo account.",
+      });
+      setSnapshot(null);
+    } catch (failure) {
+      setAccountMessage({
+        tone: "stop",
+        text: failure instanceof Error ? failure.message : "Collegamento FantaLab non riuscito.",
+      });
+    } finally {
+      setAccountBusy(false);
+    }
+  };
+
+  const disconnectPersonalAccount = async () => {
+    setAccountBusy(true);
+    setAccountMessage(null);
+    try {
+      const response = await fetch(apiUrl("/api/fantalab/credentials", apiBase), {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error(await errorMessage(response));
+      await loadAccountStatus();
+      setAccountMessage({ tone: "info", text: "Account FantaLab personale scollegato." });
+      setSnapshot(null);
+    } catch (failure) {
+      setAccountMessage({
+        tone: "stop",
+        text: failure instanceof Error ? failure.message : "Scollegamento FantaLab non riuscito.",
+      });
+    } finally {
+      setAccountBusy(false);
+    }
+  };
+
+  const copyTokenCaptureCommand = async () => {
+    try {
+      await navigator.clipboard.writeText(FANTALAB_TOKEN_CAPTURE);
+      setAccountMessage({
+        tone: "info",
+        text: "Comando copiato. Apri FantaLab, premi F12, incollalo nella Console e premi Invio: il token verrà copiato negli appunti.",
+      });
+    } catch {
+      setAccountMessage({
+        tone: "stop",
+        text: "Il browser non ha permesso la copia automatica. Usa la procedura descritta nella guida del server.",
+      });
+    }
+  };
 
   useEffect(() => {
     if (!active || !connection.roomUrl.trim()) return undefined;
@@ -316,6 +417,68 @@ export default function LiveAuctionView({
             <i /> {active && !error ? "collegata" : active ? "riconnessione" : "disconnessa"}
           </span>
         </div>
+        <details className="live-account" open={!accountStatus.loading && !accountStatus.personal && !accountStatus.shared}>
+          <summary>
+            <span>
+              <b>
+                {accountStatus.loading
+                  ? "Verifica account FantaLab…"
+                  : accountStatus.personal
+                    ? "Account FantaLab personale collegato"
+                    : accountStatus.shared
+                      ? "Accesso condiviso attivo"
+                      : "Collega il tuo account FantaLab"}
+              </b>
+              <small>
+                {accountStatus.personal
+                  ? "Le stanze vengono aperte con il tuo account, non con quello di Marco."
+                  : accountStatus.shared
+                    ? "Per un'asta accessibile solo al tuo account, apri qui e collega il tuo FantaLab."
+                  : "Serve per importare automaticamente nomi, squadre, crediti e configurazione delle tue aste."}
+              </small>
+            </span>
+          </summary>
+          <div className="live-account__body stack">
+            {accountStatus.personal ? (
+              <>
+                <p className="muted">Questa credenziale appartiene solo al tuo utente AstaFanta ed è usata esclusivamente in lettura.</p>
+                <button type="button" className="btn btn--sm" onClick={disconnectPersonalAccount} disabled={accountBusy}>
+                  {accountBusy ? "Scollegamento…" : "Scollega il mio account"}
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="muted">
+                  Accedi prima a FantaLab con il tuo Google/account. Copia il comando, apri F12 &gt; Console su app.fantalab.it, incollalo e premi Invio. Torna qui e incolla il token che il comando ha messo negli appunti. Chrome potrebbe chiederti di digitare <code>allow pasting</code> prima di incollare.
+                </p>
+                <button type="button" className="btn btn--ghost btn--sm" onClick={copyTokenCaptureCommand}>
+                  Copia comando per FantaLab
+                </button>
+                <div className="live-account__form">
+                  <label className="field">
+                    <span className="field-label">Il mio refresh token FantaLab</span>
+                    <input
+                      className="input"
+                      type="password"
+                      value={refreshToken}
+                      onChange={(event) => setRefreshToken(event.target.value)}
+                      placeholder="Incolla il token"
+                      autoComplete="off"
+                      spellCheck="false"
+                    />
+                  </label>
+                  <button type="button" className="btn btn--primary" onClick={connectPersonalAccount} disabled={accountBusy}>
+                    {accountBusy ? "Collegamento…" : "Salva il mio accesso"}
+                  </button>
+                </div>
+                {accountStatus.shared ? (
+                  <p className="micro">Il token condiviso resta disponibile come ripiego, ma potrebbe non vedere un'asta alla quale partecipa soltanto il tuo account.</p>
+                ) : null}
+              </>
+            )}
+          </div>
+        </details>
+        {accountMessage ? <p className={`notice notice--${accountMessage.tone}`} role="status">{accountMessage.text}</p> : null}
         <div className="live-connect__form">
           <label className="field live-connect__url">
             <span className="field-label">Link stanza</span>

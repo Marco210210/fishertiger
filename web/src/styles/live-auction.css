@@ -41,6 +41,38 @@
   align-items: end;
 }
 
+.live-account {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface-raised) 82%, transparent);
+}
+
+.live-account summary {
+  display: flex;
+  cursor: pointer;
+  padding: var(--s-3) var(--s-4);
+}
+
+.live-account summary > span {
+  display: grid;
+  gap: .2rem;
+}
+
+.live-account summary small,
+.live-account code { color: var(--color-fanta-muted); }
+
+.live-account code { overflow-wrap: anywhere; }
+
+.live-account__body {
+  padding: 0 var(--s-4) var(--s-4);
+}
+
+.live-account__form {
+  display: grid;
+  gap: var(--s-3);
+  align-items: end;
+}
+
 .live-lot {
   display: grid;
   gap: var(--s-4);
@@ -74,6 +106,7 @@
 
 @media (min-width: 720px) {
   .live-connect__form { grid-template-columns: minmax(0, 1fr) 9rem auto; }
+  .live-account__form { grid-template-columns: minmax(0, 1fr) auto; }
   .live-team-map { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .live-lot { grid-template-columns: minmax(0, 1fr) minmax(22rem, .8fr); align-items: center; }
 }

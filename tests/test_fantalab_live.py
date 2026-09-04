@@ -8,10 +8,13 @@ import pytest
 
 from advisor.fantalab_live import (
     FantaLabError,
+    fantalab_credentials_available,
     live_snapshot,
     parse_database,
     parse_room_id,
+    personal_credentials_path,
     resolve_fantalab_id_token,
+    store_fantalab_refresh_token,
 )
 
 
@@ -187,6 +190,59 @@ def test_resolve_fantalab_id_token_reuses_a_still_valid_cached_token(tmp_path: P
         now=9_000.0,
     )
     assert token == "cached-id"
+
+
+def test_personal_cached_token_works_without_a_server_bootstrap_token(tmp_path: Path) -> None:
+    cache_path = tmp_path / "credentials.json"
+    cache_path.write_text(
+        json.dumps({"refresh_token": "personal-refresh", "id_token": "personal-id", "expires_at": 10_000.0}),
+        encoding="utf-8",
+    )
+
+    token = resolve_fantalab_id_token(
+        bootstrap_refresh_token=None,
+        api_key="test-api-key",
+        cache_path=cache_path,
+        requester=lambda _url, _params: (_ for _ in ()).throw(AssertionError("must use cache")),
+        now=9_000.0,
+    )
+    assert token == "personal-id"
+
+
+def test_personal_credentials_are_isolated_and_installed_only_after_validation(tmp_path: Path) -> None:
+    marco = personal_credentials_path(tmp_path, "marco")
+    friend = personal_credentials_path(tmp_path, "friend")
+    assert marco != friend
+    assert "marco" not in marco.name
+    assert not fantalab_credentials_available(friend)
+
+    store_fantalab_refresh_token(
+        "friend-refresh",
+        api_key="test-api-key",
+        cache_path=friend,
+        requester=lambda _url, params: {
+            "id_token": "friend-id",
+            "refresh_token": f"rotated-{params['refresh_token']}",
+            "expires_in": "3600",
+        },
+        now=1_000.0,
+    )
+    assert fantalab_credentials_available(friend)
+    assert not fantalab_credentials_available(marco)
+    assert json.loads(friend.read_text(encoding="utf-8")) == {
+        "refresh_token": "rotated-friend-refresh",
+        "id_token": "friend-id",
+        "expires_at": 4_600.0,
+    }
+
+    with pytest.raises(FantaLabError):
+        store_fantalab_refresh_token(
+            "replacement",
+            api_key="test-api-key",
+            cache_path=friend,
+            requester=lambda _url, _params: (_ for _ in ()).throw(FantaLabError("invalid")),
+        )
+    assert json.loads(friend.read_text(encoding="utf-8"))["id_token"] == "friend-id"
 
 
 def test_resolve_fantalab_id_token_renews_with_the_cached_rotated_token_first(tmp_path: Path) -> None:
