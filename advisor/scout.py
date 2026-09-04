@@ -68,6 +68,11 @@ def normalize_scout_snapshot(value: Any, season_slug: str) -> dict[str, Any]:
             "headline": _text(item.get("headline"), 180),
             "summary": _text(item.get("summary"), 1200),
             "sources": sources[:6],
+            # Only a Claude-researched entry explicitly marked "promoted" is
+            # merged into the official snapshot everywhere in the app; an
+            # unmarked one stays visible only in the dedicated Claude section
+            # until a human reviews it.
+            "promoted": bool(item.get("promoted")),
             **({"expires_at": _text(item.get("expires_at"), 60)} if item.get("expires_at") else {}),
         }
 

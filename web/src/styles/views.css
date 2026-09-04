@@ -1036,6 +1036,27 @@
   vertical-align: middle;
 }
 
+.scout-flag {
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+.scout-flag--stop {
+  color: var(--c-stop);
+}
+
+.scout-flag--warn {
+  color: var(--c-warn);
+}
+
+.scout-flag--go {
+  color: var(--c-go);
+}
+
+.scout-flag--info {
+  color: var(--c-info);
+}
+
 .player-avatar {
   flex: 0 0 auto;
   width: auto;

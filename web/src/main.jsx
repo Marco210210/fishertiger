@@ -11,7 +11,7 @@ import { Updates } from "./updates.jsx";
 import { clearProfileBrowserData } from "./profile-storage.js";
 import { useAuctionBoard } from "./use-auction-store.js";
 import { auctionSimulationInput } from "./auction-simulation.js";
-import { enrichPlayersWithScout, loadScoutAi, loadScoutAiClaude } from "./scout-ai.js";
+import { enrichPlayersWithScout, loadScoutAi, loadScoutAiClaude, mergeScoutSnapshots } from "./scout-ai.js";
 import {
   apiUrl,
   auctionDatasetPath,
@@ -413,9 +413,9 @@ function App() {
   const baseData = dataset?.data || null;
   const data = useMemo(
     () => baseData
-      ? { ...baseData, players: enrichPlayersWithScout(baseData.players, scout) }
+      ? { ...baseData, players: enrichPlayersWithScout(baseData.players, mergeScoutSnapshots(scout, scoutClaude)) }
       : null,
-    [baseData, scout],
+    [baseData, scout, scoutClaude],
   );
   const activeProfileId = dataset?.profileId || "default";
   const activeRules = rulesFor(dataset?.profile ?? profile, data || {});

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Star, StickyNote } from "lucide-react";
+import { Asterisk, Star, StickyNote } from "lucide-react";
 import { createRoleValuation, sourceFvm } from "../player-valuation.js";
 import {
   ClubCrest,
@@ -15,6 +15,7 @@ import {
   releasePlayer,
 } from "../auction-store.js";
 import { readFantalabConnection } from "../fantalab-live.js";
+import { scoutTone } from "../scout-ai.js";
 import { useAuctionBoard } from "../use-auction-store.js";
 import { useAdvisor } from "../use-advisor.js";
 import { reconcileSelectedPlayer } from "../player-selection.js";
@@ -371,11 +372,21 @@ export default function PlayersView({
                       media={<PlayerPortrait player={item} />}
                       crest={<ClubCrest team={item.team_id} />}
                       flag={
-                        itemMark.note ? (
-                          <em className="note-flag" title={itemMark.note}>
-                            <StickyNote size={11} aria-hidden="true" />
-                          </em>
-                        ) : null
+                        <>
+                          {item.scout_ai ? (
+                            <em
+                              className={`scout-flag scout-flag--${scoutTone(item.scout_ai.status)}`}
+                              title={item.scout_ai.headline}
+                            >
+                              <Asterisk size={12} aria-hidden="true" />
+                            </em>
+                          ) : null}
+                          {itemMark.note ? (
+                            <em className="note-flag" title={itemMark.note}>
+                              <StickyNote size={11} aria-hidden="true" />
+                            </em>
+                          ) : null}
+                        </>
                       }
                       lead={
                         <button
