@@ -37,7 +37,7 @@ from .generate import (
 from .auth import AccountError, CredentialStore
 from .freshness import dataset_configuration_hash, simulation_configuration_hash, source_fingerprints
 from .fantalab_live import FantaLabError, live_snapshot, resolve_fantalab_id_token
-from .scout import load_scout_snapshot
+from .scout import load_scout_snapshot, load_scout_snapshot_claude
 from .scout_refresh import refresh_official_scout
 from .league_calendar import build_legacy_calendar_template, preprocess_legacy_calendar
 from .simulation import RosterValidationError
@@ -214,6 +214,8 @@ class LocalApiHandler(BaseHTTPRequestHandler):
             self._get_auction_state(path.removeprefix("/api/auction-state/"))
         elif path.startswith("/api/scout/"):
             self._scout_snapshot(path.removeprefix("/api/scout/"))
+        elif path.startswith("/api/scout-claude/"):
+            self._scout_snapshot_claude(path.removeprefix("/api/scout-claude/"))
         elif path.startswith("/api/profiles/"):
             self._get_profile(path.removeprefix("/api/profiles/"))
         elif path == "/api/datasets/manifest":
@@ -427,6 +429,18 @@ class LocalApiHandler(BaseHTTPRequestHandler):
     def _scout_snapshot(self, season_slug: str) -> None:
         try:
             value = load_scout_snapshot(
+                season_slug,
+                raw_dir=self.server.raw_dir,
+                updates_dir=self.server.updates_dir,
+            )
+        except ValueError:
+            self._error(HTTPStatus.BAD_REQUEST, "invalid_season", "La stagione richiesta non è valida.")
+            return
+        self._send_json(HTTPStatus.OK, value)
+
+    def _scout_snapshot_claude(self, season_slug: str) -> None:
+        try:
+            value = load_scout_snapshot_claude(
                 season_slug,
                 raw_dir=self.server.raw_dir,
                 updates_dir=self.server.updates_dir,

@@ -96,3 +96,24 @@ def load_scout_snapshot(season_slug: str, *, raw_dir: Path, updates_dir: Path) -
             continue
         return normalize_scout_snapshot(value, season_slug)
     return normalize_scout_snapshot({}, season_slug)
+
+
+def load_scout_snapshot_claude(season_slug: str, *, raw_dir: Path, updates_dir: Path) -> dict[str, Any]:
+    """The Claude-researched companion snapshot (transfers, rotations, set-piece
+    hierarchies — not only the official injury list). Kept in its own files,
+    never merged into load_scout_snapshot's data: a research run that only
+    covers some teams, or fails outright, must never affect the always-on
+    official snapshot the rest of the app already depends on."""
+    if not SEASON_SLUG.fullmatch(season_slug):
+        raise ValueError("Invalid season slug")
+    candidates = [
+        updates_dir / "scout-claude" / f"{season_slug}.json",
+        raw_dir / f"scout_ai_claude_{season_slug.replace('-', '_')}.json",
+    ]
+    for path in candidates:
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        return normalize_scout_snapshot(value, season_slug)
+    return normalize_scout_snapshot({}, season_slug)

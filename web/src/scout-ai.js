@@ -13,6 +13,17 @@ export const loadScoutAi = async (profile, { apiBase = "" } = {}) => {
   return response.json();
 };
 
+/** The Claude-researched companion snapshot — a separate source, never merged
+ * into enrichPlayersWithScout, so it stays purely informational and never
+ * affects the advisor, the auction verdict or any injury flag. */
+export const loadScoutAiClaude = async (profile, { apiBase = "" } = {}) => {
+  const slug = scoutSeasonSlug(profile);
+  if (!/^20\d{2}-\d{2}$/.test(slug)) return null;
+  const response = await fetch(apiUrl(`/api/scout-claude/${slug}`, apiBase));
+  if (!response.ok) return null;
+  return response.json();
+};
+
 export const enrichPlayersWithScout = (players, snapshot) => {
   const readings = snapshot?.players || {};
   return (players || []).map((player) => {

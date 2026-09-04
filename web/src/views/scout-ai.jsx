@@ -3,7 +3,15 @@ import { useMemo, useState } from "react";
 import { PlayerRow } from "../ui.jsx";
 import { scoutStatusLabel, scoutTone } from "../scout-ai.js";
 
-export default function ScoutAiView({ data, snapshot, openPlayer }) {
+export default function ScoutAiView({
+  data,
+  snapshot,
+  openPlayer,
+  kicker = "Scout · notizie verificate",
+  title = "Scout AI",
+  description = "Qui compaiono solo notizie capaci di cambiare davvero un prezzo: infortuni, rientri, titolarità, mercato e gerarchie sui piazzati.",
+  emptyHint = "Nessuna segnalazione Scout disponibile per questo filtro. Il motore d'asta continua a usare dati e proiezioni normali.",
+}) {
   const [filter, setFilter] = useState("all");
   const statusCounts = useMemo(() => {
     const counts = { all: 0, out: 0, doubt: 0, monitor: 0, positive: 0 };
@@ -26,9 +34,9 @@ export default function ScoutAiView({ data, snapshot, openPlayer }) {
   return (
     <div className="stack stack--lg scout-page">
       <div className="page-head">
-        <span className="kicker">Scout · notizie verificate</span>
-        <h1>Scout AI</h1>
-        <p>Qui compaiono solo notizie capaci di cambiare davvero un prezzo: infortuni, rientri, titolarità, mercato e gerarchie sui piazzati.</p>
+        <span className="kicker">{kicker}</span>
+        <h1>{title}</h1>
+        <p>{description}</p>
       </div>
 
       <div className="scout-summary card">
@@ -55,7 +63,7 @@ export default function ScoutAiView({ data, snapshot, openPlayer }) {
         </div>
       ) : (
         <div className="card">
-          <p className="muted">Nessuna segnalazione Scout disponibile per questo filtro. Il motore d'asta continua a usare dati e proiezioni normali.</p>
+          <p className="muted">{emptyHint}</p>
         </div>
       )}
     </div>

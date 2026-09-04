@@ -11,7 +11,7 @@ import { Updates } from "./updates.jsx";
 import { clearProfileBrowserData } from "./profile-storage.js";
 import { useAuctionBoard } from "./use-auction-store.js";
 import { auctionSimulationInput } from "./auction-simulation.js";
-import { enrichPlayersWithScout, loadScoutAi } from "./scout-ai.js";
+import { enrichPlayersWithScout, loadScoutAi, loadScoutAiClaude } from "./scout-ai.js";
 import {
   apiUrl,
   auctionDatasetPath,
@@ -73,7 +73,15 @@ const TABS = [
     icon: "chart",
     views: [["simulation", "Simulazione"]],
   },
-  { id: "scout", label: "Scout AI", icon: "search", views: [["scout", "Scout AI"]] },
+  {
+    id: "scout",
+    label: "Scout AI",
+    icon: "search",
+    views: [
+      ["scout", "Ufficiale"],
+      ["scout-claude", "Claude"],
+    ],
+  },
   { id: "updates", label: "Aggiornamenti", icon: "refresh", views: [["updates", "Aggiornamenti"]] },
   { id: "settings", label: "Impostazioni", icon: "sliders", views: [["settings", "Impostazioni"]] },
   { id: "access", label: "Accessi", icon: "key", views: [["access", "Accessi"]] },
@@ -128,6 +136,7 @@ function App() {
   const [simulationStatus, setSimulationStatus] = useState("");
   const [currentSourceFingerprints, setCurrentSourceFingerprints] = useState(null);
   const [scout, setScout] = useState(null);
+  const [scoutClaude, setScoutClaude] = useState(null);
   const [view, setView] = useState("overview");
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [selectedTeam, setSelectedTeam] = useState(null);
@@ -341,6 +350,15 @@ function App() {
     loadScoutAi(profile, { apiBase })
       .then((value) => active && setScout(value))
       .catch(() => active && setScout(null));
+    return () => { active = false; };
+  }, [apiBase, profile?.season?.season]);
+
+  useEffect(() => {
+    let active = true;
+    setScoutClaude(null);
+    loadScoutAiClaude(profile, { apiBase })
+      .then((value) => active && setScoutClaude(value))
+      .catch(() => active && setScoutClaude(null));
     return () => { active = false; };
   }, [apiBase, profile?.season?.season]);
 
@@ -953,6 +971,17 @@ function App() {
           ) : null}
           {view === "scout" ? (
             <ScoutAiView data={data} snapshot={scout} openPlayer={openPlayer} />
+          ) : null}
+          {view === "scout-claude" ? (
+            <ScoutAiView
+              data={data}
+              snapshot={scoutClaude}
+              openPlayer={openPlayer}
+              kicker="Scout · ricerca Claude"
+              title="Scout AI · Claude"
+              description="Ricerca autonoma di Claude sul web per ogni squadra: infortuni, mercato, gerarchie. Separata dallo Scout ufficiale e non influisce sui consigli d'asta: qui puoi verificarla prima di fidartene."
+              emptyHint="Nessuna ricerca Claude disponibile ancora per questo filtro."
+            />
           ) : null}
           {/* Always mounted, never just conditionally rendered like the other
               views: its FantaLab connection and poll loop live in its own
