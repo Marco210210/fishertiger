@@ -1031,13 +1031,13 @@
 }
 
 .note-flag {
-  margin-left: 5px;
+  margin-right: 5px;
   color: var(--c-text-mute);
   vertical-align: middle;
 }
 
 .scout-flag {
-  margin-left: 5px;
+  margin-right: 5px;
   vertical-align: middle;
 }
 

@@ -206,8 +206,8 @@ export function PlayerRow({
       <span className="row-main">
         <span className="row-title">
           <i className={`avail avail--${tone}`} aria-hidden="true" />
-          {player.nome}
           {flag}
+          {player.nome}
         </span>
         <span className="row-sub">
           {crest}

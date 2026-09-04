@@ -539,22 +539,6 @@ export function PlayerDetail({
 
       <PlayerSignals player={player} setPieces={setPieces} showScout={false} />
 
-      <label className="field" htmlFor="player-note">
-        <span className="field-label">Le mie note</span>
-        <textarea
-          id="player-note"
-          className="input textarea"
-          value={mark?.note || ""}
-          onChange={(event) => onNoteChange(event.target.value)}
-          placeholder="Prezzo massimo, alternative, promemoria..."
-          maxLength={noteMaxLength}
-          rows={3}
-        />
-        <span className="field-help">
-          Salvate solo in questo browser, separate per profilo.
-        </span>
-      </label>
-
       <div className="detail-figures">
         <div className="stat">
           <span className="stat-label">
@@ -650,6 +634,22 @@ export function PlayerDetail({
         FVM fonte: colonna FVM del listone Fantacalcio su base 1000. Il valore
         ruolo la normalizza sul budget configurato per il reparto.
       </p>
+
+      <label className="field" htmlFor="player-note">
+        <span className="field-label">Le mie note</span>
+        <textarea
+          id="player-note"
+          className="input textarea"
+          value={mark?.note || ""}
+          onChange={(event) => onNoteChange(event.target.value)}
+          placeholder="Prezzo massimo, alternative, promemoria..."
+          maxLength={noteMaxLength}
+          rows={3}
+        />
+        <span className="field-help">
+          Salvate solo in questo browser, separate per profilo.
+        </span>
+      </label>
     </div>
   );
 }
