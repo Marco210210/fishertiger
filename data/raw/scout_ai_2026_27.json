@@ -1,7 +1,7 @@
 {
   "version": 1,
   "season": "2026/27",
-  "generated_at": "2026-09-03T17:49:32.154642+00:00",
+  "generated_at": "2026-09-04T11:21:31.025177+00:00",
   "provider": "Fantacalcio.it · elenco ufficiale",
   "lookback_days": 10,
   "players": {
@@ -17,22 +17,6 @@
       "confidence": 0.9,
       "headline": "Sulemana K.: indisponibilità da valutare nell'asta",
       "summary": "L'attaccante KO in amichevole l'8 agosto vittima di una lesione del collaterale mediale di secondo grado del ginocchio sinistro, recuperabile da inizio ottobre.",
-      "sources": [
-        "https://www.fantacalcio.it/serie-a/indisponibili"
-      ]
-    },
-    "6485": {
-      "player_id": 6485,
-      "name": "Kristensen T.",
-      "team": "Atalanta",
-      "status": "doubt",
-      "availability": 0.4,
-      "starter": 0.5,
-      "impact_percent": -3.0,
-      "multiplier": 0.97,
-      "confidence": 0.9,
-      "headline": "Kristensen T.: indisponibilità da valutare nell'asta",
-      "summary": "Il difensore non disponibile contro Sassuolo e Bologna per un problema alla caviglia. Da valutare quotidianamente, a rischio anche per sabato sera contro la Roma in trasferta.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ]
@@ -53,22 +37,6 @@
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ]
     },
-    "6225": {
-      "player_id": 6225,
-      "name": "El Azzouzi O.",
-      "team": "Bologna",
-      "status": "out",
-      "availability": 0.3,
-      "starter": 0.5,
-      "impact_percent": -6.0,
-      "multiplier": 0.94,
-      "confidence": 0.9,
-      "headline": "El Azzouzi O.: indisponibilità da valutare nell'asta",
-      "summary": "Il centrocampista ai box per una lesione del bicipite femorale della coscia sinistra, recuperabile dalla seconda metà di settembre.",
-      "sources": [
-        "https://www.fantacalcio.it/serie-a/indisponibili"
-      ]
-    },
     "2167": {
       "player_id": 2167,
       "name": "Orsolini",
@@ -85,18 +53,18 @@
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ]
     },
-    "4210": {
-      "player_id": 4210,
-      "name": "Mina",
-      "team": "Cagliari",
-      "status": "doubt",
-      "availability": 0.4,
+    "6225": {
+      "player_id": 6225,
+      "name": "El Azzouzi O.",
+      "team": "Bologna",
+      "status": "out",
+      "availability": 0.3,
       "starter": 0.5,
-      "impact_percent": -3.0,
-      "multiplier": 0.97,
+      "impact_percent": -6.0,
+      "multiplier": 0.94,
       "confidence": 0.9,
-      "headline": "Mina: indisponibilità da valutare nell'asta",
-      "summary": "Stop del colombiano nella rifinitura del 29 agosto per un affaticamento muscolare al polpaccio. Out contro l'Inter, da valutare quodianamente ma è a rischio la convocazione anche lunedì contro il Lecce nella 3a di A.",
+      "headline": "El Azzouzi O.: indisponibilità da valutare nell'asta",
+      "summary": "Il centrocampista ai box per una lesione del bicipite femorale della coscia sinistra, recuperabile dalla seconda metà di settembre.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ]
@@ -181,34 +149,18 @@
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ]
     },
-    "5562": {
-      "player_id": 5562,
-      "name": "Thuram K.",
-      "team": "Juventus",
-      "status": "out",
-      "availability": 0.05,
+    "7453": {
+      "player_id": 7453,
+      "name": "Havel",
+      "team": "Genoa",
+      "status": "monitor",
+      "availability": 0.55,
       "starter": 0.5,
-      "impact_percent": -30.0,
-      "multiplier": 0.7,
+      "impact_percent": -2.0,
+      "multiplier": 0.98,
       "confidence": 0.9,
-      "headline": "Thuram K.: indisponibilità da valutare nell'asta",
-      "summary": "il centrocampista condizionato da una sindrome femoro-rotulea e, dopo un consulto medico a fine agosto, è stato sottoposto il 3 settembre a operazione chirurgica. Lungo stop, ipotizziamo un rientro da gennaio.",
-      "sources": [
-        "https://www.fantacalcio.it/serie-a/indisponibili"
-      ]
-    },
-    "6434": {
-      "player_id": 6434,
-      "name": "Yildiz",
-      "team": "Juventus",
-      "status": "out",
-      "availability": 0.15,
-      "starter": 0.5,
-      "impact_percent": -18.0,
-      "multiplier": 0.82,
-      "confidence": 0.9,
-      "headline": "Yildiz: indisponibilità da valutare nell'asta",
-      "summary": "l'attaccante turco, dopo la gara di Frosinone (23 agosto), ha lamentato un problema al piede. Operato il 31 agosto di osteosintesi della frattura della base del V metatarso del piede sinistro, stop di circa tre mesi. Ipotesi di rientro in campo da fine novembre.",
+      "headline": "Havel: indisponibilità da valutare nell'asta",
+      "summary": "L'attaccante non convocato neppure venerdì contro il Como, sta risolvun fastidio muscolare alla gamba. Tentativo di rientro dalla 4a di campionato.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ]
@@ -229,18 +181,34 @@
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ]
     },
-    "4973": {
-      "player_id": 4973,
-      "name": "McKennie",
+    "6434": {
+      "player_id": 6434,
+      "name": "Yildiz",
       "team": "Juventus",
-      "status": "doubt",
-      "availability": 0.4,
+      "status": "out",
+      "availability": 0.15,
       "starter": 0.5,
-      "impact_percent": -3.0,
-      "multiplier": 0.97,
+      "impact_percent": -18.0,
+      "multiplier": 0.82,
       "confidence": 0.9,
-      "headline": "McKennie: indisponibilità da valutare nell'asta",
-      "summary": "il centrocampista dal 27 agosto alle prese con un affaticamento muscolare alla gamba. Assente già contro il Parma, da valutare per domenica sera contro il Milan ma la sua convocazione rimane a rischio.",
+      "headline": "Yildiz: indisponibilità da valutare nell'asta",
+      "summary": "l'attaccante turco, dopo la gara di Frosinone (23 agosto), ha lamentato un problema al piede. Operato il 31 agosto di osteosintesi della frattura della base del V metatarso del piede sinistro, stop di circa tre mesi. Ipotesi di rientro in campo da fine novembre.",
+      "sources": [
+        "https://www.fantacalcio.it/serie-a/indisponibili"
+      ]
+    },
+    "5562": {
+      "player_id": 5562,
+      "name": "Thuram K.",
+      "team": "Juventus",
+      "status": "out",
+      "availability": 0.05,
+      "starter": 0.5,
+      "impact_percent": -30.0,
+      "multiplier": 0.7,
+      "confidence": 0.9,
+      "headline": "Thuram K.: indisponibilità da valutare nell'asta",
+      "summary": "il centrocampista condizionato da una sindrome femoro-rotulea e, dopo un consulto medico a fine agosto, è stato sottoposto il 3 settembre a operazione chirurgica. Lungo stop, ipotizziamo un rientro da gennaio.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ]
