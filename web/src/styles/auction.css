@@ -296,6 +296,23 @@
   font-size: var(--fs-xs);
 }
 
+/* Every other direct section of the verdict card carries its own padding, so
+   it stays evenly spaced from its neighbours regardless of which ones are
+   present. The price summary and the signals block need the same: the bid
+   gauge between them is absent for an ineligible player (no legal price to
+   show), which otherwise left them touching with no gap at all. */
+.verdict > .notice {
+  margin: 0 var(--s-4) var(--s-3);
+}
+
+.verdict > .price-summary {
+  padding: 0 var(--s-4) var(--s-3);
+}
+
+.verdict > .player-signals {
+  padding: var(--s-2) var(--s-4) var(--s-4);
+}
+
 /* --------------------------------------------------------------- bid gauge */
 
 /*
