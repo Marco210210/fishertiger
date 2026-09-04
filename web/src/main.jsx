@@ -1,6 +1,6 @@
 import { Component, StrictMode, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { Download, Trash2, Upload } from "lucide-react";
+import { Download, KeyRound, Trash2, Upload } from "lucide-react";
 import "./index.css";
 import { LeagueSettings } from "./league-settings.jsx";
 import { createRequestGate } from "./latest-request.js";
@@ -33,6 +33,7 @@ import SimulationView from "./views/simulation.jsx";
 import AuctionView from "./views/auction.jsx";
 import LiveAuctionView from "./views/live-auction.jsx";
 import ScoutAiView from "./views/scout-ai.jsx";
+import AccessView from "./views/access.jsx";
 
 const TABS = [
   {
@@ -75,6 +76,7 @@ const TABS = [
   { id: "scout", label: "Scout AI", icon: "search", views: [["scout", "Scout AI"]] },
   { id: "updates", label: "Aggiornamenti", icon: "refresh", views: [["updates", "Aggiornamenti"]] },
   { id: "settings", label: "Impostazioni", icon: "sliders", views: [["settings", "Impostazioni"]] },
+  { id: "access", label: "Accessi", icon: "key", views: [["access", "Accessi"]] },
 ];
 
 const MOBILE_PRIMARY_IDS = new Set([
@@ -131,6 +133,7 @@ function App() {
   const [listRole, setListRole] = useState(null);
   const [statusOpen, setStatusOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [accessOpen, setAccessOpen] = useState(false);
   const [viewHistory, setViewHistory] = useState([
     { view: "overview", player: null, team: null },
   ]);
@@ -702,32 +705,46 @@ function App() {
 
   if (!data)
     return (
-      <main className="app">
-        <div className="page">
-          <div className="page-head">
-            <span className="kicker">Configurazione iniziale</span>
-            <h1>Genera il tuo dataset</h1>
-            <p>
-              Puoi generare subito dati, proiezioni e strumenti d'asta con le
-              fonti incluse. Carica il calendario della tua lega e rigenera i
-              dati solo quando vuoi simulare la stagione.
-            </p>
+      <>
+        <main className="app app--setup">
+          <header className="setup-toolbar">
+            <span className="brand">
+              <span className="brand-mark" aria-hidden="true">AF</span>
+              <span className="brand-text"><strong>AstaFanta Support</strong><span>CONFIGURAZIONE</span></span>
+            </span>
+            <button className="btn btn--sm" type="button" onClick={() => setAccessOpen(true)}>
+              <KeyRound size={16} aria-hidden="true" /> Accessi
+            </button>
+          </header>
+          <div className="page setup-page">
+            <div className="page-head">
+              <span className="kicker">Configurazione iniziale</span>
+              <h1>Genera il tuo dataset</h1>
+              <p>
+                Puoi generare subito dati, proiezioni e strumenti d'asta con le
+                fonti incluse. Carica il calendario della tua lega e rigenera i
+                dati solo quando vuoi simulare la stagione.
+              </p>
+            </div>
+            {profilePicker}
+            <LeagueSettings
+              initialProfile={profile}
+              leagueCalendar={null}
+              apiBase={apiBase}
+              onSave={(nextProfile) => updateProfile(nextProfile)}
+              onGenerate={(nextProfile) => updateProfile(nextProfile, true)}
+            />
+            {profileError ? (
+              <p className="notice notice--stop" role="alert">
+                {profileError}
+              </p>
+            ) : null}
           </div>
-          {profilePicker}
-          <LeagueSettings
-            initialProfile={profile}
-            leagueCalendar={null}
-            apiBase={apiBase}
-            onSave={(nextProfile) => updateProfile(nextProfile)}
-            onGenerate={(nextProfile) => updateProfile(nextProfile, true)}
-          />
-          {profileError ? (
-            <p className="notice notice--stop" role="alert">
-              {profileError}
-            </p>
-          ) : null}
-        </div>
-      </main>
+        </main>
+        <Sheet open={accessOpen} onClose={() => setAccessOpen(false)} title="Accessi" wide>
+          <AccessView apiBase={apiBase} compact />
+        </Sheet>
+      </>
     );
 
   const datasetState = datasetFreshness(profile, data, currentSourceFingerprints);
@@ -879,6 +896,7 @@ function App() {
               ) : null}
             </>
           ) : null}
+          {view === "access" ? <AccessView apiBase={apiBase} /> : null}
         </div>
       </main>
 

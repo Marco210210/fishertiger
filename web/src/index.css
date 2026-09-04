@@ -10,6 +10,7 @@
 @import "./styles/auction.css" layer(components);
 @import "./styles/live-auction.css" layer(components);
 @import "./styles/scout-ai.css" layer(components);
+@import "./styles/access.css" layer(components);
 @import "./styles/views.css" layer(components);
 @import "./updates.css" layer(components);
 

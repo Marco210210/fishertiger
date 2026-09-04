@@ -52,6 +52,12 @@ Edit `.env`. `SITE_ADDRESS` can be a domain pointed at the reserved IP (Caddy
 will obtain HTTPS automatically) or `http://PUBLIC_IP` while testing without a
 domain. Always replace the Basic Auth password.
 
+The systemd installation stores the account database in
+`/var/lib/astafanta-support/users.json`. The first startup imports the admin
+credentials from the environment; after that, use **Accessi** in the web app to
+change the admin password and manage collaborator accounts without restarting
+the service. Keep this file in backups together with profiles and datasets.
+
 ## 3. Start and update
 
 ```bash

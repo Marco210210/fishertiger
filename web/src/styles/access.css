@@ -1,0 +1,22 @@
+.access-view { display: grid; gap: var(--s-5); max-width: 920px; margin-inline: auto; }
+.access-view--compact { gap: var(--s-4); }
+.access-loading { padding: var(--s-4) 0; }
+.access-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); }
+.access-card { display: grid; align-content: start; gap: var(--s-4); }
+.access-card-head { display: flex; align-items: center; gap: var(--s-3); }
+.access-card-head h2, .access-card-head p { margin: 0; }
+.access-card-head h2 { font-size: var(--fs-lg); }
+.access-card-head p { margin-top: 3px; color: var(--c-text-dim); font-size: var(--fs-sm); }
+.access-icon { display: grid; flex: 0 0 auto; place-items: center; width: 38px; height: 38px; border-radius: var(--r-md); background: var(--c-brand-tint); color: var(--c-brand-bright); }
+.access-icon svg { width: 19px; height: 19px; }
+.access-users { display: grid; gap: var(--s-4); }
+.access-user-list { display: grid; }
+.access-user { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--s-3); min-height: 58px; border-top: 1px solid var(--c-line-soft); }
+.access-avatar { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--c-raised); color: var(--c-text-dim); font-size: var(--fs-xs); font-weight: 800; }
+.access-user > span:nth-child(2) { display: grid; }
+.access-user small { color: var(--c-text-mute); }
+.access-admin-badge { padding: 4px 8px; border-radius: var(--r-pill); background: var(--c-brand-tint); color: var(--c-brand-bright); font-size: var(--fs-xs); font-weight: 700; }
+@media (max-width: 760px) {
+  .access-grid { grid-template-columns: 1fr; }
+  .access-user .btn { width: 34px; padding: 0; font-size: 0; }
+}

@@ -31,6 +31,7 @@ from .generate import (
     load_profile,
     resolve_profile,
 )
+from .auth import AccountError, CredentialStore
 from .freshness import dataset_configuration_hash, simulation_configuration_hash, source_fingerprints
 from .fantalab_live import FantaLabError, live_snapshot
 from .scout import load_scout_snapshot
@@ -132,6 +133,7 @@ class LocalApiServer(ThreadingHTTPServer):
         static_dir: Path | str | None = None,
         auth_username: str | None = None,
         auth_password: str | None = None,
+        auth_file: Path | str | None = None,
         generator: PipelineGenerator | None = None,
         simulator: SimulationRunner | None = None,
         profile_loader: ProfileLoader = load_profile,
@@ -153,6 +155,15 @@ class LocalApiServer(ThreadingHTTPServer):
             raise ValueError("auth_username and auth_password must be configured together")
         self.auth_username = auth_username
         self.auth_password = auth_password
+        self.credential_store = (
+            CredentialStore(
+                auth_file,
+                bootstrap_username=auth_username,
+                bootstrap_password=auth_password,
+            )
+            if auth_file is not None
+            else None
+        )
         self.generator = generator
         self.simulator = simulator or _simulate_current_dataset
         self.profile_loader = profile_loader
@@ -183,6 +194,10 @@ class LocalApiHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.OK, {"status": "ok"})
         elif not self._authorize():
             return
+        elif path == "/api/auth/session":
+            self._auth_session()
+        elif path == "/api/auth/users":
+            self._auth_users()
         elif path == "/api/profiles":
             self._profile_index()
         elif path == "/api/default-profile":
@@ -208,7 +223,9 @@ class LocalApiHandler(BaseHTTPRequestHandler):
         if not self._authorize():
             return
         path = self._path()
-        if path.startswith("/api/updates/player-list/candidate/"):
+        if path == "/api/auth/password":
+            self._change_password()
+        elif path.startswith("/api/updates/player-list/candidate/"):
             self._put_player_list_candidate(path.removeprefix("/api/updates/player-list/candidate/"))
         elif path.startswith("/api/uploads/"):
             self._put_upload(path.removeprefix("/api/uploads/"))
@@ -221,13 +238,18 @@ class LocalApiHandler(BaseHTTPRequestHandler):
         if not self._authorize():
             return
         path = self._path()
-        if path.startswith("/api/profiles/"):
+        if path.startswith("/api/auth/users/"):
+            self._delete_auth_user(path.removeprefix("/api/auth/users/"))
+        elif path.startswith("/api/profiles/"):
             self._delete_profile(path.removeprefix("/api/profiles/"))
         else:
             self._error(HTTPStatus.NOT_FOUND, "not_found", "The requested endpoint does not exist.")
 
     def do_POST(self) -> None:
         if not self._authorize():
+            return
+        if self._path() == "/api/auth/users":
+            self._create_auth_user()
             return
         if self._path() == "/api/updates/player-list/check":
             self._check_player_list_updates()
@@ -1112,18 +1134,113 @@ class LocalApiHandler(BaseHTTPRequestHandler):
         return unquote(urlparse(self.path).path)
 
     def _authorize(self) -> bool:
+        self._authenticated_user = None
+        store = self.server.credential_store
+        if store is not None:
+            header = self.headers.get("Authorization", "")
+            try:
+                scheme, encoded = header.split(" ", 1)
+                decoded = base64.b64decode(encoded, validate=True).decode("utf-8")
+                username, password = decoded.split(":", 1)
+            except (ValueError, UnicodeDecodeError):
+                username = password = ""
+                scheme = ""
+            if scheme.lower() == "basic":
+                self._authenticated_user = store.authenticate(username, password)
+            if self._authenticated_user is not None:
+                return True
+            self._authentication_required()
+            return False
         username = self.server.auth_username
         password = self.server.auth_password
         if not username or not password:
             return True
         token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("ascii")
         if hmac.compare_digest(self.headers.get("Authorization", ""), f"Basic {token}"):
+            self._authenticated_user = {"username": username, "is_admin": True}
             return True
+        self._authentication_required()
+        return False
+
+    def _authentication_required(self) -> None:
         self.send_response(HTTPStatus.UNAUTHORIZED)
         self.send_header("WWW-Authenticate", 'Basic realm="AstaFanta Support", charset="UTF-8"')
         self.send_header("Content-Length", "0")
         self.end_headers()
+
+    def _auth_session(self) -> None:
+        user = self._authenticated_user
+        self._send_json(
+            HTTPStatus.OK,
+            {
+                "authentication_enabled": self.server.credential_store is not None
+                or bool(self.server.auth_username),
+                "username": user.get("username") if user else None,
+                "is_admin": bool(user and user.get("is_admin")),
+            },
+        )
+
+    def _require_admin(self) -> bool:
+        if self._authenticated_user and self._authenticated_user.get("is_admin"):
+            return True
+        self._error(HTTPStatus.FORBIDDEN, "admin_required", "Questa operazione richiede un account amministratore.")
         return False
+
+    def _require_credential_store(self) -> CredentialStore | None:
+        store = self.server.credential_store
+        if store is None:
+            self._error(HTTPStatus.SERVICE_UNAVAILABLE, "accounts_disabled", "La gestione degli account non e attiva su questo server.")
+        return store
+
+    def _auth_users(self) -> None:
+        store = self._require_credential_store()
+        if store is None or not self._require_admin():
+            return
+        self._send_json(HTTPStatus.OK, {"users": store.list_users()})
+
+    def _create_auth_user(self) -> None:
+        store = self._require_credential_store()
+        if store is None or not self._require_admin():
+            return
+        request = self._read_json_object()
+        if request is None:
+            return
+        try:
+            user = store.create_user(request.get("username"), request.get("password"))
+        except AccountError as error:
+            self._error(HTTPStatus.CONFLICT if error.code == "user_exists" else HTTPStatus.BAD_REQUEST, error.code, str(error))
+            return
+        self._send_json(HTTPStatus.CREATED, {"user": user})
+
+    def _change_password(self) -> None:
+        store = self._require_credential_store()
+        if store is None:
+            return
+        request = self._read_json_object()
+        if request is None:
+            return
+        try:
+            store.change_password(
+                self._authenticated_user["username"],
+                request.get("current_password"),
+                request.get("new_password"),
+            )
+        except AccountError as error:
+            self._error(HTTPStatus.BAD_REQUEST, error.code, str(error))
+            return
+        self._send_json(HTTPStatus.OK, {"changed": True})
+
+    def _delete_auth_user(self, username: str) -> None:
+        store = self._require_credential_store()
+        if store is None or not self._require_admin():
+            return
+        try:
+            store.delete_user(username, requested_by=self._authenticated_user["username"])
+        except AccountError as error:
+            status = HTTPStatus.NOT_FOUND if error.code == "user_not_found" else HTTPStatus.BAD_REQUEST
+            self._error(status, error.code, str(error))
+            return
+        self._send_json(HTTPStatus.OK, {"deleted": True})
 
     def _serve_static(self, request_path: str) -> None:
         root = self.server.static_dir
@@ -1192,6 +1309,7 @@ def create_server(
     static_dir: Path | str | None = None,
     auth_username: str | None = None,
     auth_password: str | None = None,
+    auth_file: Path | str | None = None,
     generator: PipelineGenerator | None = None,
     simulator: SimulationRunner | None = None,
     profile_loader: ProfileLoader = load_profile,
@@ -1203,7 +1321,7 @@ def create_server(
     fantalab_reader: FantaLabReader | None = None,
 ) -> LocalApiServer:
     """Create a local API server; inject a pipeline generator for tests or embedding."""
-    return LocalApiServer(address, profiles_dir=profiles_dir, datasets_dir=datasets_dir, uploads_dir=uploads_dir, updates_dir=updates_dir, default_profile_path=default_profile_path, raw_dir=raw_dir, static_dir=static_dir, auth_username=auth_username, auth_password=auth_password, generator=generator, simulator=simulator, profile_loader=profile_loader, update_fetcher=update_fetcher, formations_fetcher=formations_fetcher, set_piece_fetcher=set_piece_fetcher, goalkeeper_fetcher=goalkeeper_fetcher, player_list_fetcher=player_list_fetcher, fantalab_reader=fantalab_reader)
+    return LocalApiServer(address, profiles_dir=profiles_dir, datasets_dir=datasets_dir, uploads_dir=uploads_dir, updates_dir=updates_dir, default_profile_path=default_profile_path, raw_dir=raw_dir, static_dir=static_dir, auth_username=auth_username, auth_password=auth_password, auth_file=auth_file, generator=generator, simulator=simulator, profile_loader=profile_loader, update_fetcher=update_fetcher, formations_fetcher=formations_fetcher, set_piece_fetcher=set_piece_fetcher, goalkeeper_fetcher=goalkeeper_fetcher, player_list_fetcher=player_list_fetcher, fantalab_reader=fantalab_reader)
 
 
 def _simulate_current_dataset(profile: Any, output_dir: Path, iterations: int, seed: int, rosters: dict[str, list[int]] | None = None) -> dict[str, Any]:
@@ -1233,6 +1351,7 @@ def main(argv: list[str] | None = None) -> None:
         static_dir=args.static_dir,
         auth_username=os.environ.get("FISHERTIGER_USERNAME"),
         auth_password=os.environ.get("FISHERTIGER_PASSWORD"),
+        auth_file=os.environ.get("FISHERTIGER_AUTH_FILE"),
     )
     try:
         server.serve_forever()

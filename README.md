@@ -113,7 +113,11 @@ The repository includes a production `Dockerfile` and a Render Blueprint. The
 container builds the React frontend, serves it from the Python process, and
 keeps the browser and API on the same HTTPS origin. `FISHERTIGER_USERNAME` and
 `FISHERTIGER_PASSWORD` protect the entire application with HTTP Basic auth;
-configure both as hosting secrets and never commit their values.
+configure both as hosting secrets and never commit their values. When
+`FISHERTIGER_AUTH_FILE` points to persistent storage, those credentials create
+the first administrator account; the **Accessi** screen can then change its
+password and add or revoke separate collaborator accounts. Passwords in that
+file are salted and hashed, never stored in plaintext.
 
 Import `render.yaml` from the GitHub fork in Render to create a web service.
 Every commit pushed to the fork's `main` branch triggers a new deployment. The

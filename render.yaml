@@ -10,3 +10,5 @@ services:
         sync: false
       - key: FISHERTIGER_PASSWORD
         sync: false
+      - key: FISHERTIGER_AUTH_FILE
+        value: /var/data/users.json

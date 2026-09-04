@@ -6,6 +6,7 @@ services:
       PORT: "10000"
       FISHERTIGER_USERNAME: "${FISHERTIGER_USERNAME}"
       FISHERTIGER_PASSWORD: "${FISHERTIGER_PASSWORD}"
+      FISHERTIGER_AUTH_FILE: "/var/data/users.json"
       FISHERTIGER_FANTALAB_TOKEN: "${FISHERTIGER_FANTALAB_TOKEN:-}"
     volumes:
       - ./runtime:/var/data

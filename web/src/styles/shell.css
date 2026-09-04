@@ -20,6 +20,14 @@
   padding: var(--s-4) var(--s-4) var(--s-8);
 }
 
+/* The first-run screen has no top bar or navigation rail. */
+.app--setup { padding: 0; }
+.setup-toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); max-width: 980px; min-height: 70px; margin-inline: auto; padding: var(--s-3) var(--s-5); border-bottom: 1px solid var(--c-line-soft); }
+.setup-toolbar .brand { margin: 0; }
+.setup-page { max-width: 980px; padding: var(--s-8) var(--s-5) var(--s-12); }
+.setup-page .profile-picker { max-width: 660px; margin-bottom: var(--s-8); }
+.setup-page .league-settings { max-width: none; }
+
 /* ------------------------------------------------------------------- top bar */
 
 .topbar {
@@ -298,6 +306,9 @@
     padding: var(--s-6) var(--s-6) var(--s-12);
   }
 
+  .app--setup { padding: 0; }
+  .app--setup .page { padding: var(--s-8) var(--s-5) var(--s-12); }
+
   .data-chip-label {
     display: inline;
   }
@@ -374,6 +385,13 @@
     margin-left: auto;
     transform: none;
   }
+}
+
+@media (max-width: 600px) {
+  .setup-toolbar { min-height: 62px; padding-inline: var(--s-4); }
+  .setup-toolbar .brand-text span { display: none; }
+  .setup-toolbar .btn { padding-inline: var(--s-3); }
+  .setup-page { padding: var(--s-6) var(--s-4) var(--s-10); }
 }
 
 /* --------------------------------------------------------------- app states */
