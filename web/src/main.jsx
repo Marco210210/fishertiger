@@ -94,8 +94,8 @@ const MOBILE_PRIMARY_IDS = new Set([
   "squadre",
 ]);
 
-const tabOf = (view) =>
-  TABS.find((tab) => tab.views.some(([id]) => id === view)) || TABS[0];
+const tabOf = (view, tabs = TABS) =>
+  tabs.find((tab) => tab.views.some(([id]) => id === view)) || tabs[0];
 
 const fetchDefaultProfile = (apiBase) =>
   fetch(apiUrl("/api/default-profile", apiBase))
@@ -144,6 +144,7 @@ function App() {
   const [statusOpen, setStatusOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [accessOpen, setAccessOpen] = useState(false);
+  const [session, setSession] = useState(null);
   const [viewHistory, setViewHistory] = useState([
     { view: "overview", player: null, team: null },
   ]);
@@ -152,6 +153,17 @@ function App() {
   const apiBase =
     import.meta.env.VITE_LOCAL_API_BASE ??
     (import.meta.env.PROD ? "" : "http://127.0.0.1:8000");
+  const canUseLiveAuction = Boolean(
+    session && (!session.authentication_enabled || session.is_admin),
+  );
+  const availableTabs = useMemo(
+    () => TABS.map((item) => (
+      item.id === "asta" && !canUseLiveAuction
+        ? { ...item, views: item.views.filter(([id]) => id !== "live") }
+        : item
+    )),
+    [canUseLiveAuction],
+  );
   const loadedProfileId = useRef(null);
   const profileRequests = useRef(null);
   const generationRequests = useRef(null);
@@ -163,6 +175,21 @@ function App() {
     generationRequests.current = createRequestGate();
   if (!simulationRequests.current)
     simulationRequests.current = createRequestGate();
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(apiUrl("/api/auth/session", apiBase))
+      .then((response) => (response.ok ? response.json() : null))
+      .then((value) => {
+        if (!cancelled) setSession(value || { is_admin: false });
+      })
+      .catch(() => {
+        if (!cancelled) setSession({ is_admin: false });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiBase]);
 
   const claimProfileRequest = () => profileRequests.current.claim();
   const isCurrentProfileRequest = (request) =>
@@ -852,7 +879,7 @@ function App() {
   const datasetState = datasetFreshness(profile, data, currentSourceFingerprints);
   const simulationState = simulationFreshness(profile, data, season, auctionInput);
   const datasetStale = datasetState !== "dataset corrente";
-  const tab = tabOf(view);
+  const tab = tabOf(view, availableTabs);
   const moreActive = !MOBILE_PRIMARY_IDS.has(tab.id);
 
   return (
@@ -988,17 +1015,19 @@ function App() {
               state, so unmounting it on every navigation away from "Asta"
               would drop the connection and require reconnecting by hand
               each time. Hidden (not removed) when another view is active. */}
-          <div hidden={view !== "live"}>
-            <LiveAuctionView
-              data={data}
-              openPlayer={openPlayer}
-              rules={activeRules}
-              profileId={activeProfileId}
-              draft={auctionDraft}
-              setDraft={setAuctionDraft}
-              apiBase={apiBase}
-            />
-          </div>
+          {canUseLiveAuction ? (
+            <div hidden={view !== "live"}>
+              <LiveAuctionView
+                data={data}
+                openPlayer={openPlayer}
+                rules={activeRules}
+                profileId={activeProfileId}
+                draft={auctionDraft}
+                setDraft={setAuctionDraft}
+                apiBase={apiBase}
+              />
+            </div>
+          ) : null}
           {view === "updates" ? (
             <Updates
               profile={profile}
@@ -1029,7 +1058,7 @@ function App() {
       </main>
 
       <nav className="tabbar" aria-label="Sezioni principali">
-        {TABS.map((item) => (
+        {availableTabs.map((item) => (
           <button
             key={item.id}
             className={`tab${item.hero ? " tab--hero" : ""}${!MOBILE_PRIMARY_IDS.has(item.id) ? " tab--secondary" : ""}${item.id === tab.id ? " is-active" : ""}`}

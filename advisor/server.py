@@ -425,6 +425,8 @@ class LocalApiHandler(BaseHTTPRequestHandler):
 
     def _fantalab_status(self) -> None:
         """Report capabilities without ever returning the configured credential."""
+        if not self._require_fantalab_admin():
+            return
         personal = fantalab_credentials_available(self._personal_fantalab_path())
         shared = bool(
             os.environ.get("FISHERTIGER_FANTALAB_REFRESH_TOKEN")
@@ -446,6 +448,8 @@ class LocalApiHandler(BaseHTTPRequestHandler):
         return personal_credentials_path(self.server.updates_dir, str(username))
 
     def _put_fantalab_credentials(self) -> None:
+        if not self._require_fantalab_admin():
+            return
         request = self._read_json_object()
         if request is None:
             return
@@ -469,6 +473,8 @@ class LocalApiHandler(BaseHTTPRequestHandler):
         self._send_json(HTTPStatus.OK, {"connected": True})
 
     def _delete_fantalab_credentials(self) -> None:
+        if not self._require_fantalab_admin():
+            return
         try:
             self._personal_fantalab_path().unlink(missing_ok=True)
         except OSError:
@@ -505,6 +511,8 @@ class LocalApiHandler(BaseHTTPRequestHandler):
         self._send_json(HTTPStatus.OK, value)
 
     def _fantalab_snapshot(self) -> None:
+        if not self._require_fantalab_admin():
+            return
         request = self._read_json_object()
         if request is None:
             return
@@ -1605,6 +1613,19 @@ class LocalApiHandler(BaseHTTPRequestHandler):
         if self._authenticated_user and self._authenticated_user.get("is_admin"):
             return True
         self._error(HTTPStatus.FORBIDDEN, "admin_required", "Questa operazione richiede un account amministratore.")
+        return False
+
+    def _require_fantalab_admin(self) -> bool:
+        """Keep local unauthenticated development working, but lock hosted live access."""
+        if self.server.credential_store is None and not self.server.auth_username:
+            return True
+        if self._authenticated_user and self._authenticated_user.get("is_admin"):
+            return True
+        self._error(
+            HTTPStatus.FORBIDDEN,
+            "fantalab_admin_only",
+            "L'asta live FantaLab e temporaneamente riservata all'amministratore.",
+        )
         return False
 
     def _require_credential_store(self) -> CredentialStore | None:

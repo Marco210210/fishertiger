@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from advisor.auth import CredentialStore
 from advisor.league_profile import LeagueProfile
 from advisor.league_calendar import build_legacy_calendar_template, parse_legacy_two_block_frame
 from advisor.pipeline import LISTONE_COLUMNS
@@ -204,6 +205,52 @@ class LocalApiServerTests(unittest.TestCase):
         self.assertEqual(response.status, 200)
         self.assertEqual(payload["room_id"], "room")
         self.assertTrue(payload["read_only"])
+
+    def test_fantalab_live_is_forbidden_to_non_admin_accounts(self):
+        store = CredentialStore(
+            self.root / "users.json",
+            bootstrap_username="marco",
+            bootstrap_password="admin-secret",
+        )
+        store.create_user("amico", "friend-secret")
+        self.server.credential_store = store
+        friend_token = base64.b64encode(b"amico:friend-secret").decode("ascii")
+        admin_token = base64.b64encode(b"marco:admin-secret").decode("ascii")
+        friend_headers = {
+            "Authorization": f"Basic {friend_token}",
+            "Content-Type": "application/json",
+        }
+        admin_headers = {"Authorization": f"Basic {admin_token}"}
+
+        forbidden_status, status_payload = self.request(
+            "GET", "/api/fantalab/status", headers=friend_headers
+        )
+        forbidden_snapshot, snapshot_payload = self.request(
+            "POST",
+            "/api/fantalab/snapshot",
+            body=b'{"room_id":"room","db":4}',
+            headers=friend_headers,
+        )
+        forbidden_put, _ = self.request(
+            "PUT",
+            "/api/fantalab/credentials",
+            body=b'{"refresh_token":"secret"}',
+            headers=friend_headers,
+        )
+        forbidden_delete, _ = self.request(
+            "DELETE", "/api/fantalab/credentials", headers=friend_headers
+        )
+        allowed_status, _ = self.request(
+            "GET", "/api/fantalab/status", headers=admin_headers
+        )
+
+        self.assertEqual(forbidden_status.status, 403)
+        self.assertEqual(status_payload["error"]["code"], "fantalab_admin_only")
+        self.assertEqual(forbidden_snapshot.status, 403)
+        self.assertEqual(snapshot_payload["error"]["code"], "fantalab_admin_only")
+        self.assertEqual(forbidden_put.status, 403)
+        self.assertEqual(forbidden_delete.status, 403)
+        self.assertEqual(allowed_status.status, 200)
 
     def set_piece_article(self, first="Alpha, Beta"):
         teams = [
