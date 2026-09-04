@@ -29,6 +29,12 @@ import {
   bidVerdict,
 } from "../auction-advice.jsx";
 import {
+  ClubCrest,
+  PlayerPortrait,
+  PlayerSignals,
+  setPiecesForPlayer,
+} from "../player-intelligence.jsx";
+import {
   Empty,
   Icon,
   PlayerRow,
@@ -381,6 +387,7 @@ export default function AuctionView({
               onAssign={assign}
               onCancel={resetSelection}
               onOpenPlayer={() => openPlayer(player)}
+              setPieces={setPiecesForPlayer(data.set_pieces, player.id)}
             />
           ) : (
             <div className="card">
@@ -551,6 +558,7 @@ function VerdictCard({
   onAssign,
   onCancel,
   onOpenPlayer,
+  setPieces,
 }) {
   /* The headline answers the question actually being asked at the table — "at
      this price, yes or no?" — so it follows the live number, not the static
@@ -570,10 +578,12 @@ function VerdictCard({
       aria-label="Consiglio sul giocatore in asta"
     >
       <div className="verdict-head">
+        <PlayerPortrait player={player} large />
         <RoleChip role={player.ruolo} large />
         <div className="verdict-id">
           <h2>{player.nome}</h2>
           <p>
+            <ClubCrest team={player.team_id} />
             {player.squadra} · {formatTier(player.guida_asta_fascia)}
           </p>
         </div>
@@ -595,7 +605,17 @@ function VerdictCard({
         </span>
       </div>
 
+      {advice ? (
+        <div className="price-summary" aria-label="Valutazione economica">
+          <span><small>Prezzo medio stimato</small><b>{advice.summary?.estimatedMarketPrice}</b></span>
+          <span><small>Fascia consigliata</small><b>{advice.idealMin}–{advice.idealMax}</b></span>
+          <span><small>Non superare</small><b>{advice.maxBid}</b></span>
+        </div>
+      ) : null}
+
       <BidGauge advice={advice} price={price} rules={rules} legalMax={legalMax} />
+
+      <PlayerSignals player={player} setPieces={setPieces} compact />
 
       <div className="bidbar">
         <PriceStepper

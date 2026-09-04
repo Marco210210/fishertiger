@@ -14,6 +14,7 @@ import {
   savePlayerInjuries,
   withPlayerInjury,
 } from "../player-injuries.js";
+import { automaticInjury } from "../player-intelligence.jsx";
 
 const TOP_TIERS = ["SUPER TOP", "TOP", "SEMITOP"];
 
@@ -43,7 +44,9 @@ export default function OverviewView({ data, profileId, openPlayer, openTeam, op
     .filter((player) => TOP_TIERS.includes(formatTier(player.guida_asta_fascia)))
     .sort((a, b) => b.fvm_scaled - a.fvm_scaled)
     .slice(0, 8);
-  const injured = data.players.filter((player) => isPlayerInjured(injuries, player.id));
+  const injured = data.players.filter(
+    (player) => isPlayerInjured(injuries, player.id) || automaticInjury(player).active,
+  );
   const matchdays = data.calendario_serie_a?.length
     ? Math.round(data.calendario_serie_a.length / 10)
     : null;
@@ -136,7 +139,7 @@ export default function OverviewView({ data, profileId, openPlayer, openTeam, op
           <div className="section-head" style={{ padding: "var(--s-4)", marginBottom: 0 }}>
             <div>
               <span className="kicker">Da monitorare</span>
-              <h2>Infortunati</h2>
+              <h2>Infortunati e dubbi</h2>
             </div>
             <div className="overview-card-actions">
               <span className="count">{injured.length}</span>
@@ -163,7 +166,7 @@ export default function OverviewView({ data, profileId, openPlayer, openTeam, op
               ))}
             </div>
           ) : (
-            <Empty title="Nessun infortunato segnalato">
+            <Empty title="Nessun indisponibile segnalato">
               Usa Gestisci per aggiungere un avviso senza modificare valori o
               consigli d&apos;asta.
             </Empty>
@@ -245,8 +248,8 @@ function InjuryManager({
         <div className="injury-manager-note">
           <strong>Solo promemoria</strong>
           <p>
-            Questo stato appare nella Home e non modifica valori, fasce o
-            consigli d&apos;asta. Viene salvato solo in questo browser.
+            Le segnalazioni Scout compaiono automaticamente. Qui puoi aggiungere
+            anche un promemoria manuale, separato per asta.
           </p>
         </div>
 
@@ -294,7 +297,9 @@ function InjuryPlayerList({ title, players, injuries, setPlayerInjured, empty })
       {players.length ? (
         <div className="injury-list-rows">
           {players.map((player) => {
-            const marked = isPlayerInjured(injuries, player.id);
+            const manual = isPlayerInjured(injuries, player.id);
+            const detected = automaticInjury(player).active;
+            const marked = manual || detected;
             return (
               <div className="injury-manager-row" key={player.id}>
                 <RoleChip role={player.ruolo} />
@@ -306,9 +311,14 @@ function InjuryPlayerList({ title, players, injuries, setPlayerInjured, empty })
                   type="button"
                   className={`btn btn--sm${marked ? " btn--danger" : ""}`}
                   aria-pressed={marked}
-                  onClick={() => setPlayerInjured(player.id, !marked)}
+                  disabled={detected && !manual}
+                  onClick={() => setPlayerInjured(player.id, !manual)}
                 >
-                  {marked ? "Segna disponibile" : "Segna infortunato"}
+                  {detected && !manual
+                    ? "Da Scout"
+                    : manual
+                      ? "Rimuovi promemoria"
+                      : "Segna infortunato"}
                 </button>
               </div>
             );

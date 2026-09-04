@@ -206,12 +206,12 @@ function validate(profile) {
         `${label} deve essere ${zero ? "maggiore o uguale a zero" : "maggiore di zero"}.`,
       );
   };
-  required(profile.profile_id, "ID profilo");
+  required(profile.profile_id, "ID asta");
   if (String(profile.profile_id ?? "").trim() && !isValidProfileId(profile.profile_id))
     errors.push(
-      "L'ID profilo deve iniziare con una lettera o un numero e contenere al massimo 64 caratteri tra lettere, numeri, underscore e trattini.",
+      "L'ID asta deve iniziare con una lettera o un numero e contenere al massimo 64 caratteri tra lettere, numeri, underscore e trattini.",
     );
-  required(profile.name, "Nome del profilo");
+  required(profile.name, "Nome asta");
   required(profile.season.season, "Stagione");
   positive(profile.season.serie_a_matchdays, "Giornate di Serie A");
   if (
@@ -572,10 +572,10 @@ export function LeagueSettings({
         if (request !== saveRequest.current || committed === false) return;
         setStatus(
           generate
-            ? "Dati rigenerati per questo profilo."
+            ? "Dati rigenerati per questa asta."
             : changePolicy.action === "rerun_simulation"
-              ? "Profilo salvato: riesegui la simulazione per aggiornare i risultati."
-              : "Profilo aggiornato.",
+              ? "Asta salvata: riesegui la simulazione per aggiornare i risultati."
+              : "Asta aggiornata.",
         );
         return;
       }
@@ -593,7 +593,7 @@ export function LeagueSettings({
       setStatus(
         generate
           ? "Generazione richiesta correttamente."
-          : "Profilo salvato correttamente.",
+          : "Asta salvata correttamente.",
       );
     } catch (error) {
       if (request === saveRequest.current)
@@ -613,7 +613,7 @@ export function LeagueSettings({
     const previousStatus = sourceStatuses[key];
     if (!isValidProfileId(profile.profile_id)) {
       const detail =
-        "Prima correggi l’ID profilo: usa solo lettere, numeri, trattini o underscore, senza spazi né barre (per esempio: fantasse-2026-27).";
+        "L’ID asta generato non è valido: crea nuovamente l’asta.";
       setSourceErrors((current) => ({ ...current, [key]: detail }));
       setStatus(`Impossibile caricare ${sourceLabels[source.name] || source.name}: ${detail}`);
       return;
@@ -744,8 +744,12 @@ export function LeagueSettings({
           <span>01</span> Identità e dati
         </legend>
         <div className="ls-grid">
-          {input("ID profilo", ["profile_id"], { required: true })}
-          {input("Nome del profilo", ["name"], { required: true })}
+          {input("ID asta (generato automaticamente)", ["profile_id"], {
+            required: true,
+            disabled: true,
+            title: "L’ID identifica dati e salvataggi dell’asta e non può essere modificato.",
+          })}
+          {input("Nome asta", ["name"], { required: true })}
           {input("Stagione", ["season", "season"], { required: true })}
           <label className="ls-field">
             Giornate di Serie A
@@ -1411,7 +1415,7 @@ export function LeagueSettings({
             : "Carica o ripristina le fonti necessarie prima di generare i dati."}
         </p>
         <button type="submit" disabled={busy}>
-          {busy ? "Salvataggio..." : "Salva profilo"}
+          {busy ? "Salvataggio..." : "Salva asta"}
         </button>
         <button
           type="button"

@@ -346,8 +346,8 @@ test("role budget is a soft cap on a candidate bid", () => {
 
 test("source FVM outliers are reported without blocking valuation", () => {
   const candidate = player("D", 20, {
-    fvm_original: 100,
-    fvm_scaled: 75,
+    fvm_original: 1000,
+    fvm_scaled: 750,
   });
   const remaining = [
     candidate,
@@ -361,7 +361,7 @@ test("source FVM outliers are reported without blocking valuation", () => {
     payloadFor({ candidate, teams, remaining }),
   );
 
-  assert.equal(result.summary.sourceFvm, 100);
+  assert.equal(result.summary.sourceFvm, 1000);
   assert.equal(result.summary.outliers[0].code, "source_fvm_high");
   assert.ok(result.maxBid > 0);
 });

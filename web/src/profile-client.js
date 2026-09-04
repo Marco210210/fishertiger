@@ -48,8 +48,8 @@ export const datasetPathError = (profile) => {
     return "";
   } catch (error) {
     if (error instanceof ProfileClientError && error.code === "invalid_profile_id")
-      return "ID profilo non valido: usa al massimo 64 caratteri, iniziando con una lettera o un numero; sono ammessi anche underscore e trattini.";
-    return "Profilo non valido: ID e stagione sono obbligatori.";
+      return "ID asta non valido: crea nuovamente l’asta.";
+    return "Asta non valida: ID e stagione sono obbligatori.";
   }
 };
 

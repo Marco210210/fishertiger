@@ -10,7 +10,7 @@ export const defaultPlayerFilters = () => ({
   role: "TUTTI",
   team: "TUTTE",
   onlyTargets: false,
-  showLive: false,
+  showLive: true,
 });
 
 export const normalizePlayerFilters = (raw, roles = [], teams = []) => {
@@ -24,7 +24,7 @@ export const normalizePlayerFilters = (raw, roles = [], teams = []) => {
     role: roles.includes(source.role) ? source.role : fallback.role,
     team: teams.includes(source.team) ? source.team : fallback.team,
     onlyTargets: source.onlyTargets === true,
-    showLive: source.showLive === true,
+    showLive: source.showLive !== false,
   };
 };
 

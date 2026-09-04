@@ -86,3 +86,28 @@ def test_explicit_shard_needs_no_token(tmp_path: Path) -> None:
     assert result["connection"] == "manuale"
     assert result["lot"] is None
     assert result["purchases"] == []
+
+
+def test_public_room_reveals_the_current_leader_before_a_purchase(tmp_path: Path) -> None:
+    def requester(method: str, url: str, body: Any, headers: Any) -> Any:
+        if url.endswith("/v2/listone"):
+            return {"players": []}
+        if f"/auction/{ROOM}.json" in url:
+            return {
+                "player_id": "unknown-player",
+                "price": 7,
+                "fantateam_id": "anonymous-team",
+                "last_update": 2,
+            }
+        if f"/assign/{ROOM}.json" in url or f"/purchases/{ROOM}.json" in url:
+            return None
+        raise AssertionError(url)
+
+    result = live_snapshot(
+        {"room_id": ROOM, "db": 4},
+        cache_path=tmp_path / "listone.json",
+        requester=requester,
+    )
+    assert result["teams"] == [
+        {"id": "anonymous-team", "name": None, "position": None, "starting_credits": None}
+    ]

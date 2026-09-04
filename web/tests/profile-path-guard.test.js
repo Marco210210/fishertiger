@@ -22,9 +22,9 @@ test("accepts only path-safe profile IDs", () => {
 
 test("reports why a profile cannot address a dataset instead of throwing", () => {
   assert.equal(datasetPathError(valid), "");
-  assert.match(datasetPathError({ ...valid, profile_id: "mia lega" }), /ID profilo/);
+  assert.match(datasetPathError({ ...valid, profile_id: "mia lega" }), /ID asta/);
   assert.match(datasetPathError({ profile_id: "my-league" }), /stagione/);
-  assert.match(datasetPathError(null), /stagione|ID profilo/);
+  assert.match(datasetPathError(null), /stagione|ID asta/);
 });
 
 test("the guard covers every profile the path builder would reject", () => {

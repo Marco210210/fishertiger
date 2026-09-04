@@ -18,9 +18,9 @@ export const teamLogoUrl = (team) => {
 
 export const readMediaPreference = () => {
   try {
-    return localStorage.getItem(MEDIA_STORAGE_KEY) === "on";
+    return localStorage.getItem(MEDIA_STORAGE_KEY) !== "off";
   } catch {
-    return false;
+    return true;
   }
 };
 

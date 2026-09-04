@@ -70,6 +70,20 @@ export const autoTeamMap = (externalTeams, localTeams, current = {}) => {
         result[external.id] = Number(external.position) - 1;
     }
   }
+  // Public rooms reveal anonymous teams only after their first purchase. When
+  // every configured team is now visible and all but one are already mapped,
+  // the final pairing is unambiguous and can be completed safely.
+  const externalRows = externalTeams || [];
+  const localRows = localTeams || [];
+  if (externalRows.length === localRows.length) {
+    const missingExternal = externalRows.filter(
+      (team) => !Number.isInteger(Number(result[team.id])),
+    );
+    const used = new Set(Object.values(result).map(Number));
+    const missingLocal = localRows.filter((team) => !used.has(Number(team.index)));
+    if (missingExternal.length === 1 && missingLocal.length === 1)
+      result[missingExternal[0].id] = missingLocal[0].index;
+  }
   return result;
 };
 

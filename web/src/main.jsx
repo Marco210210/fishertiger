@@ -1,6 +1,6 @@
 import { Component, StrictMode, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { Download, KeyRound, Trash2, Upload } from "lucide-react";
+import { Download, KeyRound, Plus, Trash2, Upload } from "lucide-react";
 import "./index.css";
 import { LeagueSettings } from "./league-settings.jsx";
 import { createRequestGate } from "./latest-request.js";
@@ -120,6 +120,7 @@ function App() {
   const [profile, setProfile] = useState(null);
   const [profileError, setProfileError] = useState("");
   const [profiles, setProfiles] = useState([]);
+  const [profileNames, setProfileNames] = useState({});
   const [auctionDraft, setAuctionDraft] = useState(emptyDraft());
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStatus, setGenerationStatus] = useState("");
@@ -219,6 +220,16 @@ function App() {
       }
       if (cancelled) return;
       setProfiles(names);
+      Promise.all(
+        names.map((id) => loadProfile(id, { apiBase }).catch(() => null)),
+      ).then((items) => {
+        if (!cancelled)
+          setProfileNames(Object.fromEntries(
+            items
+              .filter(Boolean)
+              .map((item) => [item.profile_id, item.name || item.profile_id]),
+          ));
+      });
       const storedId = readStoredProfileId();
       let next = null;
       if (storedId && names.includes(storedId))
@@ -233,6 +244,29 @@ function App() {
     })();
     return () => {
       cancelled = true;
+    };
+  }, [apiBase]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = async () => {
+      const names = await listProfiles({ apiBase }).catch(() => null);
+      if (!names || cancelled) return;
+      setProfiles(names);
+      const items = await Promise.all(
+        names.map((id) => loadProfile(id, { apiBase }).catch(() => null)),
+      );
+      if (!cancelled)
+        setProfileNames(Object.fromEntries(
+          items
+            .filter(Boolean)
+            .map((item) => [item.profile_id, item.name || item.profile_id]),
+        ));
+    };
+    const timer = window.setInterval(refresh, 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
     };
   }, [apiBase]);
 
@@ -393,7 +427,7 @@ function App() {
       const stored = await saveProfile(nextProfile, { apiBase });
       savedProfile = stored?.profile_id ? stored : nextProfile;
     } catch (error) {
-      saveWarning = `Profilo non salvato su disco: ${
+      saveWarning = `Asta non salvata sul server: ${
         error instanceof Error ? error.message : "errore sconosciuto"
       }.`;
     }
@@ -406,6 +440,10 @@ function App() {
           : [...current, savedProfile.profile_id].sort(),
       );
       writeStoredProfileId(activeProfile.profile_id);
+      setProfileNames((current) => ({
+        ...current,
+        [activeProfile.profile_id]: activeProfile.name || activeProfile.profile_id,
+      }));
     }
     if (!generate) {
       applyProfileForLoading(activeProfile);
@@ -495,7 +533,7 @@ function App() {
     if (!id) return;
     if (
       !window.confirm(
-        `Rimuovere il profilo "${id}"? I dati gia generati restano su disco, note, filtri e asta salvati in questo browser vengono cancellati.`,
+        `Rimuovere l’asta "${profileNames[id] || id}"? Configurazione e stato condiviso dell’asta verranno eliminati.`,
       )
     )
       return;
@@ -513,6 +551,11 @@ function App() {
     }
     clearProfileBrowserData(id);
     setProfiles((current) => current.filter((name) => name !== id));
+    setProfileNames((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
     if (readStoredProfileId() === id) writeStoredProfileId("");
     if (profile?.profile_id === id) {
       const request = claimProfileRequest();
@@ -565,6 +608,10 @@ function App() {
       setProfiles((current) =>
         current.includes(id) ? current : [...current, id].sort(),
       );
+      setProfileNames((current) => ({
+        ...current,
+        [id]: (stored || incoming).name || id,
+      }));
       writeStoredProfileId(id);
       applyProfileForLoading(stored || incoming);
     } catch (error) {
@@ -577,10 +624,38 @@ function App() {
     }
   };
 
+  const createAuction = async () => {
+    const requested = window.prompt("Nome della nuova asta");
+    const name = requested?.trim();
+    if (!name) return;
+    const slug = name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 38) || "asta";
+    const date = new Date().toLocaleDateString("sv-SE");
+    const base = `${date}-${slug}`;
+    let id = base;
+    let suffix = 2;
+    while (profiles.includes(id)) id = `${base}-${suffix++}`;
+    const template = await fetchDefaultProfile(apiBase);
+    if (!template) {
+      setProfileError("Impossibile preparare una nuova asta in questo momento.");
+      return;
+    }
+    invalidateOperations();
+    writeStoredProfileId("");
+    applyProfileForLoading({ ...template, profile_id: id, name });
+    setStatusOpen(false);
+    setView("settings");
+  };
+
   const profilePicker = (
     <div className="profile-picker">
       <label className="field" htmlFor="profile-select">
-        <span className="field-label">Profilo</span>
+        <span className="field-label">Asta condivisa</span>
         <select
           className="select"
           id="profile-select"
@@ -589,15 +664,18 @@ function App() {
           }
           onChange={(event) => selectProfile(event.target.value)}
         >
-          <option value="">Profilo predefinito</option>
+          <option value="">Configurazione di base / nuova asta</option>
           {profiles.map((id) => (
             <option key={id} value={id}>
-              {id}
+              {profileNames[id] || id}
             </option>
           ))}
         </select>
       </label>
       <div className="profile-actions">
+        <button type="button" className="btn btn--primary btn--sm" onClick={createAuction}>
+          <Plus size={16} aria-hidden="true" /> Nuova asta
+        </button>
         <button
           type="button"
           className="btn btn--sm"
@@ -790,6 +868,15 @@ function App() {
           <Icon name="forward" />
         </button>
         <button
+          type="button"
+          className="auction-selector"
+          onClick={() => setStatusOpen(true)}
+          title="Cambia asta condivisa"
+        >
+          <span>Asta</span>
+          <b>{profile?.name || activeProfileId}</b>
+        </button>
+        <button
           className={`data-chip${isGenerating ? " is-busy" : datasetStale ? " is-stale" : ""}`}
           onClick={() => setStatusOpen(true)}
           aria-label={`Stato dei dati: ${datasetState}`}
@@ -936,7 +1023,7 @@ function App() {
       <Sheet
         open={statusOpen}
         onClose={() => setStatusOpen(false)}
-        title="Dati e profilo"
+        title="Dati e asta"
       >
         <div className="stack">
           {profilePicker}
@@ -946,7 +1033,7 @@ function App() {
           <div className="notice">{simulationState}</div>
           <p className="micro">
             Generato il {data.meta?.generato_il?.slice(0, 10) || "n/d"} ·
-            profilo {activeProfileId}
+            ID asta {activeProfileId}
           </p>
           {generationStatus ? (
             <p className="micro" role="status">

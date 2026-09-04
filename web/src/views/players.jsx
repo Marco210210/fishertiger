@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ImageIcon, Radio, Star, StickyNote } from "lucide-react";
-import { scoutStatusLabel, scoutTone } from "../scout-ai.js";
+import { Star, StickyNote } from "lucide-react";
 import { createRoleValuation, sourceFvm } from "../player-valuation.js";
+import {
+  ClubCrest,
+  PlayerPortrait,
+  PlayerSignals,
+  setPiecesForPlayer,
+} from "../player-intelligence.jsx";
 import { normalizeRules } from "../league-rules.js";
 import {
   assignPlayer,
@@ -26,12 +31,6 @@ import {
   withNote,
   withTarget,
 } from "../player-notes.js";
-import {
-  playerImageUrl,
-  readMediaPreference,
-  teamLogoUrl,
-  writeMediaPreference,
-} from "../player-media.js";
 import {
   Empty,
   PlayerRow,
@@ -63,47 +62,6 @@ const HISTORY_COLUMNS = [
 
 const NOTE_MAX_LENGTH = 1000;
 
-function PlayerAvatar({ player, size = "small" }) {
-  const [failed, setFailed] = useState(false);
-  const url = playerImageUrl(player, size);
-  useEffect(() => setFailed(false), [url]);
-  if (!url || failed) return null;
-  const box = size === "small" ? 32 : 72;
-  return (
-    <img
-      className={`player-avatar${size === "small" ? "" : " player-avatar--lg"}`}
-      src={url}
-      alt=""
-      width={box}
-      height={box}
-      loading="lazy"
-      decoding="async"
-      referrerPolicy="no-referrer"
-      onError={() => setFailed(true)}
-    />
-  );
-}
-
-function TeamLogo({ team }) {
-  const [failed, setFailed] = useState(false);
-  const url = teamLogoUrl(team);
-  useEffect(() => setFailed(false), [url]);
-  if (!url || failed) return null;
-  return (
-    <img
-      className="team-logo"
-      src={url}
-      alt=""
-      width={28}
-      height={28}
-      loading="lazy"
-      decoding="async"
-      referrerPolicy="no-referrer"
-      onError={() => setFailed(true)}
-    />
-  );
-}
-
 export default function PlayersView({
   data,
   rules,
@@ -128,7 +86,6 @@ export default function PlayersView({
   );
   const [notes, setNotes] = useState(() => loadPlayerNotes(profileId));
   const [notesWarning, setNotesWarning] = useState("");
-  const [showMedia, setShowMedia] = useState(readMediaPreference);
   const [limit, setLimit] = useState(PAGE);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [assignOwner, setAssignOwner] = useState(0);
@@ -136,7 +93,7 @@ export default function PlayersView({
   const [feedback, setFeedback] = useState(null);
   const [priceFocusToken, setPriceFocusToken] = useState(0);
   const isDesktop = useMediaQuery("(min-width: 1000px)");
-  const { query, role, team, onlyTargets, showLive } = filters;
+  const { query, role, team, onlyTargets } = filters;
 
   useEffect(() => {
     setFilters(loadPlayerFilters(profileId, ROLE_VALUES, teamValues));
@@ -160,12 +117,6 @@ export default function PlayersView({
         : "Obiettivi e note non salvati: la memoria del browser non è disponibile.",
     );
   };
-
-  const toggleMedia = () =>
-    setShowMedia((current) => {
-      writeMediaPreference(!current);
-      return !current;
-    });
 
   useEffect(() => {
     if (initialRole) updateFilters({ role: initialRole });
@@ -195,7 +146,7 @@ export default function PlayersView({
 
   useEffect(() => setLimit(PAGE), [query, role, team, onlyTargets]);
 
-  const board = useAuctionBoard(profileId, data.players, activeRules, showLive);
+  const board = useAuctionBoard(profileId, data.players, activeRules);
   /* The panel drives assignment and notes, so every active filter must still
      admit an explicitly selected player. */
   const reconciledPlayer = reconcileSelectedPlayer(selected, rows);
@@ -254,8 +205,8 @@ export default function PlayersView({
     <PlayerDetail
       player={player}
       valuation={valuation}
+      setPieces={setPiecesForPlayer(data.set_pieces, player.id)}
       mark={mark}
-      showMedia={showMedia}
       noteMaxLength={NOTE_MAX_LENGTH}
       onToggleTarget={() =>
         updateNotes(withTarget(notes, player.id, !mark.target))
@@ -336,26 +287,6 @@ export default function PlayersView({
             Obiettivi
             <b>{targets}</b>
           </button>
-          <button
-            type="button"
-            className={`chip${showLive ? " is-active" : ""}`}
-            aria-pressed={showLive}
-            onClick={() => updateFilters({ showLive: !showLive })}
-            title="Mostra chi ha già preso ogni giocatore e assegna senza uscire da questa pagina"
-          >
-            <Radio size={13} aria-hidden="true" />
-            Asta live
-          </button>
-          <button
-            type="button"
-            className={`chip${showMedia ? " is-active" : ""}`}
-            aria-pressed={showMedia}
-            onClick={toggleMedia}
-            title="Carica campioncini e loghi da content.fantacalcio.it (circa 11 KB per giocatore, solo le righe visibili)"
-          >
-            <ImageIcon size={13} aria-hidden="true" />
-            Immagini
-          </button>
         </div>
       </div>
 
@@ -365,7 +296,7 @@ export default function PlayersView({
         </p>
       ) : null}
 
-      {showLive && board ? (
+      {board ? (
         <p className="live-legend">
           <span>
             <i className="k-mine" />
@@ -392,7 +323,7 @@ export default function PlayersView({
             <>
               <div className="list-head">
                 <span>Giocatore</span>
-                <span>{showLive ? "Valore · asta" : "Valore ruolo"}</span>
+                <span>Valore · asta</span>
               </div>
               <div className="rows">
                 {rows.slice(0, limit).map((item) => {
@@ -412,10 +343,8 @@ export default function PlayersView({
                       selected={isDesktop && player?.id === item.id}
                       value={valuation.normalizedFvm(item).toFixed(1)}
                       onClick={() => pick(item)}
-                      media={showMedia ? <PlayerAvatar player={item} /> : null}
-                      crest={
-                        showMedia ? <TeamLogo team={item.team_id} /> : null
-                      }
+                      media={<PlayerPortrait player={item} />}
+                      crest={<ClubCrest team={item.team_id} />}
                       flag={
                         itemMark.note ? (
                           <em className="note-flag" title={itemMark.note}>
@@ -446,27 +375,23 @@ export default function PlayersView({
                           />
                         </button>
                       }
-                      trailing={
-                        showLive ? (
-                          itemLive ? (
-                            <span className="live-cell">
-                              <b title={itemLive.ownerName}>
-                                {itemLive.mine ? "Tu" : itemLive.ownerName}
-                              </b>
-                              <small>{itemLive.price} cr</small>
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              className="btn btn--sm live-assign-open"
-                              onClick={() => openAssign(item)}
-                              aria-label={`Assegna ${item.nome} a una squadra`}
-                            >
-                              Assegna
-                            </button>
-                          )
-                        ) : null
-                      }
+                      trailing={itemLive ? (
+                        <span className="live-cell">
+                          <b title={itemLive.ownerName}>
+                            {itemLive.mine ? "Tu" : itemLive.ownerName}
+                          </b>
+                          <small>{itemLive.price} cr</small>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn--sm live-assign-open"
+                          onClick={() => openAssign(item)}
+                          aria-label={`Assegna ${item.nome} a una squadra`}
+                        >
+                          Assegna
+                        </button>
+                      )}
                     />
                   );
                 })}
@@ -515,8 +440,8 @@ export default function PlayersView({
 export function PlayerDetail({
   player,
   valuation,
+  setPieces,
   mark,
-  showMedia,
   noteMaxLength,
   auction,
   onToggleTarget,
@@ -529,10 +454,10 @@ export function PlayerDetail({
   return (
     <div className="stack">
       <div className="detail-head">
-        {showMedia ? <PlayerAvatar player={player} size="medium" /> : null}
+        <PlayerPortrait player={player} large />
         <span className="detail-role">
           <RoleChip role={player.ruolo} large />
-          {showMedia ? <TeamLogo team={player.team_id} /> : null}
+          <ClubCrest team={player.team_id} large />
         </span>
         <div className="detail-identity">
           <h2>{player.nome}</h2>
@@ -566,23 +491,7 @@ export function PlayerDetail({
 
       {auction ? <LiveAuctionPanel player={player} {...auction} /> : null}
 
-      {player.scout_ai ? (
-        <div className={`notice notice--${scoutTone(player.scout_ai.status)} scout-card`}>
-          <div className="scout-card__head">
-            <b>Scout AI · {scoutStatusLabel(player.scout_ai.status)}</b>
-            <span>{player.scout_ai.impact_percent > 0 ? "+" : ""}{player.scout_ai.impact_percent}% sul valore</span>
-          </div>
-          <strong>{player.scout_ai.headline}</strong>
-          <p>{player.scout_ai.summary}</p>
-          {player.scout_ai.sources?.length ? (
-            <span className="scout-card__sources">
-              {player.scout_ai.sources.map((source, index) => (
-                <a href={source} target="_blank" rel="noreferrer" key={source}>Fonte {index + 1}</a>
-              ))}
-            </span>
-          ) : null}
-        </div>
-      ) : null}
+      <PlayerSignals player={player} setPieces={setPieces} />
 
       <label className="field" htmlFor="player-note">
         <span className="field-label">Le mie note</span>
@@ -773,6 +682,14 @@ function LiveAuctionPanel({
           </span>
         </div>
 
+        {advice ? (
+          <div className="price-summary" aria-label="Valutazione economica">
+            <span><small>Prezzo medio stimato</small><b>{summary.estimatedMarketPrice}</b></span>
+            <span><small>Fascia consigliata</small><b>{advice.idealMin}–{advice.idealMax}</b></span>
+            <span><small>Non superare</small><b>{advice.maxBid}</b></span>
+          </div>
+        ) : null}
+
         <BidGauge
           advice={advice}
           price={price}
@@ -836,7 +753,7 @@ function LiveAuctionPanel({
           <div className="stat">
             <span className="stat-label">I tuoi crediti</span>
             <span className="stat-value">{summary.credits ?? "—"}</span>
-            <span className="stat-note">max bid {advice.legalMax}</span>
+            <span className="stat-note">base lega {rules.startingCredits} · max legale {advice.legalMax}</span>
           </div>
           <div className="stat">
             <span className="stat-label">

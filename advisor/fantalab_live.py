@@ -283,7 +283,11 @@ def _normalize_purchases(raw: Any, bridge: Mapping[str, Mapping[str, Any]]) -> l
     return result
 
 
-def _team_rows(config: Mapping[str, Any] | None, purchases: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _team_rows(
+    config: Mapping[str, Any] | None,
+    purchases: list[dict[str, Any]],
+    lot: Mapping[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     found: dict[str, dict[str, Any]] = {}
     if config:
         for index, raw in enumerate(config.get("fantateams", ())):
@@ -300,6 +304,14 @@ def _team_rows(config: Mapping[str, Any] | None, purchases: list[dict[str, Any]]
         team_id = purchase.get("buyer_team_id")
         if team_id and team_id not in found:
             found[team_id] = {"id": team_id, "name": None, "position": None, "starting_credits": None}
+    leader_id = lot.get("leader_team_id") if isinstance(lot, Mapping) else None
+    if isinstance(leader_id, str) and leader_id not in found:
+        found[leader_id] = {
+            "id": leader_id,
+            "name": None,
+            "position": None,
+            "starting_credits": None,
+        }
     return sorted(found.values(), key=lambda team: (team["position"] is None, team["position"] or 999, team["id"]))
 
 
@@ -348,7 +360,7 @@ def live_snapshot(
             "auction_type": config.get("asta_type") if config and isinstance(config.get("asta_type"), str) else None,
             "is_live": bool(config.get("is_live")) if config else None,
         },
-        "teams": _team_rows(config, purchases),
+        "teams": _team_rows(config, purchases, lot),
         "lot": lot,
         "purchases": purchases,
         "unmapped_players": sum(1 for item in purchases if item["player_id"] is None) + (1 if lot and lot["player_id"] is None else 0),

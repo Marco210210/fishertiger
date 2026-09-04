@@ -95,7 +95,9 @@ export const createRoleValuation = (players, rules) => {
     if (!model) return [];
     const source = sourceFvm(player);
     const notices = [];
-    if (source > model.upperFence && model.upperFence > 0) {
+    // FVM has a deliberately long tail: elite players are not bad source data.
+    // Warn only when the number cannot fit the configured auction budget.
+    if (source > finite(rules.startingCredits) && model.upperFence > 0) {
       notices.push({
         code: "source_fvm_high",
         label: "FVM fonte fuori scala nel ruolo",

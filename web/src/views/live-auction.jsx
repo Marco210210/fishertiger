@@ -220,7 +220,14 @@ export default function LiveAuctionView({
   const updateMapping = (externalId, localIndex) => {
     const nextMap = { ...teamMapRef.current };
     if (localIndex === "") delete nextMap[externalId];
-    else nextMap[externalId] = Number(localIndex);
+    else {
+      const target = Number(localIndex);
+      for (const [otherId, mappedIndex] of Object.entries(nextMap)) {
+        if (otherId !== externalId && Number(mappedIndex) === target)
+          delete nextMap[otherId];
+      }
+      nextMap[externalId] = target;
+    }
     saveConnection({ ...connection, teamMap: nextMap });
   };
 
@@ -239,6 +246,20 @@ export default function LiveAuctionView({
   const unmappedTeams = (snapshot?.teams || []).filter(
     (team) => !Number.isInteger(Number(connection.teamMap?.[team.id])),
   );
+  const teamActivity = useMemo(
+    () => Object.fromEntries((snapshot?.teams || []).map((team) => [
+      team.id,
+      (snapshot?.purchases || []).filter(
+        (purchase) => !purchase.unsold && purchase.buyer_team_id === team.id,
+      ),
+    ])),
+    [snapshot?.teams, snapshot?.purchases],
+  );
+  const pendingPurchases = (snapshot?.purchases || []).filter(
+    (purchase) =>
+      !purchase.unsold &&
+      !Number.isInteger(Number(connection.teamMap?.[purchase.buyer_team_id])),
+  ).length;
   const participantCount = snapshot?.room?.participants || board.teams.length;
   const startingCredits = snapshot?.room?.starting_credits || rules.startingCredits;
   const lastUpdated = snapshot?.server_time_ms
@@ -292,6 +313,11 @@ export default function LiveAuctionView({
         </div>
         {error ? <p className="notice notice--stop" role="alert">{error}</p> : null}
         {message ? <p className="notice notice--info" role="status">{message}</p> : null}
+        {pendingPurchases ? (
+          <p className="notice notice--stop" role="alert">
+            {pendingPurchases} {pendingPurchases === 1 ? "acquisto è in attesa" : "acquisti sono in attesa"}: abbina qui sotto la squadra FantaLab anonima. Appena la scegli, giocatori e crediti vengono recuperati automaticamente.
+          </p>
+        ) : null}
         {roomNotice ? <p className="micro" role="status">{roomNotice}</p> : null}
         {snapshot ? (
           <p className="micro">
@@ -320,18 +346,27 @@ export default function LiveAuctionView({
         </section>
       ) : null}
 
-      {snapshot && unmappedTeams.length ? (
+      {snapshot?.teams?.length ? (
         <section className="card stack">
           <div>
-            <span className="kicker">Una volta sola</span>
+            <span className="kicker">{unmappedTeams.length ? "Richiesto una volta sola" : "Collegamento salvato"}</span>
             <h2>Abbina le squadre FantaLab</h2>
-            <p className="muted">Gli acquisti vengono importati appena ogni identificativo esterno è associato alla squadra corretta.</p>
+            <p className="muted">FantaLab rende anonimi i nomi nella lettura pubblica. Usa gli acquisti mostrati come riferimento: l’abbinamento viene salvato solo per questa asta.</p>
           </div>
           <div className="live-team-map">
-            {unmappedTeams.map((team) => (
+            {snapshot.teams.map((team) => (
               <label className="field" key={team.id}>
-                <span className="field-label">{team.name || `Squadra FantaLab ${shortId(team.id)}`}</span>
-                <select className="select" value="" onChange={(event) => updateMapping(team.id, event.target.value)}>
+                <span className="field-label">
+                  {team.name || `Squadra FantaLab ${shortId(team.id)}`}
+                  {teamActivity[team.id]?.length
+                    ? ` · ${teamActivity[team.id].slice(-2).map((purchase) => `${purchase.name} ${purchase.price} cr`).join(", ")}`
+                    : " · nessun acquisto"}
+                </span>
+                <select
+                  className="select"
+                  value={Number.isInteger(Number(connection.teamMap?.[team.id])) ? connection.teamMap[team.id] : ""}
+                  onChange={(event) => updateMapping(team.id, event.target.value)}
+                >
                   <option value="">Scegli squadra…</option>
                   {board.teams.map((local) => <option value={local.index} key={local.index}>{local.name}</option>)}
                 </select>
