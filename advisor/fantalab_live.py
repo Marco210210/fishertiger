@@ -32,10 +32,12 @@ LISTONE_MAX_AGE_SECONDS = 12 * 60 * 60
 LISTONE_RETRY_AGE_SECONDS = 60
 JsonRequester = Callable[[str, str, Mapping[str, Any] | None, Mapping[str, str] | None], Any]
 
-# FantaLab's own web app authenticates against this Firebase project. The web
-# API key is not a secret: Firebase ships it inside every client bundle, and
-# access is governed by Firebase's own auth checks, not by hiding this value.
-FANTALAB_FIREBASE_API_KEY = "AIzaSyAUil-4mmWcJc-eaTBhZdxd43EHLmVtcds"
+# FantaLab's own web app authenticates against a Firebase project identified
+# by a web API key. That key is not a secret by Firebase's own design (it
+# ships inside every client bundle; access is governed by Firebase's auth
+# checks, not by hiding this value) — it is still kept out of source and read
+# from FISHERTIGER_FANTALAB_FIREBASE_API_KEY instead of being hardcoded here,
+# purely so an automated secret scanner never mistakes it for a leaked one.
 SECURE_TOKEN_URL = "https://securetoken.googleapis.com/v1/token"
 ID_TOKEN_SAFETY_MARGIN_SECONDS = 5 * 60
 FormRequester = Callable[[str, Mapping[str, str]], Any]
@@ -146,7 +148,7 @@ def _request_form(url: str, params: Mapping[str, str]) -> Any:
 def _refresh_id_token(
     refresh_token: str,
     *,
-    api_key: str = FANTALAB_FIREBASE_API_KEY,
+    api_key: str,
     requester: FormRequester = _request_form,
 ) -> dict[str, str]:
     """Exchange a long-lived Firebase refresh token for a fresh ID token.
@@ -199,6 +201,7 @@ def _save_cached_credentials(path: Path, value: Mapping[str, Any]) -> None:
 def resolve_fantalab_id_token(
     *,
     bootstrap_refresh_token: str | None,
+    api_key: str | None,
     cache_path: Path,
     requester: FormRequester = _request_form,
     now: float | None = None,
@@ -211,7 +214,7 @@ def resolve_fantalab_id_token(
     server restarts, without ever needing a new manual capture — only the
     very first ``bootstrap_refresh_token`` has to come from the browser.
     """
-    if not bootstrap_refresh_token:
+    if not bootstrap_refresh_token or not api_key:
         return None
     current_time = time.time() if now is None else now
     cached = _load_cached_credentials(cache_path)
@@ -220,7 +223,7 @@ def resolve_fantalab_id_token(
 
     for candidate in ([cached["refresh_token"]] if cached else []) + [bootstrap_refresh_token]:
         try:
-            response = _refresh_id_token(candidate, requester=requester)
+            response = _refresh_id_token(candidate, api_key=api_key, requester=requester)
         except FantaLabError:
             continue
         _save_cached_credentials(

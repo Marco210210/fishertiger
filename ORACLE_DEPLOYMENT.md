@@ -92,17 +92,25 @@ are never returned to the browser or logged:
   logged in, captured from the browser's DevTools Network tab). Simple, but
   Firebase ID tokens expire after about an hour, so this needs recapturing
   periodically during a long auction.
-- `FISHERTIGER_FANTALAB_REFRESH_TOKEN` (recommended): a long-lived Firebase
-  refresh token. The server exchanges it for a fresh ID token itself and
-  keeps renewing automatically forever — including across restarts and
+- `FISHERTIGER_FANTALAB_REFRESH_TOKEN` + `FISHERTIGER_FANTALAB_FIREBASE_API_KEY`
+  (recommended): a long-lived Firebase refresh token, plus the FantaLab
+  Firebase project's web API key needed to exchange it. The server renews the
+  ID token itself and keeps doing so forever — including across restarts and
   redeploys — because it persists the rotated refresh token Google returns on
-  every renewal to
-  `<updates-dir>/fantalab/credentials.json`. It only needs to be captured
-  once, ever, regardless of the FantaLab login method (email/password,
-  Google, …), because Firebase issues its own refresh token after any
-  successful sign-in. If both variables are set, the refresh token takes
-  priority; `FISHERTIGER_FANTALAB_TOKEN` is used only if renewing from the
-  refresh token fails.
+  every renewal to `<updates-dir>/fantalab/credentials.json`. The refresh
+  token only needs to be captured once, ever, regardless of the FantaLab
+  login method (email/password, Google, …), because Firebase issues its own
+  refresh token after any successful sign-in. If both this and the token
+  above are set, the refresh token takes priority; `FISHERTIGER_FANTALAB_TOKEN`
+  is used only if renewing from the refresh token fails.
+
+  The API key is not itself secret (Firebase ships it inside every client
+  bundle; it identifies the project, it does not grant access on its own) but
+  is still read from an environment variable rather than hardcoded, purely so
+  an automated secret scanner never flags it as a leaked credential. Find it
+  by opening `app.fantalab.it`'s main JS bundle (referenced from its HTML as
+  `/static/js/main.*.js`) and searching for `apiKey` near a `firebaseConfig`-
+  looking object; it starts with `AIzaSy`.
 
 To capture the initial refresh token: log into `app.fantalab.it`, open the
 auction room, open DevTools (F12), go to the **Console** tab and paste (Chrome
@@ -123,18 +131,29 @@ may ask you to type `allow pasting` first, as a self-XSS guard):
         r.onsuccess = () => res(r.result);
         r.onerror = () => rej(r.error);
       });
-      console.log(name, store, rows);
+      for (const row of rows) {
+        const token = row?.value?.stsTokenManager?.refreshToken;
+        if (token) { copy(token); console.log("Copiato negli appunti."); return; }
+      }
     }
   }
+  console.log("Token non trovato: assicurati di aver eseguito l'accesso su questa pagina.");
 })();
 ```
 
-This prints the browser's Firebase auth state. Expand the logged object(s) in
-the console until you find `stsTokenManager.refreshToken` (a long string) —
-right-click it and "Copy value". Set it as `FISHERTIGER_FANTALAB_REFRESH_TOKEN`
-in `/etc/astafanta-support.env` (systemd installation) and restart the
-service (`sudo systemctl restart astafanta-support.service`); no rebuild is
-needed since only an environment variable changed.
+`copy()` is a Chrome/Edge DevTools console helper (not available in normal
+page scripts) that puts the value straight on the clipboard, so the refresh
+token never needs to be manually selected. Set it as
+`FISHERTIGER_FANTALAB_REFRESH_TOKEN` in `/etc/astafanta-support.env` (systemd
+installation) and restart the service
+(`sudo systemctl restart astafanta-support.service`); no rebuild is needed
+since only environment variables changed.
+
+This data lives only inside the browser, scoped to the `app.fantalab.it`
+origin by the browser's own storage isolation — no other site, and no SSH
+session to an unrelated server, can read it. The DevTools console step above
+is not an arbitrary hoop: it is the only place this value is reachable at
+all, because the code runs in that page's own security context.
 
 The integration is deliberately read-only. AstaFanta Support cannot bid, assign a
 lot or change the FantaLab room.

@@ -446,6 +446,7 @@ class LocalApiHandler(BaseHTTPRequestHandler):
             else:
                 renewed_token = resolve_fantalab_id_token(
                     bootstrap_refresh_token=os.environ.get("FISHERTIGER_FANTALAB_REFRESH_TOKEN"),
+                    api_key=os.environ.get("FISHERTIGER_FANTALAB_FIREBASE_API_KEY"),
                     cache_path=self.server.updates_dir / "fantalab" / "credentials.json",
                 )
                 result = live_snapshot(

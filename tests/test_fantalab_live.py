@@ -129,6 +129,19 @@ def test_resolve_fantalab_id_token_returns_none_without_a_bootstrap_token(tmp_pa
 
     assert resolve_fantalab_id_token(
         bootstrap_refresh_token=None,
+        api_key="test-api-key",
+        cache_path=tmp_path / "credentials.json",
+        requester=requester,
+    ) is None
+
+
+def test_resolve_fantalab_id_token_returns_none_without_an_api_key(tmp_path: Path) -> None:
+    def requester(url: str, params: Any) -> Any:
+        raise AssertionError("Google must not be called when no API key is configured")
+
+    assert resolve_fantalab_id_token(
+        bootstrap_refresh_token="seed-token",
+        api_key=None,
         cache_path=tmp_path / "credentials.json",
         requester=requester,
     ) is None
@@ -145,6 +158,7 @@ def test_resolve_fantalab_id_token_renews_and_persists_the_rotated_refresh_token
     cache_path = tmp_path / "credentials.json"
     token = resolve_fantalab_id_token(
         bootstrap_refresh_token="seed-token",
+        api_key="test-api-key",
         cache_path=cache_path,
         requester=requester,
         now=1_000.0,
@@ -167,6 +181,7 @@ def test_resolve_fantalab_id_token_reuses_a_still_valid_cached_token(tmp_path: P
 
     token = resolve_fantalab_id_token(
         bootstrap_refresh_token="seed-token",
+        api_key="test-api-key",
         cache_path=cache_path,
         requester=requester,
         now=9_000.0,
@@ -188,6 +203,7 @@ def test_resolve_fantalab_id_token_renews_with_the_cached_rotated_token_first(tm
 
     token = resolve_fantalab_id_token(
         bootstrap_refresh_token="seed-token",
+        api_key="test-api-key",
         cache_path=cache_path,
         requester=requester,
         now=1_500.0,
@@ -214,6 +230,7 @@ def test_resolve_fantalab_id_token_falls_back_to_the_bootstrap_token_when_the_ca
 
     token = resolve_fantalab_id_token(
         bootstrap_refresh_token="seed-token",
+        api_key="test-api-key",
         cache_path=cache_path,
         requester=requester,
         now=1_500.0,
@@ -228,6 +245,7 @@ def test_resolve_fantalab_id_token_returns_none_when_every_credential_is_rejecte
 
     token = resolve_fantalab_id_token(
         bootstrap_refresh_token="seed-token",
+        api_key="test-api-key",
         cache_path=tmp_path / "credentials.json",
         requester=requester,
     )
