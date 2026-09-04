@@ -71,6 +71,7 @@ export default function LiveAuctionView({
   const [message, setMessage] = useState("");
   const [roomNotice, setRoomNotice] = useState("");
   const [now, setNow] = useState(Date.now());
+  const [showMapping, setShowMapping] = useState(false);
   const board = useAuctionBoard(profileId, data.players, rules);
   const teamMapRef = useRef(connection.teamMap);
   const liveRef = useRef({ players: data.players, rules, board });
@@ -353,33 +354,54 @@ export default function LiveAuctionView({
       ) : null}
 
       {snapshot?.teams?.length ? (
-        <section className="card stack">
-          <div>
-            <span className="kicker">{unmappedTeams.length ? "Richiesto una volta sola" : "Sincronizzazione automatica"}</span>
-            <h2>Abbina le squadre FantaLab</h2>
-            <p className="muted">FantaLab nasconde i nomi nella lettura pubblica finché una squadra non rilancia o compra: quando il nome o la posizione coincidono l’abbinamento è automatico, altrimenti scegli qui la squadra giusta usando gli acquisti mostrati come riferimento. Resta salvato per questa asta.</p>
-          </div>
-          <div className="live-team-map">
-            {snapshot.teams.map((team) => (
-              <label className="field" key={team.id}>
-                <span className="field-label">
-                  {team.name || `Squadra FantaLab ${shortId(team.id)}`}
-                  {teamActivity[team.id]?.length
-                    ? ` · ${teamActivity[team.id].slice(-2).map((purchase) => `${purchase.name} ${purchase.price} cr`).join(", ")}`
-                    : " · nessun acquisto"}
-                </span>
-                <select
-                  className="select"
-                  value={Number.isInteger(Number(connection.teamMap?.[team.id])) ? connection.teamMap[team.id] : ""}
-                  onChange={(event) => updateMapping(team.id, event.target.value)}
+        showMapping || unmappedTeams.length ? (
+          <section className="card stack">
+            <div className="section-head">
+              <div>
+                <span className="kicker">{unmappedTeams.length ? "Richiesto una volta sola" : "Sincronizzazione automatica"}</span>
+                <h2>Abbina le squadre FantaLab</h2>
+                <p className="muted">FantaLab nasconde i nomi nella lettura pubblica finché una squadra non rilancia o compra: quando il nome o la posizione coincidono l’abbinamento è automatico, altrimenti scegli qui la squadra giusta usando gli acquisti mostrati come riferimento. Resta salvato per questa asta.</p>
+              </div>
+              {!unmappedTeams.length ? (
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--sm"
+                  onClick={() => setShowMapping(false)}
                 >
-                  <option value="">Scegli squadra…</option>
-                  {board.teams.map((local) => <option value={local.index} key={local.index}>{local.name}</option>)}
-                </select>
-              </label>
-            ))}
-          </div>
-        </section>
+                  Fine
+                </button>
+              ) : null}
+            </div>
+            <div className="live-team-map">
+              {snapshot.teams.map((team) => (
+                <label className="field" key={team.id}>
+                  <span className="field-label">
+                    {team.name || `Squadra FantaLab ${shortId(team.id)}`}
+                    {teamActivity[team.id]?.length
+                      ? ` · ${teamActivity[team.id].slice(-2).map((purchase) => `${purchase.name} ${purchase.price} cr`).join(", ")}`
+                      : " · nessun acquisto"}
+                  </span>
+                  <select
+                    className="select"
+                    value={Number.isInteger(Number(connection.teamMap?.[team.id])) ? connection.teamMap[team.id] : ""}
+                    onChange={(event) => updateMapping(team.id, event.target.value)}
+                  >
+                    <option value="">Scegli squadra…</option>
+                    {board.teams.map((local) => <option value={local.index} key={local.index}>{local.name}</option>)}
+                  </select>
+                </label>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <button
+            type="button"
+            className="btn btn--ghost btn--sm"
+            onClick={() => setShowMapping(true)}
+          >
+            Modifica abbinamento squadre FantaLab
+          </button>
+        )
       ) : null}
 
       <AuctionView

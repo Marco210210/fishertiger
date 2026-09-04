@@ -89,6 +89,13 @@ export default function AuctionView({
   const [message, setMessage] = useState(null);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
+  /* Which team roster cards are expanded. Explicit choices are tracked here
+     and never overwritten by a re-render (every live poll re-renders this
+     view), only the team not yet toggled by the user falls back to "open iff
+     mine" below. */
+  const [openTeams, setOpenTeams] = useState({});
+  const toggleTeamOpen = (index, isOpen) =>
+    setOpenTeams((current) => ({ ...current, [index]: isOpen }));
   const priceTouched = useRef(false);
   const resetSignature = `${storageKey}|${rulesSignature}|${defaultUserTeamIndex}`;
   const lastResetSignature = useRef(resetSignature);
@@ -147,9 +154,13 @@ export default function AuctionView({
   const activeRole = board.activeRole;
   const myTeam = board.teams[userTeamIndex];
   const mySlots = slotsLeft(myTeam, activeRules);
+  // The advice, the suggested price and the legal ceiling shown in the
+  // verdict card are always about the user's own team, never about whoever
+  // is selected as the buyer to record the sale against (which follows the
+  // live FantaLab leader and is very often a rival) — that selector is only
+  // bookkeeping for "who gets this on their roster", not a change of
+  // perspective for what is a good move.
   const myMax = legalMaxBid(myTeam, activeRules);
-  const ownerTeam = board.teams[owner];
-  const selectedLegalMax = legalMaxBid(ownerTeam, activeRules);
   const totalSlots = Object.values(activeRules.rosterSlots).reduce(
     (sum, count) => sum + count,
     0,
@@ -178,11 +189,11 @@ export default function AuctionView({
       return;
     const suggested = nearestAuctionPrice(
       estimate,
-      selectedLegalMax,
+      myMax,
       activeRules,
     );
     if (suggested != null) setPrice(String(suggested));
-  }, [player, advice, selectedLegalMax, rulesSignature]);
+  }, [player, advice, myMax, rulesSignature]);
 
   const say = (text, tone = "info") => setMessage({ text, tone });
 
@@ -268,6 +279,15 @@ export default function AuctionView({
     setOwner(index);
     report(writeUserTeamIndex(activeProfileId, index));
   };
+
+  /* My team always leads the league list, whatever its actual slot index is;
+     the rest keep their existing relative order. */
+  const orderedTeams = [
+    ...(board.teams[userTeamIndex] ? [{ team: board.teams[userTeamIndex], index: userTeamIndex }] : []),
+    ...board.teams
+      .map((team, index) => ({ team, index }))
+      .filter(({ index }) => index !== userTeamIndex),
+  ];
 
   const lastTransaction = board.history.at(-1);
   const lastPlayer = lastTransaction
@@ -388,7 +408,7 @@ export default function AuctionView({
               advice={advice}
               price={price}
               rules={activeRules}
-              legalMax={selectedLegalMax}
+              legalMax={myMax}
               teams={board.teams}
               owner={owner}
               userTeamIndex={userTeamIndex}
@@ -456,13 +476,19 @@ export default function AuctionView({
               </button>
             </div>
             <div className="teams-board">
-              {board.teams.map((team, index) => (
+              {orderedTeams.map(({ team, index }) => (
                 <TeamCard
                   key={index}
                   team={team}
                   index={index}
                   rules={activeRules}
                   isMine={index === userTeamIndex}
+                  isOpen={
+                    openTeams[index] !== undefined
+                      ? openTeams[index]
+                      : index === userTeamIndex
+                  }
+                  onToggleOpen={(isOpen) => toggleTeamOpen(index, isOpen)}
                   assigned={board.assigned}
                   showSetup={showSetup}
                   canSetStartingCredits={canSetStartingCredits}
@@ -744,6 +770,8 @@ function TeamCard({
   index,
   rules,
   isMine,
+  isOpen,
+  onToggleOpen,
   assigned,
   showSetup,
   canSetStartingCredits,
@@ -754,7 +782,11 @@ function TeamCard({
   const left = slotsLeft(team, rules);
   const max = legalMaxBid(team, rules);
   return (
-    <details className={`team-card${isMine ? " is-mine" : ""}`} open={isMine}>
+    <details
+      className={`team-card${isMine ? " is-mine" : ""}`}
+      open={isOpen}
+      onToggle={(event) => onToggleOpen(event.currentTarget.open)}
+    >
       <summary>
         <span className="team-card-name">
           {team.name}
