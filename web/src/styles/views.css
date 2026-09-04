@@ -1030,15 +1030,24 @@
   opacity: 0.45;
 }
 
-.note-flag {
+/* Tailwind's reset sets every svg to display:block, which turns these icons
+   into block-in-inline boxes and forces a line break around them — inside
+   the nowrap row title that reads as the icon floating on its own line
+   above the name instead of sitting right next to it. Put them back inline. */
+.note-flag,
+.scout-flag {
+  display: inline-flex;
   margin-right: 5px;
-  color: var(--c-text-mute);
   vertical-align: middle;
 }
 
-.scout-flag {
-  margin-right: 5px;
-  vertical-align: middle;
+.note-flag svg,
+.scout-flag svg {
+  display: inline-block;
+}
+
+.note-flag {
+  color: var(--c-text-mute);
 }
 
 .scout-flag--stop {
