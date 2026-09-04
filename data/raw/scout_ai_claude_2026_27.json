@@ -1,7 +1,7 @@
 {
   "version": 1,
   "season": "2026/27",
-  "generated_at": "2026-09-04T16:26:20.161712+00:00",
+  "generated_at": "2026-09-04T16:31:28.917867+00:00",
   "provider": "Claude (sessione interattiva, ricerca web)",
   "lookback_days": 14,
   "players": {
@@ -719,6 +719,244 @@
         "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
       ],
       "promoted": true
+    },
+    "7023": {
+      "player_id": 7023,
+      "name": "Pellegrino M.",
+      "team": "Fiorentina",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Parma",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Pellegrino M. ha lasciato Fiorentina. Nuova squadra: Parma. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ],
+      "promoted": true
+    },
+    "2137": {
+      "player_id": 2137,
+      "name": "Scamacca",
+      "team": "Atalanta",
+      "status": "positive",
+      "availability": 1,
+      "starter": 0.85,
+      "impact_percent": 6.0,
+      "multiplier": 1.06,
+      "confidence": 0.6,
+      "headline": "Rigorista designato: valore rialzato",
+      "summary": "Primo rigorista dell'Atalanta, davanti a De Ketelaere. Gerarchia aggiornata a inizio settembre 2026, può cambiare durante la stagione.",
+      "sources": [
+        "https://www.sosfanta.com/asta-fantacalcio/fantacalcio-asta-tutti-rigoristi-seriea-venti-squadre-campionato/"
+      ],
+      "promoted": false
+    },
+    "6010": {
+      "player_id": 6010,
+      "name": "Fazzini",
+      "team": "Cagliari",
+      "status": "positive",
+      "availability": 1,
+      "starter": 0.85,
+      "impact_percent": 6.0,
+      "multiplier": 1.06,
+      "confidence": 0.6,
+      "headline": "Rigorista designato: valore rialzato",
+      "summary": "Candidato principale per i rigori del Cagliari (con Esposito ceduto), alternative Mina e Deiola. Gerarchia aggiornata a inizio settembre 2026, può cambiare durante la stagione.",
+      "sources": [
+        "https://www.sosfanta.com/asta-fantacalcio/fantacalcio-asta-tutti-rigoristi-seriea-venti-squadre-campionato/"
+      ],
+      "promoted": false
+    },
+    "5559": {
+      "player_id": 5559,
+      "name": "Da Cunha",
+      "team": "Como",
+      "status": "positive",
+      "availability": 1,
+      "starter": 0.85,
+      "impact_percent": 6.0,
+      "multiplier": 1.06,
+      "confidence": 0.6,
+      "headline": "Rigorista designato: valore rialzato",
+      "summary": "Ha scavalcato Nico Paz nelle gerarchie rigori del Como; Douvikas terza opzione. Gerarchia aggiornata a inizio settembre 2026, può cambiare durante la stagione.",
+      "sources": [
+        "https://www.sosfanta.com/asta-fantacalcio/fantacalcio-asta-tutti-rigoristi-seriea-venti-squadre-campionato/"
+      ],
+      "promoted": false
+    },
+    "7472": {
+      "player_id": 7472,
+      "name": "Calò",
+      "team": "Frosinone",
+      "status": "positive",
+      "availability": 1,
+      "starter": 0.85,
+      "impact_percent": 6.0,
+      "multiplier": 1.06,
+      "confidence": 0.6,
+      "headline": "Rigorista designato: valore rialzato",
+      "summary": "Primo rigorista designato del Frosinone, davanti a Raimondo. Gerarchia aggiornata a inizio settembre 2026, può cambiare durante la stagione.",
+      "sources": [
+        "https://www.sosfanta.com/asta-fantacalcio/fantacalcio-asta-tutti-rigoristi-seriea-venti-squadre-campionato/"
+      ],
+      "promoted": false
+    },
+    "4923": {
+      "player_id": 4923,
+      "name": "Colombo",
+      "team": "Genoa",
+      "status": "positive",
+      "availability": 1,
+      "starter": 0.85,
+      "impact_percent": 6.0,
+      "multiplier": 1.06,
+      "confidence": 0.6,
+      "headline": "Rigorista designato: valore rialzato",
+      "summary": "Eredita i rigori del Genoa da Malinovskyi, davanti a Messias e Vitinha. Gerarchia aggiornata a inizio settembre 2026, può cambiare durante la stagione.",
+      "sources": [
+        "https://www.sosfanta.com/asta-fantacalcio/fantacalcio-asta-tutti-rigoristi-seriea-venti-squadre-campionato/"
+      ],
+      "promoted": false
+    },
+    "2194": {
+      "player_id": 2194,
+      "name": "Calhanoglu",
+      "team": "Inter",
+      "status": "positive",
+      "availability": 1,
+      "starter": 0.85,
+      "impact_percent": 6.0,
+      "multiplier": 1.06,
+      "confidence": 0.6,
+      "headline": "Rigorista designato: valore rialzato",
+      "summary": "Rigorista designato dell'Inter, nessun dubbio, davanti a Lautaro e Zielinski. Gerarchia aggiornata a inizio settembre 2026, può cambiare durante la stagione.",
+      "sources": [
+        "https://www.sosfanta.com/asta-fantacalcio/fantacalcio-asta-tutti-rigoristi-seriea-venti-squadre-campionato/"
+      ],
+      "promoted": false
+    },
+    "632": {
+      "player_id": 632,
+      "name": "Zaccagni",
+      "team": "Lazio",
+      "status": "positive",
+      "availability": 1,
+      "starter": 0.85,
+      "impact_percent": 6.0,
+      "multiplier": 1.06,
+      "confidence": 0.6,
+      "headline": "Rigorista designato: valore rialzato",
+      "summary": "Rigorista titolare della Lazio; Cataldi alternativa più che valida. Gerarchia aggiornata a inizio settembre 2026, può cambiare durante la stagione.",
+      "sources": [
+        "https://www.sosfanta.com/asta-fantacalcio/fantacalcio-asta-tutti-rigoristi-seriea-venti-squadre-campionato/"
+      ],
+      "promoted": false
+    },
+    "5585": {
+      "player_id": 5585,
+      "name": "Malen",
+      "team": "Roma",
+      "status": "positive",
+      "availability": 1,
+      "starter": 0.85,
+      "impact_percent": 6.0,
+      "multiplier": 1.06,
+      "confidence": 0.6,
+      "headline": "Rigorista designato: valore rialzato",
+      "summary": "Se in campo, è lui a tirare i rigori della Roma; alternative Dybala e Soulé. Gerarchia aggiornata a inizio settembre 2026, può cambiare durante la stagione.",
+      "sources": [
+        "https://www.sosfanta.com/asta-fantacalcio/fantacalcio-asta-tutti-rigoristi-seriea-venti-squadre-campionato/"
+      ],
+      "promoted": false
+    },
+    "531": {
+      "player_id": 531,
+      "name": "Berardi",
+      "team": "Sassuolo",
+      "status": "positive",
+      "availability": 1,
+      "starter": 0.85,
+      "impact_percent": 6.0,
+      "multiplier": 1.06,
+      "confidence": 0.6,
+      "headline": "Rigorista designato: valore rialzato",
+      "summary": "Capitano e rigorista confermato del Sassuolo anche con Aquilani in panchina; Pinamonti unica vera alternativa. Gerarchia aggiornata a inizio settembre 2026, può cambiare durante la stagione.",
+      "sources": [
+        "https://www.sosfanta.com/asta-fantacalcio/fantacalcio-asta-tutti-rigoristi-seriea-venti-squadre-campionato/"
+      ],
+      "promoted": false
+    },
+    "5687": {
+      "player_id": 5687,
+      "name": "Vlasic",
+      "team": "Torino",
+      "status": "positive",
+      "availability": 1,
+      "starter": 0.85,
+      "impact_percent": 6.0,
+      "multiplier": 1.06,
+      "confidence": 0.6,
+      "headline": "Rigorista designato: valore rialzato",
+      "summary": "Rigorista confermato del Torino anche sotto la gestione Abate; Zapata e Simeone alternative. Gerarchia aggiornata a inizio settembre 2026, può cambiare durante la stagione.",
+      "sources": [
+        "https://www.sosfanta.com/asta-fantacalcio/fantacalcio-asta-tutti-rigoristi-seriea-venti-squadre-campionato/"
+      ],
+      "promoted": false
+    },
+    "5637": {
+      "player_id": 5637,
+      "name": "Davis K.",
+      "team": "Udinese",
+      "status": "positive",
+      "availability": 1,
+      "starter": 0.85,
+      "impact_percent": 6.0,
+      "multiplier": 1.06,
+      "confidence": 0.6,
+      "headline": "Rigorista designato: valore rialzato",
+      "summary": "Primo tiratore dell'Udinese; Solet e Zaniolo le alternative. Gerarchia aggiornata a inizio settembre 2026, può cambiare durante la stagione.",
+      "sources": [
+        "https://www.sosfanta.com/asta-fantacalcio/fantacalcio-asta-tutti-rigoristi-seriea-venti-squadre-campionato/"
+      ],
+      "promoted": false
+    },
+    "7484": {
+      "player_id": 7484,
+      "name": "Adams A.",
+      "team": "Venezia",
+      "status": "positive",
+      "availability": 1,
+      "starter": 0.85,
+      "impact_percent": 6.0,
+      "multiplier": 1.06,
+      "confidence": 0.6,
+      "headline": "Rigorista designato: valore rialzato",
+      "summary": "Rigorista del Venezia, arrivato dal Siviglia con un ottimo score sui rigori (3/3). Gerarchia aggiornata a inizio settembre 2026, può cambiare durante la stagione.",
+      "sources": [
+        "https://www.sosfanta.com/asta-fantacalcio/fantacalcio-asta-tutti-rigoristi-seriea-venti-squadre-campionato/"
+      ],
+      "promoted": false
+    },
+    "7449": {
+      "player_id": 7449,
+      "name": "Rrahmani Al.",
+      "team": "Venezia",
+      "status": "positive",
+      "availability": 1,
+      "starter": 0.85,
+      "impact_percent": 6.0,
+      "multiplier": 1.06,
+      "confidence": 0.6,
+      "headline": "Rigorista designato: valore rialzato",
+      "summary": "Seconda opzione rigori del Venezia, arrivato con un buon score dal campionato precedente (14/18). Gerarchia aggiornata a inizio settembre 2026, può cambiare durante la stagione.",
+      "sources": [
+        "https://www.sosfanta.com/asta-fantacalcio/fantacalcio-asta-tutti-rigoristi-seriea-venti-squadre-campionato/"
+      ],
+      "promoted": false
     }
   }
 }
