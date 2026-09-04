@@ -142,7 +142,16 @@ def _diff(old: dict[str, object] | None, new: dict[str, object]) -> list[dict[st
     if old is None:
         return []
     before = {item["team"]: item for item in old["teams"]}
-    return [{"team": team, "change": "modified", "old": before[team], "new": item} for item in new["teams"] if before.get(team) != item]
+    after = {item["team"]: item for item in new["teams"]}
+    changes = []
+    for team in sorted(before.keys() | after.keys()):
+        if team not in before:
+            changes.append({"team": team, "change": "added", "old": None, "new": after[team]})
+        elif team not in after:
+            changes.append({"team": team, "change": "removed", "old": before[team], "new": None})
+        elif before[team] != after[team]:
+            changes.append({"team": team, "change": "modified", "old": before[team], "new": after[team]})
+    return changes
 
 
 def check_updates(root: Path, profile_id: str, season: str, fetcher: FetchPage = fetch_page) -> dict[str, object]:

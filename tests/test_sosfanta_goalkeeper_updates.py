@@ -6,6 +6,7 @@ import pandas as pd
 
 from advisor.sosfanta_goalkeeper_updates import (
     GOALKEEPER_URL,
+    _diff,
     apply_update,
     extract_goalkeeper_hierarchies,
     fetch_snapshot,
@@ -30,6 +31,23 @@ def article():
 
 
 class GoalkeeperUpdateTests(unittest.TestCase):
+    def test_diff_reports_changed_added_and_removed_teams(self):
+        old = {"teams": [
+            {"team": "Atalanta", "primo": "Old"},
+            {"team": "Roma", "primo": "Same"},
+            {"team": "Venezia", "primo": "Gone"},
+        ]}
+        new = {"teams": [
+            {"team": "Atalanta", "primo": "New"},
+            {"team": "Roma", "primo": "Same"},
+            {"team": "Como", "primo": "Added"},
+        ]}
+
+        self.assertEqual(
+            [(item["team"], item["change"]) for item in _diff(old, new)],
+            [("Atalanta", "modified"), ("Como", "added"), ("Venezia", "removed")],
+        )
+
     def test_parser_handles_ads_b_headings_and_order(self):
         teams = extract_goalkeeper_hierarchies(article(), "2026/27")
         self.assertEqual(len(teams), 20)

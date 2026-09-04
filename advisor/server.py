@@ -614,7 +614,7 @@ class LocalApiHandler(BaseHTTPRequestHandler):
         self._send_json(HTTPStatus.OK, value)
 
     def _put_upload(self, relative_path: str) -> None:
-        parts = relative_path.split("/")
+        parts = relative_path.strip("/").split("/")
         if (
             len(parts) != 3
             or not PROFILE_NAME.fullmatch(parts[0])
@@ -622,7 +622,11 @@ class LocalApiHandler(BaseHTTPRequestHandler):
             or not SOURCE_NAME.fullmatch(parts[2])
             or parts[2] not in FIXED_SOURCE_SUFFIXES.get(parts[1], {})
         ):
-            self._error(HTTPStatus.BAD_REQUEST, "invalid_upload_path", "Upload paths must identify a profile, source group, and source name.")
+            self._error(
+                HTTPStatus.BAD_REQUEST,
+                "invalid_upload_path",
+                "Percorso di caricamento non valido. Controlla che l'ID profilo contenga solo lettere, numeri, trattini o underscore, senza spazi o barre.",
+            )
             return
         filename = self.headers.get("X-Filename", "")
         suffix = Path(filename).suffix.lower()

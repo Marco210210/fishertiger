@@ -611,6 +611,13 @@ export function LeagueSettings({
     const source = profile[group][index];
     const key = `${group}:${source.name}`;
     const previousStatus = sourceStatuses[key];
+    if (!isValidProfileId(profile.profile_id)) {
+      const detail =
+        "Prima correggi l’ID profilo: usa solo lettere, numeri, trattini o underscore, senza spazi né barre (per esempio: fantasse-2026-27).";
+      setSourceErrors((current) => ({ ...current, [key]: detail }));
+      setStatus(`Impossibile caricare ${sourceLabels[source.name] || source.name}: ${detail}`);
+      return;
+    }
     setSourceStatuses((current) => ({ ...current, [key]: "uploading" }));
     setSourceErrors((current) => ({ ...current, [key]: "" }));
     setStatus("");
