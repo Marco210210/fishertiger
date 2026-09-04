@@ -688,57 +688,57 @@ export const evaluateAuction = (data = {}) => {
   );
   const reasons = [
     replacement
-      ? `${rounded(candidateValue)} punti proiettati; margine di ${rounded(marginalValue)} sul cutoff del ruolo (${replacementIndex + 1}° tra i disponibili).`
-      : `${rounded(candidateValue)} punti proiettati; nessuna alternativa disponibile nel ruolo.`,
-    `Margine corretto: ${rounded(individualMarginalValue)} punti individuali + ${rounded(defenseMarginalValue)} punti modificatore difesa.`,
-    `Limite ancorato al mercato a ${candidateCost} crediti, corretto per qualità relativa e fattibilità del completamento.`,
-    `Completamento ottimizzato rispettando ${openSlots} slot aperti e la riserva minima di ${Math.max(0, openSlots - 1) * rules.auction.reserve} crediti dopo l'acquisto.`,
-    `Mercato osservato a ${market.inflation.toFixed(2)}x (${market.records.length} assegnazioni); ruolo ${player.ruolo} a ${market.roleInflation[player.ruolo].toFixed(2)}x.`,
-    `${opponents.needing} avversari hanno ancora bisogno del ruolo; ${opponents.affordable} possono offrire almeno un credito oltre le proprie riserve.`,
+      ? `Vale circa ${rounded(candidateValue)} punti. Confrontato con la ${replacementIndex + 1}ª miglior alternativa ancora libera nel ruolo (oltre quella il ruolo comincia a scarseggiare), il margine è di ${rounded(marginalValue) >= 0 ? "+" : ""}${rounded(marginalValue)} punti${rounded(marginalValue) < 0 ? " — cioè ci sono alternative pari o migliori ancora sul mercato" : ""}.`
+      : `Vale circa ${rounded(candidateValue)} punti. Non resta nessun'altra alternativa nel ruolo con cui confrontarlo.`,
+    `Di quel margine, ${rounded(individualMarginalValue)} punti vengono dal suo rendimento e ${rounded(defenseMarginalValue)} da quanto irrobustisce la fase difensiva della squadra.`,
+    `Prezzo di mercato stimato: ${candidateCost} crediti, corretto in base a quanto vale rispetto alle alternative e a quanto resta fattibile completare la rosa a quella cifra.`,
+    `Il calcolo lascia comunque i crediti per completare la rosa: ${openSlots} slot ancora da riempire, riservando almeno ${Math.max(0, openSlots - 1) * rules.auction.reserve} crediti per gli altri dopo questo acquisto.`,
+    `In questa lega si sta pagando in media ${market.inflation.toFixed(2)}× i valori base (su ${market.records.length} acquisti osservati finora); per il ruolo ${player.ruolo} il moltiplicatore è ${market.roleInflation[player.ruolo].toFixed(2)}×.`,
+    `${opponents.needing} squadre rivali devono ancora completare questo ruolo, e ${opponents.affordable} di loro hanno credito sufficiente per rilanciare oltre le proprie riserve.`,
   ];
   if (player.ruolo === "P" && candidateUtility.goalkeeper.rotationStarts > 0) {
     reasons.push(
-      `Rotazione prevista in ${candidateUtility.goalkeeper.rotationStarts} giornate, ${candidateUtility.goalkeeper.homeRotationStarts} con il candidato in casa.`,
+      `Previsto titolare a rotazione in ${candidateUtility.goalkeeper.rotationStarts} giornate, di cui ${candidateUtility.goalkeeper.homeRotationStarts} in casa.`,
     );
   } else if (player.ruolo === "P" && candidateUtility.goalkeeper.voteCoverageGain > 0) {
     reasons.push(
-      `Copertura del voto portiere +${Math.round(candidateUtility.goalkeeper.voteCoverageGain * 100)} punti percentuali.`,
+      `Aumenta la probabilità di avere un voto valido in porta di +${Math.round(candidateUtility.goalkeeper.voteCoverageGain * 100)} punti percentuali.`,
     );
   }
   if (candidateUtility.upsideGain > 0) {
     reasons.push(
-      `Upside probabilistico +${candidateUtility.upsideGain.toFixed(1)}, gia pesato per la probabilita di voto e l'utilizzo in formazione.`,
+      `Margine di rialzo stimato +${candidateUtility.upsideGain.toFixed(1)} punti, già corretto per probabilità di scendere in campo e minutaggio previsto.`,
     );
   }
   const risks = [];
   valuation.outliersFor(player).forEach((outlier) => risks.push(outlier.label));
   if (!baselineFeasible)
     risks.push(
-      "Il mercato residuo non consente un completamento stimato senza questo giocatore.",
+      "Senza comprare questo giocatore, secondo la stima non basterebbero i giocatori rimasti sul mercato per completare la rosa.",
     );
   if (withCandidate.values[credits - maxBid] <= EMPTY / 2)
     risks.push(
-      "Il mercato residuo non consente un completamento stimato della rosa, anche acquistando il candidato.",
+      "Anche comprando questo giocatore, secondo la stima non basterebbero i giocatori rimasti sul mercato per completare la rosa.",
     );
   if (market.records.length < 5)
     risks.push(
-      "Storico prezzi ancora limitato: la stima dell'inflazione dipende soprattutto dai valori base.",
+      "Pochi acquisti osservati finora in questa asta: la stima di quanto si sta pagando in più o in meno rispetto ai valori base è ancora poco affidabile.",
     );
   if (!classified)
     risks.push(
-      "Stato non classificato: consiglio penalizzato per affidabilita informativa.",
+      "Non è ancora chiaro se sarà titolare, riserva o in ballottaggio: il consiglio è più prudente per mancanza di informazioni certe.",
     );
   if (scarcityInfo.supply < scarcityInfo.demand)
     risks.push(
-      `Offerta insufficiente nel ruolo: ${scarcityInfo.supply} giocatori per ${scarcityInfo.demand} slot complessivi.`,
+      `Pochi giocatori liberi in questo ruolo: solo ${scarcityInfo.supply} disponibili contro ${scarcityInfo.demand} slot ancora da riempire in tutta la lega.`,
     );
   if (candidateCost > maxBid && maxBid > 0)
     risks.push(
-      `Prezzo di mercato stimato (${candidateCost}) superiore alla soglia di valore (${maxBid}).`,
+      `Il prezzo che si sta pagando in questa lega (${candidateCost}) è più alto di quanto valga per te (${maxBid}).`,
     );
   if (opponents.maxBudget > legalMax)
     risks.push(
-      "Almeno un avversario ha una capacita di rilancio superiore al limite legale della squadra.",
+      "Almeno una squadra rivale può legalmente rilanciare più di quanto tu possa offrire.",
     );
 
   const rolePlan = Object.fromEntries(
