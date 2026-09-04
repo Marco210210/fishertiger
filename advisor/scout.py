@@ -68,6 +68,7 @@ def normalize_scout_snapshot(value: Any, season_slug: str) -> dict[str, Any]:
             "headline": _text(item.get("headline"), 180),
             "summary": _text(item.get("summary"), 1200),
             "sources": sources[:6],
+            **({"expires_at": _text(item.get("expires_at"), 60)} if item.get("expires_at") else {}),
         }
 
     return {

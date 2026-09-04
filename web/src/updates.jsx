@@ -27,6 +27,7 @@ import {
   checkSosFantaGoalkeepers,
   uploadPlayerListCandidate,
   updateStateLabel,
+  runAllUpdates,
 } from "./updates-client.js";
 
 const ROLE_LABELS = { P: "Portieri", D: "Difensori", C: "Centrocampisti", A: "Attaccanti" };
@@ -645,14 +646,54 @@ export function Updates({
   apiBase = "",
   onPlayerListApplyStart,
   onPlayerListApplied,
+  onScoutUpdated,
 }) {
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
   const [problem, setProblem] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkResult, setBulkResult] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const requestSequence = useRef(0);
   const season = profile?.season?.season;
   const sourceUrl = result?.source_url || sosFantaGuideUrl(season);
+
+  const runEverything = async () => {
+    const profileRequest = onPlayerListApplyStart?.();
+    setBulkBusy(true);
+    setBulkResult(null);
+    try {
+      const next = await runAllUpdates(profile, { apiBase });
+      setBulkResult(next);
+      setRefreshKey((current) => current + 1);
+      const guide = next.sources?.find((source) => source.source === "sosfanta");
+      if (guide?.ok) {
+        setResult((current) => ({
+          ...current,
+          state: "unchanged",
+          checked_at: new Date().toISOString(),
+          change_count: 0,
+          changes: [],
+        }));
+      }
+      if (next.dataset_path && onPlayerListApplied)
+        await onPlayerListApplied(next, profileRequest);
+      await onScoutUpdated?.();
+    } catch (error) {
+      setBulkResult({
+        ok: false,
+        sources: [{
+          source: "all",
+          label: "Aggiornamento generale",
+          ok: false,
+          message: error instanceof Error ? error.message : "Aggiornamento non completato.",
+        }],
+      });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -729,19 +770,37 @@ export function Updates({
       <div className="updates-heading">
         <span className="eyebrow">FONTI ESTERNE</span>
         <h1>Aggiornamenti</h1>
-        <p>Controlla le fonti, verifica le differenze e applica solo gli aggiornamenti approvati.</p>
+        <p>Un solo comando controlla tutte le fonti, salva i riferimenti e applica gli aggiornamenti automatici disponibili.</p>
       </div>
 
-      <div className="update-workflow" aria-label="Come usare gli aggiornamenti">
-        <strong>Come funziona</strong>
-        <ol>
-          <li><b>Controlla</b><span>Confronta le fonti online con i dati attivi.</span></li>
-          <li><b>Verifica</b><span>Esamina il diff semantico o il file XLSX ufficiale.</span></li>
-          <li><b>Applica</b><span>Conferma esplicitamente prima di aggiornare e rigenerare.</span></li>
-        </ol>
-        <p>Questa funzione rileva e prepara gli aggiornamenti. Non modifica automaticamente <code>titolari.csv</code> o <code>piazzati.csv</code>.</p>
-      </div>
+      <section className="update-all-card" aria-labelledby="update-all-title">
+        <div>
+          <span className="eyebrow">AGGIORNAMENTO COMPLETO</span>
+          <h2 id="update-all-title">Aggiorna e salva tutto</h2>
+          <p>Guida asta, formazioni, rigoristi, piazzati, portieri, listone e Scout AI. Può richiedere circa mezzo minuto.</p>
+        </div>
+        <button className="update-all-button" type="button" onClick={runEverything} disabled={bulkBusy}>
+          <ActionIcon name="refresh" />
+          <span>{bulkBusy ? "Aggiornamento di tutte le fonti..." : "Aggiorna tutto ora"}</span>
+        </button>
+        {bulkResult?.sources?.length ? (
+          <div className={`update-all-result${bulkResult.ok ? " is-ok" : " has-errors"}`} role="status">
+            <strong>{bulkResult.ok ? "Tutto aggiornato" : "Aggiornamento completato con avvisi"}</strong>
+            <ul>
+              {bulkResult.sources.map((source) => (
+                <li key={source.source} className={source.ok ? "is-ok" : "is-error"}>
+                  <b>{source.ok ? "✓" : "!"} {source.label}</b>
+                  <span>{source.message}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </section>
 
+      <details className="update-advanced">
+        <summary>Controlli avanzati per singola fonte</summary>
+        <div className="update-advanced-body">
       <article className="update-source-card">
         <header>
           <div>
@@ -808,22 +867,25 @@ export function Updates({
         )}
       </article>
 
-      <FormationUpdates profile={profile} apiBase={apiBase} />
+      <FormationUpdates key={`formations-${refreshKey}`} profile={profile} apiBase={apiBase} />
 
-      <SetPieceUpdates profile={profile} apiBase={apiBase} />
+      <SetPieceUpdates key={`pieces-${refreshKey}`} profile={profile} apiBase={apiBase} />
 
-      <GoalkeeperUpdates profile={profile} apiBase={apiBase} />
+      <GoalkeeperUpdates key={`goalkeepers-${refreshKey}`} profile={profile} apiBase={apiBase} />
 
       <PlayerListUpdates
+        key={`listone-${refreshKey}`}
         profile={profile}
         apiBase={apiBase}
         onApplyStart={onPlayerListApplyStart}
         onApplied={onPlayerListApplied}
       />
+        </div>
+      </details>
 
       <aside className="update-method-note">
         <strong>Metodo</strong>
-        <p>I controlli confrontano solo i contenuti editoriali rilevanti. Menu, pubblicità e notizie correlate vengono escluse dagli hash. Solo le azioni Applica modificano le fonti locali e rigenerano il dataset.</p>
+        <p>Il comando completo salva automaticamente le fonti verificate, applica le gerarchie dei portieri e rigenera il dataset. Il listone ufficiale resta l'unica eccezione: se cambia, il riepilogo chiede il file XLSX perché il download richiede l'accesso personale a Fantacalcio.it.</p>
       </aside>
     </section>
   );

@@ -101,6 +101,7 @@ export const checkSosFantaGoalkeepers = (profile, options) => updateRequest("sos
 export const getSosFantaGoalkeeperStatus = (profile, options) => updateRequest("sosfanta-goalkeepers", "status", profile, options);
 export const acceptSosFantaGoalkeepers = (profile, options) => updateRequest("sosfanta-goalkeepers", "accept", profile, options);
 export const applySosFantaGoalkeepers = (profile, options) => updateRequest("sosfanta-goalkeepers", "apply", profile, options);
+export const runAllUpdates = (profile, options) => updateRequest("all", "run", profile, options);
 
 const seasonParts = (season) => {
   const match = String(season || "").trim().match(/^(\d{4})\/(\d{2}|\d{4})$/);

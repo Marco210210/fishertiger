@@ -38,7 +38,13 @@ def _season_in_title(season: str, title: str) -> bool:
     start = int(match.group(1))
     raw_end = match.group(2)
     end = int(str(start)[:2] + raw_end) if len(raw_end) == 2 else int(raw_end)
-    if end != start + 1 or not any(value in title for value in (f"{start}/{str(end)[-2:]}", f"{start}/{end}")):
+    season_forms = (
+        f"{start}/{str(end)[-2:]}",
+        f"{start}/{end}",
+        f"{start}-{str(end)[-2:]}",
+        f"{start}-{end}",
+    )
+    if end != start + 1 or not any(value in title for value in season_forms):
         return False
     return True
 

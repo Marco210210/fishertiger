@@ -36,6 +36,10 @@ class GoalkeeperUpdateTests(unittest.TestCase):
         self.assertEqual(teams[5]["primo"], "First5/Second5")
         self.assertEqual(teams[12]["secondo"], "Arriverà dal mercato un nuovo portiere")
 
+    def test_parser_accepts_the_hyphenated_season_used_by_the_live_article(self):
+        html = article().replace("2026/27", "2026-27")
+        self.assertEqual(len(extract_goalkeeper_hierarchies(html, "2026/27")), 20)
+
     def test_parser_rejects_incomplete_article(self):
         with self.assertRaises(SosFantaError):
             extract_goalkeeper_hierarchies(article().replace("<em>Note</em>: Note Venezia", "<em>Other</em>: Note Venezia"), "2026/27")

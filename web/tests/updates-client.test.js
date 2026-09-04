@@ -16,6 +16,7 @@ import {
   sosFantaSetPieceUrl,
   sosFantaGoalkeepersUrl,
   updateStateLabel,
+  runAllUpdates,
   uploadPlayerListCandidate,
 } from "../src/updates-client.js";
 
@@ -67,6 +68,17 @@ test("uses the SOS Fanta goalkeeper provider endpoint", async () => {
     fetchImpl: async (url) => { requestUrl = url; return { ok: true, status: 200, json: async () => ({ state: "unchanged" }) }; },
   });
   assert.equal(requestUrl, "/api/updates/sosfanta-goalkeepers/check");
+});
+
+test("runs every update through one endpoint", async () => {
+  let requestUrl;
+  await runAllUpdates({ profile_id: "league" }, {
+    fetchImpl: async (url) => {
+      requestUrl = url;
+      return { ok: true, status: 200, json: async () => ({ ok: true, sources: [] }) };
+    },
+  });
+  assert.equal(requestUrl, "/api/updates/all/run");
 });
 
 test("maps profile seasons to official Fantacalcio downloads", () => {

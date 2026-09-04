@@ -5,6 +5,16 @@ import { scoutStatusLabel, scoutTone } from "../scout-ai.js";
 
 export default function ScoutAiView({ data, snapshot, openPlayer }) {
   const [filter, setFilter] = useState("all");
+  const statusCounts = useMemo(() => {
+    const counts = { all: 0, out: 0, doubt: 0, monitor: 0, positive: 0 };
+    const playerIds = new Set(data.players.map((player) => String(player.id)));
+    for (const reading of Object.values(snapshot?.players || {})) {
+      if (!playerIds.has(String(reading.player_id))) continue;
+      counts.all += 1;
+      if (reading.status in counts) counts[reading.status] += 1;
+    }
+    return counts;
+  }, [data.players, snapshot]);
   const rows = useMemo(() => {
     const byId = new Map(data.players.map((player) => [String(player.id), player]));
     return Object.values(snapshot?.players || {})
@@ -29,7 +39,7 @@ export default function ScoutAiView({ data, snapshot, openPlayer }) {
 
       <div className="segmented scout-filter" role="group" aria-label="Filtra notizie AI">
         {[["all", "Tutte"], ["out", "Fuori"], ["doubt", "Dubbi"], ["monitor", "Monitor"], ["positive", "Positive"]].map(([value, label]) => (
-          <button type="button" key={value} className={filter === value ? "is-active" : ""} onClick={() => setFilter(value)}>{label}</button>
+          <button type="button" key={value} className={filter === value ? "is-active" : ""} onClick={() => setFilter(value)}>{label} <b>{statusCounts[value]}</b></button>
         ))}
       </div>
 

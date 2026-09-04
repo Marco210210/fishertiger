@@ -662,6 +662,12 @@ function App() {
       },
     });
 
+  const refreshScout = async () => {
+    const next = await loadScoutAi(profile, { apiBase }).catch(() => null);
+    setScout(next);
+    return next;
+  };
+
   const rerunSimulation = async ({ rosterMode = "sample", rosters = null } = {}) => {
     if (isSimulating) return;
     const request = latestProfileRequest();
@@ -878,6 +884,7 @@ function App() {
               apiBase={apiBase}
               onPlayerListApplyStart={beginPlayerListUpdate}
               onPlayerListApplied={adoptPlayerListUpdate}
+              onScoutUpdated={refreshScout}
             />
           ) : null}
           {view === "settings" ? (

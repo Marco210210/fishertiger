@@ -12,6 +12,7 @@ import json
 import mimetypes
 import os
 import re
+import shutil
 import sys
 import tempfile
 import traceback
@@ -26,6 +27,7 @@ from urllib.parse import unquote, urlparse
 from .generate import (
     PipelineGenerator,
     ProfileRequestError,
+    auction_dataset_path,
     dataset_manifest,
     generate_dataset,
     load_profile,
@@ -35,6 +37,7 @@ from .auth import AccountError, CredentialStore
 from .freshness import dataset_configuration_hash, simulation_configuration_hash, source_fingerprints
 from .fantalab_live import FantaLabError, live_snapshot
 from .scout import load_scout_snapshot
+from .scout_refresh import refresh_official_scout
 from .league_calendar import build_legacy_calendar_template, preprocess_legacy_calendar
 from .simulation import RosterValidationError
 from .player_list_updates import (
@@ -247,6 +250,12 @@ class LocalApiHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         if not self._authorize():
+            return
+        if self._path() == "/api/updates/all/run":
+            self._update_all()
+            return
+        if self._path() == "/api/scout/refresh":
+            self._refresh_scout()
             return
         if self._path() == "/api/auth/users":
             self._create_auth_user()
@@ -815,6 +824,229 @@ class LocalApiHandler(BaseHTTPRequestHandler):
             ]
             paths.append(next((candidate for candidate in candidates if candidate.is_file()), declared))
         return paths[0], paths[1]
+
+    def _persistent_source_copy(self, profile: Any, name: str) -> tuple[Any, Path]:
+        """Copy a packaged source to writable storage and persist the new profile path."""
+        source = next((item for item in profile.current_sources if item.name == name), None)
+        if source is None:
+            raise SosFantaError(f"The profile does not declare a {name} source.")
+        declared = Path(source.path)
+        candidates = [declared] if declared.is_absolute() else [
+            declared,
+            Path.cwd() / declared,
+            Path(__file__).resolve().parents[1] / declared,
+        ]
+        current_path = next((candidate.resolve() for candidate in candidates if candidate.is_file()), None)
+        if current_path is None:
+            raise SosFantaError(f"The {name} source is unavailable.")
+        writable_root = self.server.uploads_dir.resolve()
+        if current_path.is_relative_to(writable_root):
+            return profile, current_path
+
+        suffix = current_path.suffix or ".dat"
+        destination = (
+            writable_root
+            / profile.profile_id
+            / profile.season.season.replace("/", "-")
+            / f"{name}{suffix}"
+        )
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile("wb", dir=destination.parent, delete=False) as handle:
+            with current_path.open("rb") as source_handle:
+                shutil.copyfileobj(source_handle, handle)
+            temporary_source = Path(handle.name)
+        temporary_source.replace(destination)
+
+        value = profile.to_dict()
+        for item in value["current_sources"]:
+            if item["name"] == name:
+                item["path"] = str(destination)
+                break
+        updated_profile = self.server.profile_loader(value)
+        self.server.profiles_dir.mkdir(parents=True, exist_ok=True)
+        profile_path = self.server.profiles_dir / f"{profile.profile_id}.json"
+        with tempfile.NamedTemporaryFile(
+            "w", encoding="utf-8", dir=self.server.profiles_dir, delete=False
+        ) as handle:
+            json.dump(updated_profile.to_dict(), handle, ensure_ascii=False, separators=(",", ":"))
+            temporary_profile = Path(handle.name)
+        temporary_profile.replace(profile_path)
+        return updated_profile, destination
+
+    def _refresh_scout_for_profile(self, profile: Any) -> dict[str, Any]:
+        season_slug = profile.season.season.replace("/", "-")
+        dataset_file = self.server.datasets_dir / auction_dataset_path(profile)
+        try:
+            dataset = json.loads(dataset_file.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            raise SosFantaError("Generate the dataset before refreshing Scout AI.") from error
+        players = dataset.get("players")
+        if not isinstance(players, list) or not players:
+            raise SosFantaError("The generated dataset does not contain players.")
+        return refresh_official_scout(
+            players,
+            season_slug,
+            raw_dir=self.server.raw_dir,
+            updates_dir=self.server.updates_dir,
+        )
+
+    def _refresh_scout(self) -> None:
+        value = self._read_json_object()
+        if value is None:
+            return
+        try:
+            profile = resolve_profile(value, self.server.profiles_dir, profile_loader=self.server.profile_loader)
+            snapshot = self._refresh_scout_for_profile(profile)
+        except ProfileRequestError as error:
+            self._error(HTTPStatus.BAD_REQUEST, "invalid_profile", str(error))
+            return
+        except SosFantaError as error:
+            self._error(HTTPStatus.BAD_GATEWAY, "scout_refresh_failed", str(error))
+            return
+        except OSError:
+            self._error(HTTPStatus.INTERNAL_SERVER_ERROR, "storage_error", "The Scout snapshot could not be stored.")
+            return
+        self._send_json(HTTPStatus.OK, snapshot)
+
+    def _update_all(self) -> None:
+        request = self._update_request()
+        if request is None:
+            return
+        profile, profile_id, season, _, _ = request
+        profile = self._derive_calendar_participants(profile)
+        results: list[dict[str, Any]] = []
+        generation: dict[str, Any] = {}
+
+        def completed(source: str, label: str, result: dict[str, Any], message: str) -> None:
+            results.append({
+                "source": source,
+                "label": label,
+                "ok": True,
+                "state": result.get("state", "unchanged"),
+                "change_count": result.get("change_count", 0),
+                "message": message,
+            })
+
+        def failed(source: str, label: str, error: Exception) -> None:
+            results.append({
+                "source": source,
+                "label": label,
+                "ok": False,
+                "state": "error",
+                "change_count": 0,
+                "message": str(error),
+            })
+
+        try:
+            guide = check_updates(self.server.updates_dir, profile_id, season, self.server.update_fetcher)
+            accept_latest(self.server.updates_dir, profile_id, season, guide["content_hash"])
+            completed("sosfanta", "Guida asta", guide, "Controllata e salvata.")
+        except (SosFantaError, OSError, ValueError) as error:
+            failed("sosfanta", "Guida asta", error)
+
+        try:
+            set_pieces = check_set_piece_updates(
+                self.server.updates_dir, profile_id, season, self.server.set_piece_fetcher
+            )
+            accept_latest_set_pieces(
+                self.server.updates_dir, profile_id, season, set_pieces["content_hash"]
+            )
+            completed("sosfanta-set-pieces", "Rigoristi e piazzati", set_pieces, "Controllati e salvati.")
+        except (SosFantaError, OSError, ValueError) as error:
+            failed("sosfanta-set-pieces", "Rigoristi e piazzati", error)
+
+        try:
+            goalkeepers = check_goalkeeper_updates(
+                self.server.updates_dir, profile_id, season, self.server.goalkeeper_fetcher
+            )
+            profile, starters_path = self._persistent_source_copy(profile, "starters")
+            paths = self._formation_source_paths(profile)
+            if paths is None:
+                raise SosFantaError("The starters or player-list source is unavailable.")
+            _, listone_path = paths
+
+            def regenerate() -> dict[str, Any]:
+                result = generate_dataset(profile, self.server.datasets_dir, generator=self.server.generator)
+                generation.update(result)
+                return result
+
+            applied = apply_goalkeeper_update(
+                self.server.updates_dir,
+                profile_id,
+                season,
+                starters_path,
+                listone_path,
+                goalkeepers["content_hash"],
+                regenerate,
+            )
+            completed(
+                "sosfanta-goalkeepers",
+                "Gerarchie portieri",
+                goalkeepers,
+                f"Applicate e salvate ({applied.get('updated_rows', 0)} righe).",
+            )
+        except (SosFantaError, OSError, ValueError) as error:
+            failed("sosfanta-goalkeepers", "Gerarchie portieri", error)
+        except Exception as error:
+            traceback.print_exc(file=sys.stderr)
+            failed("sosfanta-goalkeepers", "Gerarchie portieri", error)
+
+        try:
+            paths = self._formation_source_paths(profile)
+            if paths is None:
+                raise SosFantaError("The starters or player-list source is unavailable.")
+            formations = check_formation_updates(
+                self.server.updates_dir,
+                profile_id,
+                season,
+                *paths,
+                self.server.formations_fetcher,
+            )
+            accept_latest_formations(
+                self.server.updates_dir, profile_id, season, formations["content_hash"]
+            )
+            issues = formations.get("audit", {}).get("summary", {}).get("issue_count", 0)
+            completed(
+                "sosfanta-formations",
+                "Formazioni e titolarita",
+                formations,
+                f"Controllate e salvate; {issues} differenze da monitorare.",
+            )
+        except (SosFantaError, OSError, ValueError) as error:
+            failed("sosfanta-formations", "Formazioni e titolarita", error)
+
+        try:
+            player_list = public_check(profile, self.server.player_list_fetcher)
+            needs_file = player_list.get("state") == "changed"
+            completed(
+                "player-list",
+                "Listone Fantacalcio",
+                player_list,
+                "Aggiornamento rilevato: serve il file XLSX ufficiale." if needs_file else "Controllato: nessuna variazione.",
+            )
+        except (PlayerListUpdateError, OSError, ValueError) as error:
+            failed("player-list", "Listone Fantacalcio", error)
+
+        try:
+            scout = self._refresh_scout_for_profile(profile)
+            counts = scout.pop("counts", {})
+            completed(
+                "scout",
+                "Scout AI",
+                {"state": "unchanged", "change_count": sum(counts.values())},
+                "Aggiornato: " + ", ".join(f"{value} {key}" for key, value in sorted(counts.items())),
+            )
+        except (SosFantaError, OSError, ValueError) as error:
+            failed("scout", "Scout AI", error)
+
+        payload = {
+            "ok": all(item["ok"] for item in results),
+            "profile_id": profile.profile_id,
+            "profile": profile.to_dict(),
+            "dataset_path": generation.get("dataset_path"),
+            "sources": results,
+        }
+        self._send_json(HTTPStatus.OK, payload)
 
     def _check_formation_updates(self) -> None:
         request = self._update_request()
