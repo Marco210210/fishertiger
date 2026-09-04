@@ -25,6 +25,22 @@ test("team names are matched without punctuation or accents", () => {
   );
 });
 
+test("a complete FantaLab room is mapped by seat position when names differ", () => {
+  assert.deepEqual(
+    autoTeamMap(
+      [
+        { id: "away", name: "Nome esterno B", position: 2 },
+        { id: "home", name: "Nome esterno A", position: 1 },
+      ],
+      [
+        { index: 0, name: "Squadra locale A" },
+        { index: 1, name: "Squadra locale B" },
+      ],
+    ),
+    { away: 1, home: 0 },
+  );
+});
+
 test("the live timer uses the server clock and never goes negative", () => {
   const lot = { last_bid_time: 10_000, timer_seconds: 8, closed: false };
   assert.equal(secondsRemaining(lot, 12_000, 1_000), 6);

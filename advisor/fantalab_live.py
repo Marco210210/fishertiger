@@ -135,11 +135,30 @@ def _config_database(config: Mapping[str, Any]) -> int | None:
     return shard if 0 <= shard <= 19 else None
 
 
-def _read_nodes(db: int | None, room_id: str, requester: JsonRequester) -> dict[str, Any]:
-    values: dict[str, Any] = {}
-    for node in ("auction", "assign", "purchases"):
-        value = requester("GET", node_url(db, node, room_id), None, None)
-        values[node] = value if isinstance(value, Mapping) else None
+def _read_nodes(
+    db: int | None,
+    room_id: str,
+    requester: JsonRequester,
+    *,
+    parallel: bool = True,
+) -> dict[str, Any]:
+    nodes = ("auction", "assign", "purchases")
+    if not parallel:
+        values: dict[str, Any] = {}
+        for node in nodes:
+            value = requester("GET", node_url(db, node, room_id), None, None)
+            values[node] = value if isinstance(value, Mapping) else None
+        return values
+
+    values = {}
+    with ThreadPoolExecutor(max_workers=len(nodes)) as executor:
+        futures = {
+            executor.submit(requester, "GET", node_url(db, node, room_id), None, None): node
+            for node in nodes
+        }
+        for future in as_completed(futures):
+            value = future.result()
+            values[futures[future]] = value if isinstance(value, Mapping) else None
     return values
 
 
@@ -148,7 +167,7 @@ def discover_database(room_id: str, requester: JsonRequester) -> tuple[int | Non
     choices: list[int | None] = [None, *range(20)]
     with ThreadPoolExecutor(max_workers=12) as executor:
         futures = {
-            executor.submit(_read_nodes, choice, room_id, requester): choice
+            executor.submit(_read_nodes, choice, room_id, requester, parallel=False): choice
             for choice in choices
         }
         for future in as_completed(futures):

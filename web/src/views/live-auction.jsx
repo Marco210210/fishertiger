@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { apiUrl } from "../profile-client.js";
-import { syncLiveAssignments } from "../auction-store.js";
+import {
+  renameTeam,
+  setStartingCredits,
+  syncLiveAssignments,
+} from "../auction-store.js";
 import { useAuctionBoard } from "../use-auction-store.js";
 import {
   autoTeamMap,
@@ -21,6 +25,34 @@ const errorMessage = async (response) => {
 };
 
 const shortId = (value) => (value ? `…${String(value).slice(-6)}` : "sconosciuta");
+const POLL_INTERVAL_MS = 1200;
+
+const importRoomSetup = (profileId, players, rules, board, snapshot, teamMap) => {
+  const participants = Number(snapshot.room?.participants);
+  if (!Number.isInteger(participants) || !participants) return "profile";
+  if (participants !== board.teams.length) return "mismatch";
+  if (snapshot.teams?.length !== participants) return "partial";
+
+  for (const external of snapshot.teams) {
+    const index = Number(teamMap[external.id]);
+    const local = board.teams[index];
+    if (!local) continue;
+    if (external.name && external.name !== local.name)
+      renameTeam(profileId, players, rules, index, external.name);
+    const credits = Number(
+      external.starting_credits ?? snapshot.room?.starting_credits,
+    );
+    if (
+      !board.history.length &&
+      !board.undone.length &&
+      Number.isInteger(credits) &&
+      credits >= 25 &&
+      credits !== local.startingCredits
+    )
+      setStartingCredits(profileId, players, rules, index, credits);
+  }
+  return "imported";
+};
 
 export default function LiveAuctionView({
   data,
@@ -36,9 +68,15 @@ export default function LiveAuctionView({
   const [snapshot, setSnapshot] = useState(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [roomNotice, setRoomNotice] = useState("");
   const [now, setNow] = useState(Date.now());
   const board = useAuctionBoard(profileId, data.players, rules);
   const teamMapRef = useRef(connection.teamMap);
+  const liveRef = useRef({ players: data.players, rules, board });
+
+  useEffect(() => {
+    liveRef.current = { players: data.players, rules, board };
+  }, [data.players, rules, board]);
 
   useEffect(() => {
     const next = readFantalabConnection(profileId);
@@ -48,6 +86,7 @@ export default function LiveAuctionView({
     setSnapshot(null);
     setError("");
     setMessage("");
+    setRoomNotice("");
   }, [profileId]);
 
   useEffect(() => {
@@ -72,31 +111,65 @@ export default function LiveAuctionView({
         if (!response.ok) throw new Error(await errorMessage(response));
         const next = await response.json();
         if (cancelled) return;
-        if (resolvedDb === "auto") resolvedDb = String(next.db);
+        const discoveredDb = resolvedDb === "auto" ? String(next.db) : null;
+        if (discoveredDb) resolvedDb = discoveredDb;
         setSnapshot(next);
         setError("");
 
-        const mapped = autoTeamMap(next.teams, board.teams, teamMapRef.current);
-        if (JSON.stringify(mapped) !== JSON.stringify(teamMapRef.current)) {
+        const current = liveRef.current;
+        const mapped = autoTeamMap(
+          next.teams,
+          current.board.teams,
+          teamMapRef.current,
+        );
+        const mappingChanged =
+          JSON.stringify(mapped) !== JSON.stringify(teamMapRef.current);
+        if (mappingChanged || discoveredDb) {
           teamMapRef.current = mapped;
           setConnection((current) => {
-            const saved = writeFantalabConnection(profileId, { ...current, teamMap: mapped });
+            const saved = writeFantalabConnection(profileId, {
+              ...current,
+              db: discoveredDb || current.db,
+              teamMap: mapped,
+            });
             return saved.value;
           });
         }
 
-        const sync = syncLiveAssignments(profileId, data.players, rules, next.purchases, mapped);
+        const setup = importRoomSetup(
+          profileId,
+          current.players,
+          current.rules,
+          current.board,
+          next,
+          mapped,
+        );
+        setRoomNotice(
+          setup === "mismatch"
+            ? `FantaLab indica ${next.room.participants} squadre, ma il profilo ne contiene ${current.board.teams.length}: correggi il profilo prima di importare le rose.`
+            : setup === "imported"
+              ? "Nomi, posizioni e crediti della stanza FantaLab sono stati importati nell’asta."
+              : "FantaLab non espone pubblicamente la configurazione completa: uso squadre e crediti del profilo e importerò gli acquisti in tempo reale.",
+        );
+
+        const sync = syncLiveAssignments(
+          profileId,
+          current.players,
+          current.rules,
+          next.purchases,
+          mapped,
+        );
         if (sync.synced || sync.conflicts)
           setMessage(sync.message || `${sync.synced} acquisti sincronizzati.`);
 
-        const player = data.players.find((candidate) =>
+        const player = current.players.find((candidate) =>
           String(candidate.id) === String(next.lot?.player_id),
         );
         if (player && !next.lot?.closed) {
           setDraft({
             playerId: player.id,
             query: player.nome,
-            price: String(next.lot.price || rules.auction.minPrice),
+            price: String(next.lot.price || current.rules.auction.minPrice),
           });
         }
       } catch (failure) {
@@ -114,7 +187,8 @@ export default function LiveAuctionView({
           }
         }
       } finally {
-        if (!cancelled && shouldContinue) timer = window.setTimeout(poll, 1200);
+        if (!cancelled && shouldContinue)
+          timer = window.setTimeout(poll, POLL_INTERVAL_MS);
       }
     };
 
@@ -123,7 +197,7 @@ export default function LiveAuctionView({
       cancelled = true;
       if (timer) window.clearTimeout(timer);
     };
-  }, [active, connection.roomUrl, connection.db, apiBase, profileId, data.players, rules, board.teams, setDraft]);
+  }, [active, connection.roomUrl, connection.db, apiBase, profileId, setDraft]);
 
   const saveConnection = (next) => {
     const stored = writeFantalabConnection(profileId, next);
@@ -152,13 +226,28 @@ export default function LiveAuctionView({
 
   const timer = secondsRemaining(snapshot?.lot, snapshot?.server_time_ms, now);
   const teamNames = useMemo(
-    () => Object.fromEntries((snapshot?.teams || []).map((team) => [team.id, team.name || shortId(team.id)])),
-    [snapshot?.teams],
+    () => Object.fromEntries((snapshot?.teams || []).map((team) => {
+      const localIndex = Number(connection.teamMap?.[team.id]);
+      return [
+        team.id,
+        team.name || board.teams[localIndex]?.name || shortId(team.id),
+      ];
+    })),
+    [snapshot?.teams, connection.teamMap, board.teams],
   );
   const currentLeader = teamNames[snapshot?.lot?.leader_team_id] || shortId(snapshot?.lot?.leader_team_id);
   const unmappedTeams = (snapshot?.teams || []).filter(
     (team) => !Number.isInteger(Number(connection.teamMap?.[team.id])),
   );
+  const participantCount = snapshot?.room?.participants || board.teams.length;
+  const startingCredits = snapshot?.room?.starting_credits || rules.startingCredits;
+  const lastUpdated = snapshot?.server_time_ms
+    ? new Date(snapshot.server_time_ms).toLocaleTimeString("it-IT", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })
+    : "";
 
   return (
     <div className="stack stack--lg">
@@ -203,10 +292,13 @@ export default function LiveAuctionView({
         </div>
         {error ? <p className="notice notice--stop" role="alert">{error}</p> : null}
         {message ? <p className="notice notice--info" role="status">{message}</p> : null}
+        {roomNotice ? <p className="micro" role="status">{roomNotice}</p> : null}
         {snapshot ? (
           <p className="micro">
             {snapshot.room?.name || `Stanza ${shortId(snapshot.room_id)}`} · shard {snapshot.db}
-            {snapshot.room?.participants ? ` · ${snapshot.room.participants} squadre` : ""}
+            {` · ${participantCount} squadre · ${startingCredits} crediti`}
+            {` · aggiornamento ogni ${(POLL_INTERVAL_MS / 1000).toLocaleString("it-IT")} s`}
+            {lastUpdated ? ` · ultimo ${lastUpdated}` : ""}
           </p>
         ) : null}
       </section>

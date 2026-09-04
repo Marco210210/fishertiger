@@ -54,6 +54,22 @@ export const autoTeamMap = (externalTeams, localTeams, current = {}) => {
     const matches = (localTeams || []).filter((team) => comparable(team.name) === wanted);
     if (matches.length === 1) result[external.id] = matches[0].index;
   }
+  const completePositions =
+    externalTeams?.length === localTeams?.length &&
+    new Set((externalTeams || []).map((team) => Number(team.position))).size ===
+      localTeams?.length &&
+    (externalTeams || []).every(
+      (team) =>
+        Number.isInteger(Number(team.position)) &&
+        Number(team.position) >= 1 &&
+        Number(team.position) <= localTeams.length,
+    );
+  if (completePositions) {
+    for (const external of externalTeams) {
+      if (!Number.isInteger(Number(result[external.id])))
+        result[external.id] = Number(external.position) - 1;
+    }
+  }
   return result;
 };
 
