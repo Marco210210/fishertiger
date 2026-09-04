@@ -1,0 +1,682 @@
+{
+  "version": 1,
+  "season": "2026/27",
+  "generated_at": "2026-09-04T15:46:54.301597+00:00",
+  "provider": "Claude (sessione interattiva, ricerca web)",
+  "lookback_days": 14,
+  "players": {
+    "787": {
+      "player_id": 787,
+      "name": "Djimsiti",
+      "team": "Atalanta",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Al-Diriyah",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Djimsiti ha lasciato Atalanta. Nuova squadra: Al-Diriyah. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "6916": {
+      "player_id": 6916,
+      "name": "Ahanor",
+      "team": "Atalanta",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Crystal Palace",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Ahanor ha lasciato Atalanta. Nuova squadra: Crystal Palace. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "6643": {
+      "player_id": 6643,
+      "name": "Dallinga",
+      "team": "Bologna",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Cologne",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Dallinga ha lasciato Bologna. Nuova squadra: Cologne. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "6424": {
+      "player_id": 6424,
+      "name": "Prati",
+      "team": "Cagliari",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Racing Santander",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Prati ha lasciato Cagliari. Nuova squadra: Racing Santander. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "4461": {
+      "player_id": 4461,
+      "name": "Zappa",
+      "team": "Cagliari",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Verona",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Zappa ha lasciato Cagliari. Nuova squadra: Verona. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "313": {
+      "player_id": 313,
+      "name": "Morata",
+      "team": "Como",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Leganes",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Morata ha lasciato Como. Nuova squadra: Leganes. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "7407": {
+      "player_id": 7407,
+      "name": "Cuenca A.",
+      "team": "Como",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Sporting Gijon",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Cuenca A. ha lasciato Como. Nuova squadra: Sporting Gijon. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "7471": {
+      "player_id": 7471,
+      "name": "Corrado",
+      "team": "Frosinone",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Empoli",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Corrado ha lasciato Frosinone. Nuova squadra: Empoli. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "7474": {
+      "player_id": 7474,
+      "name": "Koutsoupias",
+      "team": "Frosinone",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Anderlecht",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Koutsoupias ha lasciato Frosinone. Nuova squadra: Anderlecht. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "6245": {
+      "player_id": 6245,
+      "name": "Vogliacco",
+      "team": "Genoa",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Cremonese",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Vogliacco ha lasciato Genoa. Nuova squadra: Cremonese. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "6244": {
+      "player_id": 6244,
+      "name": "Matturro",
+      "team": "Genoa",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Shakhtar Donetsk",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Matturro ha lasciato Genoa. Nuova squadra: Shakhtar Donetsk. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "6814": {
+      "player_id": 6814,
+      "name": "Norton-Cuffy",
+      "team": "Genoa",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Hull City",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Norton-Cuffy ha lasciato Genoa. Nuova squadra: Hull City. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "5544": {
+      "player_id": 5544,
+      "name": "David",
+      "team": "Juventus",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Atletico Madrid",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, David ha lasciato Juventus. Nuova squadra: Atletico Madrid. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "5876": {
+      "player_id": 5876,
+      "name": "Di Gregorio",
+      "team": "Juventus",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.85,
+      "headline": "Trasferito — nuova squadra: Bournemouth",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Di Gregorio ha lasciato Juventus. Nuova squadra: Bournemouth. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.eurosport.it/calcio/calciomercato/2026-2027/la-juventus-saluta-di-gregorio-il-portiere-cerca-il-rilancio-in-premier-league-giochera-al-bournemouth-ecco-le-cifre-e-i-dettagli-delloperazione_sto23330114/story.shtml"
+      ]
+    },
+    "218": {
+      "player_id": 218,
+      "name": "Perin",
+      "team": "Juventus",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.85,
+      "headline": "Trasferito — nuova squadra: Palermo",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Perin ha lasciato Juventus. Nuova squadra: Palermo. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.eurosport.it/calcio/calciomercato/2026-2027/la-juventus-saluta-di-gregorio-il-portiere-cerca-il-rilancio-in-premier-league-giochera-al-bournemouth-ecco-le-cifre-e-i-dettagli-delloperazione_sto23330114/story.shtml"
+      ]
+    },
+    "5813": {
+      "player_id": 5813,
+      "name": "Miretti",
+      "team": "Juventus",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Besiktas",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Miretti ha lasciato Juventus. Nuova squadra: Besiktas. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "5672": {
+      "player_id": 5672,
+      "name": "Dia",
+      "team": "Lazio",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Rennes",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Dia ha lasciato Lazio. Nuova squadra: Rennes. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "7313": {
+      "player_id": 7313,
+      "name": "Ratkov",
+      "team": "Lazio",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Levante",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Ratkov ha lasciato Lazio. Nuova squadra: Levante. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "2401": {
+      "player_id": 2401,
+      "name": "Fruchtl",
+      "team": "Lecce",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Salzburg",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Fruchtl ha lasciato Lecce. Nuova squadra: Salzburg. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "4728": {
+      "player_id": 4728,
+      "name": "Nkunku",
+      "team": "Milan",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Leipzig",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Nkunku ha lasciato Milan. Nuova squadra: Leipzig. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "4510": {
+      "player_id": 4510,
+      "name": "Leao",
+      "team": "Milan",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.85,
+      "headline": "Trasferito — nuova squadra: Galatasaray",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Leao ha lasciato Milan. Nuova squadra: Galatasaray. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.acmilan.com/it/news/articoli/media/2026-08-30/comunicato-ufficiale-rafael-leao",
+        "https://www.calcioefinanza.it/2026/08/31/leao-galatasaray-cifre-ufficiali-milan/"
+      ]
+    },
+    "7211": {
+      "player_id": 7211,
+      "name": "Athekame",
+      "team": "Milan",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Lyon",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Athekame ha lasciato Milan. Nuova squadra: Lyon. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "7008": {
+      "player_id": 7008,
+      "name": "Gimenez",
+      "team": "Milan",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Porto",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Gimenez ha lasciato Milan. Nuova squadra: Porto. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "4686": {
+      "player_id": 4686,
+      "name": "Fofana Y.",
+      "team": "Milan",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Seville",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Fofana Y. ha lasciato Milan. Nuova squadra: Seville. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "383": {
+      "player_id": 383,
+      "name": "Petagna",
+      "team": "Monza",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Pisa",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Petagna ha lasciato Monza. Nuova squadra: Pisa. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "6682": {
+      "player_id": 6682,
+      "name": "Pizzignacco",
+      "team": "Monza",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Carrarese",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Pizzignacco ha lasciato Monza. Nuova squadra: Carrarese. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "2115": {
+      "player_id": 2115,
+      "name": "Delli Carri",
+      "team": "Monza",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Sampdoria",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Delli Carri ha lasciato Monza. Nuova squadra: Sampdoria. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "5427": {
+      "player_id": 5427,
+      "name": "Gutierrez",
+      "team": "Napoli",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Bayer Leverkusen",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Gutierrez ha lasciato Napoli. Nuova squadra: Bayer Leverkusen. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "2531": {
+      "player_id": 2531,
+      "name": "Lukaku",
+      "team": "Napoli",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.85,
+      "headline": "Trasferito — nuova squadra: Fenerbahce",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Lukaku ha lasciato Napoli. Nuova squadra: Fenerbahce. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.ansa.it/campania/notizie/2026/08/12/e-ufficiale-lukaku-passa-dal-napoli-al-fenerbahce_ac9c6df0-6ce7-4f7f-b68a-33858f0743a4.html"
+      ]
+    },
+    "6641": {
+      "player_id": 6641,
+      "name": "Suzuki",
+      "team": "Parma",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Aston Villa",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Suzuki ha lasciato Parma. Nuova squadra: Aston Villa. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "6663": {
+      "player_id": 6663,
+      "name": "Circati",
+      "team": "Parma",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Benfica",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Circati ha lasciato Parma. Nuova squadra: Benfica. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "6984": {
+      "player_id": 6984,
+      "name": "Ondrejka",
+      "team": "Parma",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Groningen",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Ondrejka ha lasciato Parma. Nuova squadra: Groningen. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "7209": {
+      "player_id": 7209,
+      "name": "Sorensen O.",
+      "team": "Parma",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Celtic",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Sorensen O. ha lasciato Parma. Nuova squadra: Celtic. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "4772": {
+      "player_id": 4772,
+      "name": "Angelino",
+      "team": "Roma",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: RC Deportivo",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Angelino ha lasciato Roma. Nuova squadra: RC Deportivo. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "7158": {
+      "player_id": 7158,
+      "name": "Moro L.",
+      "team": "Sassuolo",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Padova",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Moro L. ha lasciato Sassuolo. Nuova squadra: Padova. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "7396": {
+      "player_id": 7396,
+      "name": "Macchioni",
+      "team": "Sassuolo",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Carrarese",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Macchioni ha lasciato Sassuolo. Nuova squadra: Carrarese. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "7157": {
+      "player_id": 7157,
+      "name": "Iannoni",
+      "team": "Sassuolo",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Verona",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Iannoni ha lasciato Sassuolo. Nuova squadra: Verona. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "6426": {
+      "player_id": 6426,
+      "name": "Pedersen",
+      "team": "Torino",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Olympiacos",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Pedersen ha lasciato Torino. Nuova squadra: Olympiacos. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "7392": {
+      "player_id": 7392,
+      "name": "Camara A.",
+      "team": "Udinese",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Ajax",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Camara A. ha lasciato Udinese. Nuova squadra: Ajax. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "7249": {
+      "player_id": 7249,
+      "name": "Buksa",
+      "team": "Udinese",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Mallorca",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Buksa ha lasciato Udinese. Nuova squadra: Mallorca. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "7356": {
+      "player_id": 7356,
+      "name": "Mlacic",
+      "team": "Udinese",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Watford",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Mlacic ha lasciato Udinese. Nuova squadra: Watford. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    },
+    "5485": {
+      "player_id": 5485,
+      "name": "Bjarkason",
+      "team": "Venezia",
+      "status": "out",
+      "availability": 0.02,
+      "starter": 0,
+      "impact_percent": -40,
+      "multiplier": 0.6,
+      "confidence": 0.7,
+      "headline": "Trasferito — nuova squadra: Sudtirol",
+      "summary": "Secondo il mercato estivo chiuso il 1° settembre 2026, Bjarkason ha lasciato Venezia. Nuova squadra: Sudtirol. Il listone risulta ancora aggiornato alla vecchia squadra: se lo trovi ancora disponibile in asta, considera che potrebbe non essere più tesserato per il campionato di questa lega.",
+      "sources": [
+        "https://www.calciomercato.com/liste/serie-a-affari-ufficiali-arrivi-e-partenze-delle-20-squadre-partecipanti-al-campionato-2026-2027/blt4cd072f5f83b8ad1"
+      ]
+    }
+  }
+}
