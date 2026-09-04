@@ -52,25 +52,19 @@ test("the only remaining team is paired once the complete public room is visible
   );
 });
 
-test("anonymous teams are assigned stable free seats as soon as they appear", () => {
+test("an anonymous team with no name, position or elimination signal stays unmapped", () => {
+  // Without a name match, a full position layout or exactly one seat left,
+  // guessing "the first free local seat" has no basis in fact and would
+  // silently mislabel a rival as whichever team happens to be unused first
+  // (often the user's own team). It must stay unmapped until the user
+  // confirms it once, rather than pretend to resolve the ambiguity.
   const local = [
     { index: 0, name: "Mia" },
     { index: 1, name: "Rivale A" },
     { index: 2, name: "Rivale B" },
   ];
-  const first = autoTeamMap([{ id: "external-b" }], local, { "external-a": 0 });
-  assert.deepEqual(first, { "external-a": 0, "external-b": 1 });
-
-  const second = autoTeamMap(
-    [{ id: "external-b" }, { id: "external-c" }],
-    local,
-    first,
-  );
-  assert.deepEqual(second, {
-    "external-a": 0,
-    "external-b": 1,
-    "external-c": 2,
-  });
+  const result = autoTeamMap([{ id: "external-b" }], local, { "external-a": 0 });
+  assert.deepEqual(result, { "external-a": 0 });
 });
 
 test("the live leader resolves to its mapped local team", () => {

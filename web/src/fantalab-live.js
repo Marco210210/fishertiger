@@ -85,26 +85,15 @@ export const autoTeamMap = (externalTeams, localTeams, current = {}) => {
       result[missingExternal[0].id] = missingLocal[0].index;
   }
 
-  // The public RTDB deliberately omits team names and only reveals a team
-  // once it leads a lot or buys a player. Leaving those ids unmapped meant the
-  // corresponding purchases stayed pending forever, so rival rosters and
-  // credits appeared frozen. Give every newly observed external id the first
-  // unused local seat. The backend returns external ids in a stable order and
-  // `current` is persisted per league, therefore the pairing never moves on a
-  // later poll. A user can still correct the displayed name/seat once from the
-  // mapping controls.
-  const used = new Set(
-    Object.values(result)
-      .map(Number)
-      .filter((index) => Number.isInteger(index)),
-  );
-  for (const external of externalRows) {
-    if (!external?.id || Number.isInteger(Number(result[external.id]))) continue;
-    const local = localRows.find((team) => !used.has(Number(team.index)));
-    if (!local) break;
-    result[external.id] = Number(local.index);
-    used.add(Number(local.index));
-  }
+  // The public RTDB deliberately omits team names and reveals a team's real
+  // name/position only through a server-side token (see FISHERTIGER_FANTALAB_TOKEN).
+  // Without one, a newly observed external id carries no signal at all about
+  // which local team it is: guessing "the first free seat" silently mislabels
+  // whichever team happens to occupy that seat locally (often the user's own
+  // team, since it is commonly the first configured). A wrong guess is worse
+  // than no guess, because it looks confident while being incorrect, so an
+  // external id that cannot be matched by name, position or elimination stays
+  // unmapped until the user confirms it once from the mapping controls.
   return result;
 };
 

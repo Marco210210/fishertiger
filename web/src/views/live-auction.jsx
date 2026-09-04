@@ -355,9 +355,9 @@ export default function LiveAuctionView({
       {snapshot?.teams?.length ? (
         <section className="card stack">
           <div>
-            <span className="kicker">{unmappedTeams.length ? "Da controllare" : "Sincronizzazione automatica"}</span>
-            <h2>Squadre FantaLab riconosciute</h2>
-            <p className="muted">FantaLab nasconde i nomi nella lettura pubblica: ogni nuovo ID viene assegnato automaticamente a una squadra libera e resta stabile. Se il nome locale non corrisponde, correggilo qui una sola volta.</p>
+            <span className="kicker">{unmappedTeams.length ? "Richiesto una volta sola" : "Sincronizzazione automatica"}</span>
+            <h2>Abbina le squadre FantaLab</h2>
+            <p className="muted">FantaLab nasconde i nomi nella lettura pubblica finché una squadra non rilancia o compra: quando il nome o la posizione coincidono l’abbinamento è automatico, altrimenti scegli qui la squadra giusta usando gli acquisti mostrati come riferimento. Resta salvato per questa asta.</p>
           </div>
           <div className="live-team-map">
             {snapshot.teams.map((team) => (
