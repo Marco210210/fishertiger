@@ -6,6 +6,8 @@ import {
   normalizeDataset,
   rulesFor,
   auctionDatasetPath,
+  loadAuctionState,
+  saveAuctionState,
 } from "./profile-client.js";
 import { projectedContribution } from "./player-valuation.js";
 
@@ -80,4 +82,31 @@ test("loads and normalizes a dataset URL through an injected fetch", async () =>
   const data = await loadDatasetUrl("/dataset.json", { profile, fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ schema_version: "1.0", meta: { profile: { profile_id: "league-a" } }, players: [] }) }) });
   assert.equal(data.schema_version, "1.0");
   assert.equal(auctionDatasetPath({ profile_id: "league-a", season: { season: "2026/27" } }), "league-a/2026-27/auction_data.json");
+});
+
+test("loads and saves a profile-scoped shared auction revision", async () => {
+  const calls = [];
+  const fetchImpl = async (url, options = {}) => {
+    calls.push({ url, options });
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ profile_id: "league-a", revision: calls.length, state: null }),
+    };
+  };
+
+  await loadAuctionState("league-a", { fetchImpl });
+  await saveAuctionState(
+    "league-a",
+    { version: 2, teams: [], history: [], undone: [] },
+    3,
+    { fetchImpl },
+  );
+
+  assert.equal(calls[0].url, "/api/auction-state/league-a");
+  assert.equal(calls[1].options.method, "PUT");
+  assert.deepEqual(JSON.parse(calls[1].options.body), {
+    state: { version: 2, teams: [], history: [], undone: [] },
+    base_revision: 3,
+  });
 });

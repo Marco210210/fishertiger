@@ -66,6 +66,7 @@ class LocalApiServerTests(unittest.TestCase):
             datasets_dir=root / "data/processed",
             uploads_dir=root / "data/uploads",
             updates_dir=root / "data/updates",
+            auction_states_dir=root / "data/auction-states",
             generator=generator,
             simulator=simulator,
             update_fetcher=update_fetcher,
@@ -220,6 +221,65 @@ class LocalApiServerTests(unittest.TestCase):
         response, payload = self.request("GET", "/api/profiles/my-team")
         self.assertEqual(response.status, 200)
         self.assertEqual(payload, expected)
+
+    def test_auction_state_is_shared_per_profile_with_revision_protection(self):
+        profile_body = json.dumps(self.profile).encode("utf-8")
+        self.request("PUT", "/api/profiles/my-team", profile_body, {"Content-Type": "application/json"})
+        state = {
+            "version": 2,
+            "teams": [{"name": "Team", "startingCredits": 500}],
+            "history": [],
+            "undone": [],
+        }
+
+        missing, missing_payload = self.request("GET", "/api/auction-state/my-team")
+        self.assertEqual(missing.status, 200)
+        self.assertEqual(missing_payload["revision"], 0)
+        self.assertIsNone(missing_payload["state"])
+
+        first, first_payload = self.request(
+            "PUT",
+            "/api/auction-state/my-team",
+            json.dumps({"state": state, "base_revision": 0}).encode("utf-8"),
+            {"Content-Type": "application/json"},
+        )
+        self.assertEqual(first.status, 200)
+        self.assertEqual(first_payload["revision"], 1)
+        self.assertEqual(first_payload["state"], state)
+
+        fetched, fetched_payload = self.request("GET", "/api/auction-state/my-team")
+        self.assertEqual(fetched.status, 200)
+        self.assertEqual(fetched_payload, first_payload)
+
+        conflict, conflict_payload = self.request(
+            "PUT",
+            "/api/auction-state/my-team",
+            json.dumps({"state": state, "base_revision": 0}).encode("utf-8"),
+            {"Content-Type": "application/json"},
+        )
+        self.assertEqual(conflict.status, 409)
+        self.assertEqual(conflict_payload["error"]["code"], "auction_state_conflict")
+        self.assertEqual(conflict_payload["error"]["details"]["revision"], 1)
+
+    def test_auction_state_requires_a_real_profile_and_valid_payload(self):
+        missing, missing_payload = self.request("GET", "/api/auction-state/unknown")
+        self.assertEqual(missing.status, 404)
+        self.assertEqual(missing_payload["error"]["code"], "profile_not_found")
+
+        self.request(
+            "PUT",
+            "/api/profiles/my-team",
+            json.dumps(self.profile).encode("utf-8"),
+            {"Content-Type": "application/json"},
+        )
+        invalid, invalid_payload = self.request(
+            "PUT",
+            "/api/auction-state/my-team",
+            json.dumps({"state": {}, "base_revision": 0}).encode("utf-8"),
+            {"Content-Type": "application/json"},
+        )
+        self.assertEqual(invalid.status, 400)
+        self.assertEqual(invalid_payload["error"]["code"], "invalid_auction_state")
 
     def test_profile_responses_carry_the_hash_the_dataset_metadata_uses(self):
         """The UI compares meta.profile.profile_hash with the profile's own hash to

@@ -120,6 +120,23 @@ export const deleteProfile = async (id, options = {}) =>
     method: "DELETE",
   });
 
+export const loadAuctionState = async (id, options = {}) =>
+  requestJson(
+    apiUrl(`/api/auction-state/${encodeURIComponent(profileId(id))}`, options.apiBase),
+    options,
+  );
+
+export const saveAuctionState = async (id, state, baseRevision, options = {}) =>
+  requestJson(
+    apiUrl(`/api/auction-state/${encodeURIComponent(profileId(id))}`, options.apiBase),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options.headers },
+      body: JSON.stringify({ state: object(state), base_revision: baseRevision }),
+    },
+  );
+
 export const generateProfile = async (profileOrId, options = {}) => {
   const request = typeof profileOrId === "string"
     ? { profile_id: profileId(profileOrId) }

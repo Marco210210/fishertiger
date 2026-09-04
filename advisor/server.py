@@ -16,6 +16,7 @@ import shutil
 import sys
 import tempfile
 import traceback
+from datetime import datetime, timezone
 from zipfile import BadZipFile
 from collections.abc import Callable
 from http import HTTPStatus
@@ -131,6 +132,7 @@ class LocalApiServer(ThreadingHTTPServer):
         datasets_dir: Path | str = Path("data/processed"),
         uploads_dir: Path | str = Path("data/uploads"),
         updates_dir: Path | str = Path("data/updates"),
+        auction_states_dir: Path | str = Path("data/auction-states"),
         default_profile_path: Path | str = Path("config/default_profile.json"),
         raw_dir: Path | str = Path("data/raw"),
         static_dir: Path | str | None = None,
@@ -151,6 +153,7 @@ class LocalApiServer(ThreadingHTTPServer):
         self.datasets_dir = Path(datasets_dir)
         self.uploads_dir = Path(uploads_dir)
         self.updates_dir = Path(updates_dir)
+        self.auction_states_dir = Path(auction_states_dir)
         self.default_profile_path = Path(default_profile_path)
         self.raw_dir = Path(raw_dir)
         self.static_dir = Path(static_dir).resolve() if static_dir is not None else None
@@ -207,6 +210,8 @@ class LocalApiHandler(BaseHTTPRequestHandler):
             self._default_profile()
         elif path == "/api/fantalab/status":
             self._fantalab_status()
+        elif path.startswith("/api/auction-state/"):
+            self._get_auction_state(path.removeprefix("/api/auction-state/"))
         elif path.startswith("/api/scout/"):
             self._scout_snapshot(path.removeprefix("/api/scout/"))
         elif path.startswith("/api/profiles/"):
@@ -228,6 +233,8 @@ class LocalApiHandler(BaseHTTPRequestHandler):
         path = self._path()
         if path == "/api/auth/password":
             self._change_password()
+        elif path.startswith("/api/auction-state/"):
+            self._put_auction_state(path.removeprefix("/api/auction-state/"))
         elif path.startswith("/api/updates/player-list/candidate/"):
             self._put_player_list_candidate(path.removeprefix("/api/updates/player-list/candidate/"))
         elif path.startswith("/api/uploads/"):
@@ -518,6 +525,93 @@ class LocalApiHandler(BaseHTTPRequestHandler):
             self._error(HTTPStatus.INTERNAL_SERVER_ERROR, "storage_error", "The profile could not be saved.")
             return
         self._send_json(HTTPStatus.OK, profile_response(profile))
+
+    def _auction_state_path(self, name: str, *, require_profile: bool = True) -> Path | None:
+        profile_path = self._profile_path(name)
+        if profile_path is None:
+            return None
+        if require_profile and not profile_path.is_file():
+            self._error(HTTPStatus.NOT_FOUND, "profile_not_found", "The profile does not exist.")
+            return None
+        return self.server.auction_states_dir / f"{name}.json"
+
+    def _get_auction_state(self, name: str) -> None:
+        state_path = self._auction_state_path(name)
+        if state_path is None:
+            return
+        try:
+            value = json.loads(state_path.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            self._send_json(
+                HTTPStatus.OK,
+                {"profile_id": name, "revision": 0, "updated_at": None, "updated_by": None, "state": None},
+            )
+            return
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            self._error(HTTPStatus.INTERNAL_SERVER_ERROR, "storage_error", "The saved auction is invalid or unreadable.")
+            return
+        if not isinstance(value, dict) or value.get("profile_id") != name:
+            self._error(HTTPStatus.INTERNAL_SERVER_ERROR, "storage_error", "The saved auction is invalid or unreadable.")
+            return
+        self._send_json(HTTPStatus.OK, value)
+
+    def _put_auction_state(self, name: str) -> None:
+        state_path = self._auction_state_path(name)
+        if state_path is None:
+            return
+        request = self._read_json_object()
+        if request is None:
+            return
+        state = request.get("state")
+        base_revision = request.get("base_revision")
+        if (
+            not isinstance(state, dict)
+            or not isinstance(state.get("version"), int)
+            or not isinstance(state.get("teams"), list)
+            or not isinstance(state.get("history"), list)
+            or not isinstance(state.get("undone"), list)
+        ):
+            self._error(HTTPStatus.BAD_REQUEST, "invalid_auction_state", "The auction state is incomplete or invalid.")
+            return
+        if isinstance(base_revision, bool) or not isinstance(base_revision, int) or base_revision < 0:
+            self._error(HTTPStatus.BAD_REQUEST, "invalid_revision", "base_revision must be a non-negative integer.")
+            return
+        try:
+            with profile_transaction(self.server.auction_states_dir, name):
+                try:
+                    current = json.loads(state_path.read_text(encoding="utf-8"))
+                    current_revision = int(current.get("revision", 0))
+                except FileNotFoundError:
+                    current = None
+                    current_revision = 0
+                if base_revision != current_revision:
+                    self._send_json(
+                        HTTPStatus.CONFLICT,
+                        {
+                            "error": {
+                                "code": "auction_state_conflict",
+                                "message": "The auction changed on another device.",
+                                "details": current,
+                            }
+                        },
+                    )
+                    return
+                value = {
+                    "profile_id": name,
+                    "revision": current_revision + 1,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_by": (self._authenticated_user or {}).get("username"),
+                    "state": state,
+                }
+                state_path.parent.mkdir(parents=True, exist_ok=True)
+                with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=state_path.parent, delete=False) as handle:
+                    json.dump(value, handle, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+                    temporary_path = Path(handle.name)
+                temporary_path.replace(state_path)
+        except (OSError, TypeError, ValueError):
+            self._error(HTTPStatus.INTERNAL_SERVER_ERROR, "storage_error", "The auction could not be saved.")
+            return
+        self._send_json(HTTPStatus.OK, value)
 
     def _put_upload(self, relative_path: str) -> None:
         parts = relative_path.split("/")
@@ -1329,6 +1423,11 @@ class LocalApiHandler(BaseHTTPRequestHandler):
         except OSError:
             self._error(HTTPStatus.INTERNAL_SERVER_ERROR, "storage_error", "The profile could not be deleted.")
             return
+        try:
+            (self.server.auction_states_dir / f"{name}.json").unlink(missing_ok=True)
+        except OSError:
+            self._error(HTTPStatus.INTERNAL_SERVER_ERROR, "storage_error", "The profile auction could not be deleted.")
+            return
         self._send_json(HTTPStatus.OK, {"profile_id": name, "deleted": True})
 
     def _profile_path(self, name: str) -> Path | None:
@@ -1536,6 +1635,7 @@ def create_server(
     datasets_dir: Path | str = Path("data/processed"),
     uploads_dir: Path | str = Path("data/uploads"),
     updates_dir: Path | str = Path("data/updates"),
+    auction_states_dir: Path | str = Path("data/auction-states"),
     default_profile_path: Path | str = Path("config/default_profile.json"),
     raw_dir: Path | str = Path("data/raw"),
     static_dir: Path | str | None = None,
@@ -1553,7 +1653,7 @@ def create_server(
     fantalab_reader: FantaLabReader | None = None,
 ) -> LocalApiServer:
     """Create a local API server; inject a pipeline generator for tests or embedding."""
-    return LocalApiServer(address, profiles_dir=profiles_dir, datasets_dir=datasets_dir, uploads_dir=uploads_dir, updates_dir=updates_dir, default_profile_path=default_profile_path, raw_dir=raw_dir, static_dir=static_dir, auth_username=auth_username, auth_password=auth_password, auth_file=auth_file, generator=generator, simulator=simulator, profile_loader=profile_loader, update_fetcher=update_fetcher, formations_fetcher=formations_fetcher, set_piece_fetcher=set_piece_fetcher, goalkeeper_fetcher=goalkeeper_fetcher, player_list_fetcher=player_list_fetcher, fantalab_reader=fantalab_reader)
+    return LocalApiServer(address, profiles_dir=profiles_dir, datasets_dir=datasets_dir, uploads_dir=uploads_dir, updates_dir=updates_dir, auction_states_dir=auction_states_dir, default_profile_path=default_profile_path, raw_dir=raw_dir, static_dir=static_dir, auth_username=auth_username, auth_password=auth_password, auth_file=auth_file, generator=generator, simulator=simulator, profile_loader=profile_loader, update_fetcher=update_fetcher, formations_fetcher=formations_fetcher, set_piece_fetcher=set_piece_fetcher, goalkeeper_fetcher=goalkeeper_fetcher, player_list_fetcher=player_list_fetcher, fantalab_reader=fantalab_reader)
 
 
 def _simulate_current_dataset(profile: Any, output_dir: Path, iterations: int, seed: int, rosters: dict[str, list[int]] | None = None) -> dict[str, Any]:
@@ -1572,6 +1672,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--datasets-dir", type=Path, default=Path("data/processed"))
     parser.add_argument("--uploads-dir", type=Path, default=Path("data/uploads"))
     parser.add_argument("--updates-dir", type=Path, default=Path("data/updates"))
+    parser.add_argument("--auction-states-dir", type=Path, default=Path("data/auction-states"))
     parser.add_argument("--static-dir", type=Path)
     args = parser.parse_args(argv)
     server = create_server(
@@ -1580,6 +1681,7 @@ def main(argv: list[str] | None = None) -> None:
         datasets_dir=args.datasets_dir,
         uploads_dir=args.uploads_dir,
         updates_dir=args.updates_dir,
+        auction_states_dir=args.auction_states_dir,
         static_dir=args.static_dir,
         auth_username=os.environ.get("FISHERTIGER_USERNAME"),
         auth_password=os.environ.get("FISHERTIGER_PASSWORD"),

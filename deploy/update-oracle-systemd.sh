@@ -15,6 +15,12 @@ if ! cmp -s package-lock.json node_modules/.astafanta-package-lock.json; then
 fi
 npm run build
 
+cd "$APP_DIR"
+if ! cmp -s deploy/astafanta-support.service /etc/systemd/system/astafanta-support.service; then
+    sudo install -m 0644 deploy/astafanta-support.service /etc/systemd/system/astafanta-support.service
+    sudo systemctl daemon-reload
+fi
+sudo install -d -o ubuntu -g ubuntu -m 0700 /var/lib/astafanta-support/auction-states
 sudo systemctl restart astafanta-support
 for attempt in 1 2 3 4 5; do
     status="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8092/ || true)"

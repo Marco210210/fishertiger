@@ -12,7 +12,7 @@ EnvironmentFile=/etc/astafanta-support.env
 Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=PYTHONUNBUFFERED=1
 Environment=FISHERTIGER_AUTH_FILE=/var/lib/astafanta-support/users.json
-ExecStart=/home/ubuntu/progetti/astafanta-support/.venv/bin/python -m advisor.server --host 127.0.0.1 --port 8092 --static-dir web/dist --profiles-dir /var/lib/astafanta-support/profiles --datasets-dir /var/lib/astafanta-support/processed --uploads-dir /var/lib/astafanta-support/uploads --updates-dir /var/lib/astafanta-support/updates
+ExecStart=/home/ubuntu/progetti/astafanta-support/.venv/bin/python -m advisor.server --host 127.0.0.1 --port 8092 --static-dir web/dist --profiles-dir /var/lib/astafanta-support/profiles --datasets-dir /var/lib/astafanta-support/processed --uploads-dir /var/lib/astafanta-support/uploads --updates-dir /var/lib/astafanta-support/updates --auction-states-dir /var/lib/astafanta-support/auction-states
 Restart=on-failure
 RestartSec=3
 UMask=0077

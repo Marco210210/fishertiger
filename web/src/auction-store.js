@@ -255,6 +255,23 @@ export const assignPlayer = (profileId, players, rules, request) => {
   );
 };
 
+/** Compact server-safe snapshot. Runtime player objects are reconstructed from
+ * the active dataset whenever another browser sends us a newer revision. */
+export const readAuctionPayload = (profileId, players, rules) => {
+  const loaded = loadAuction(profileId, players, rules);
+  return loaded.ok ? serializeAuction(loaded.state) : null;
+};
+
+export const replaceAuctionPayload = (profileId, players, rules, payload) =>
+  persist(
+    profileId,
+    payload,
+    players,
+    rules,
+    "",
+    "Lo stato dell'asta ricevuto dal server non è compatibile con questa lega.",
+  );
+
 /** Merge the authoritative FantaLab purchase ledger into the local auction.
  * Existing assignments are never overwritten: a disagreement is reported and
  * left for the operator to resolve instead of silently corrupting a roster. */

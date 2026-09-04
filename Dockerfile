@@ -20,8 +20,8 @@ COPY config/ ./config/
 COPY data/raw/ ./data/raw/
 COPY --from=web-builder /build/web/dist ./web/dist/
 
-RUN mkdir -p /var/data/profiles /var/data/processed /var/data/uploads /var/data/updates
+RUN mkdir -p /var/data/profiles /var/data/processed /var/data/uploads /var/data/updates /var/data/auction-states
 
 EXPOSE 10000
 
-CMD ["sh", "-c", "python -m advisor.server --host 0.0.0.0 --port ${PORT:-10000} --static-dir web/dist --profiles-dir /var/data/profiles --datasets-dir /var/data/processed --uploads-dir /var/data/uploads --updates-dir /var/data/updates"]
+CMD ["sh", "-c", "python -m advisor.server --host 0.0.0.0 --port ${PORT:-10000} --static-dir web/dist --profiles-dir /var/data/profiles --datasets-dir /var/data/processed --uploads-dir /var/data/uploads --updates-dir /var/data/updates --auction-states-dir /var/data/auction-states"]

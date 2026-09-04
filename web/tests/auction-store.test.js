@@ -37,9 +37,11 @@ const {
   playerAuctionStatus,
   readAuction,
   readAuctionBoard,
+  readAuctionPayload,
   readUserTeamIndex,
   redoAssignment,
   renameTeam,
+  replaceAuctionPayload,
   releasePlayer,
   resetAuction,
   setStartingCredits,
@@ -563,6 +565,25 @@ test("clearing a profile removes its auction and its chosen team", () => {
   clearAuctionData(PROFILE);
   assert.equal(store.has(auctionStorageKey(PROFILE)), false);
   assert.equal(store.has(userTeamStorageKey(PROFILE)), false);
+});
+
+test("a server snapshot can be copied to another profile without mixing their storage", () => {
+  resetStore();
+  assignPlayer(PROFILE, livePlayers, liveRules, {
+    playerId: 2,
+    owner: 1,
+    price: 12,
+  });
+  const payload = readAuctionPayload(PROFILE, livePlayers, liveRules);
+  assert.equal(
+    replaceAuctionPayload("second-league", livePlayers, liveRules, payload).ok,
+    true,
+  );
+  assert.equal(readAuctionBoard("second-league", livePlayers, liveRules).taken, 1);
+
+  resetAuction("second-league", livePlayers, liveRules);
+  assert.equal(readAuctionBoard("second-league", livePlayers, liveRules).taken, 0);
+  assert.equal(readAuctionBoard(PROFILE, livePlayers, liveRules).taken, 1);
 });
 
 test("FantaLab ledger imports are idempotent and never overwrite a conflict", () => {

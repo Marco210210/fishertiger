@@ -260,6 +260,14 @@ export default function AuctionView({
 
   return (
     <div className="auction">
+      <p
+        className={`auction-sync auction-sync--${board.syncStatus?.state || "loading"}`}
+        role="status"
+        aria-live="polite"
+      >
+        <span aria-hidden="true" />
+        {board.syncStatus?.detail || "Collegamento al salvataggio condiviso…"}
+      </p>
       {activeRole ? (
         <p className="phase">
           <RoleChip role={activeRole} />

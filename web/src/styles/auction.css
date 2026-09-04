@@ -12,6 +12,38 @@
   gap: var(--s-3);
 }
 
+.auction-sync {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0;
+  color: var(--c-text-mute);
+  font-size: var(--fs-xs);
+  font-weight: 620;
+}
+
+.auction-sync > span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-text-mute);
+}
+
+.auction-sync--saved > span {
+  background: var(--c-go);
+}
+
+.auction-sync--saving > span,
+.auction-sync--loading > span {
+  background: var(--c-brand-bright);
+}
+
+.auction-sync--offline > span,
+.auction-sync--error > span,
+.auction-sync--conflict > span {
+  background: var(--c-warn);
+}
+
 /* ------------------------------------------------------------- my team bar */
 
 /* Always visible, because every decision is bounded by these three numbers. */
