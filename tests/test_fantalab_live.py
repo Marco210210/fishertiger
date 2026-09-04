@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from advisor.fantalab_live import FantaLabError, live_snapshot, parse_database, parse_room_id
+from advisor.fantalab_live import (
+    FantaLabError,
+    live_snapshot,
+    parse_database,
+    parse_room_id,
+    resolve_fantalab_id_token,
+)
 
 
 ROOM = "86b90c3d-5206-4a0c-adf2-7513485baaf8"
@@ -114,3 +121,114 @@ def test_public_room_reveals_the_current_leader_before_a_purchase(tmp_path: Path
     assert result["teams"] == [
         {"id": "anonymous-team", "name": None, "position": None, "starting_credits": None}
     ]
+
+
+def test_resolve_fantalab_id_token_returns_none_without_a_bootstrap_token(tmp_path: Path) -> None:
+    def requester(url: str, params: Any) -> Any:
+        raise AssertionError("Google must not be called when no refresh token is configured")
+
+    assert resolve_fantalab_id_token(
+        bootstrap_refresh_token=None,
+        cache_path=tmp_path / "credentials.json",
+        requester=requester,
+    ) is None
+
+
+def test_resolve_fantalab_id_token_renews_and_persists_the_rotated_refresh_token(tmp_path: Path) -> None:
+    calls: list[str] = []
+
+    def requester(url: str, params: Any) -> Any:
+        assert params["grant_type"] == "refresh_token"
+        calls.append(params["refresh_token"])
+        return {"id_token": "id-1", "refresh_token": "rotated-1", "expires_in": "3600"}
+
+    cache_path = tmp_path / "credentials.json"
+    token = resolve_fantalab_id_token(
+        bootstrap_refresh_token="seed-token",
+        cache_path=cache_path,
+        requester=requester,
+        now=1_000.0,
+    )
+    assert token == "id-1"
+    assert calls == ["seed-token"]
+    cached = json.loads(cache_path.read_text(encoding="utf-8"))
+    assert cached == {"refresh_token": "rotated-1", "id_token": "id-1", "expires_at": 4_600.0}
+
+
+def test_resolve_fantalab_id_token_reuses_a_still_valid_cached_token(tmp_path: Path) -> None:
+    cache_path = tmp_path / "credentials.json"
+    cache_path.write_text(
+        json.dumps({"refresh_token": "rotated-1", "id_token": "cached-id", "expires_at": 10_000.0}),
+        encoding="utf-8",
+    )
+
+    def requester(url: str, params: Any) -> Any:
+        raise AssertionError("a still-valid cached token must not trigger a renewal")
+
+    token = resolve_fantalab_id_token(
+        bootstrap_refresh_token="seed-token",
+        cache_path=cache_path,
+        requester=requester,
+        now=9_000.0,
+    )
+    assert token == "cached-id"
+
+
+def test_resolve_fantalab_id_token_renews_with_the_cached_rotated_token_first(tmp_path: Path) -> None:
+    cache_path = tmp_path / "credentials.json"
+    cache_path.write_text(
+        json.dumps({"refresh_token": "rotated-1", "id_token": "stale-id", "expires_at": 1_000.0}),
+        encoding="utf-8",
+    )
+    calls: list[str] = []
+
+    def requester(url: str, params: Any) -> Any:
+        calls.append(params["refresh_token"])
+        return {"id_token": "id-2", "refresh_token": "rotated-2", "expires_in": "3600"}
+
+    token = resolve_fantalab_id_token(
+        bootstrap_refresh_token="seed-token",
+        cache_path=cache_path,
+        requester=requester,
+        now=1_500.0,
+    )
+    assert token == "id-2"
+    assert calls == ["rotated-1"]
+
+
+def test_resolve_fantalab_id_token_falls_back_to_the_bootstrap_token_when_the_cached_one_is_stale(
+    tmp_path: Path,
+) -> None:
+    cache_path = tmp_path / "credentials.json"
+    cache_path.write_text(
+        json.dumps({"refresh_token": "revoked", "id_token": "stale-id", "expires_at": 1_000.0}),
+        encoding="utf-8",
+    )
+    calls: list[str] = []
+
+    def requester(url: str, params: Any) -> Any:
+        calls.append(params["refresh_token"])
+        if params["refresh_token"] == "revoked":
+            raise FantaLabError("invalid")
+        return {"id_token": "id-3", "refresh_token": "rotated-3", "expires_in": "3600"}
+
+    token = resolve_fantalab_id_token(
+        bootstrap_refresh_token="seed-token",
+        cache_path=cache_path,
+        requester=requester,
+        now=1_500.0,
+    )
+    assert token == "id-3"
+    assert calls == ["revoked", "seed-token"]
+
+
+def test_resolve_fantalab_id_token_returns_none_when_every_credential_is_rejected(tmp_path: Path) -> None:
+    def requester(url: str, params: Any) -> Any:
+        raise FantaLabError("invalid")
+
+    token = resolve_fantalab_id_token(
+        bootstrap_refresh_token="seed-token",
+        cache_path=tmp_path / "credentials.json",
+        requester=requester,
+    )
+    assert token is None

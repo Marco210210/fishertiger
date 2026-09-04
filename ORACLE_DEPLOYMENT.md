@@ -79,9 +79,62 @@ league datasets and is intentionally excluded from Git.
 ## FantaLab
 
 No token is required after an auction has started: **FantaLab live** can scan
-the public realtime namespaces once and then reuse the discovered shard. An
-optional server-side `FISHERTIGER_FANTALAB_TOKEN` makes discovery immediate and
-adds official room/team names. It is never returned to the browser or logged.
+the public realtime namespaces once and then reuse the discovered shard, but
+FantaLab's public read only reveals a team's real name/position once it leads
+or buys, so the app asks to confirm each anonymous team once.
+
+Configuring a server-side credential removes that manual step and adds
+official room/team names immediately. Two credentials are supported, and both
+are never returned to the browser or logged:
+
+- `FISHERTIGER_FANTALAB_TOKEN`: a ready-to-use Firebase ID token (the
+  `Authorization: Bearer …` value from a request to `api.fantalab.it` while
+  logged in, captured from the browser's DevTools Network tab). Simple, but
+  Firebase ID tokens expire after about an hour, so this needs recapturing
+  periodically during a long auction.
+- `FISHERTIGER_FANTALAB_REFRESH_TOKEN` (recommended): a long-lived Firebase
+  refresh token. The server exchanges it for a fresh ID token itself and
+  keeps renewing automatically forever — including across restarts and
+  redeploys — because it persists the rotated refresh token Google returns on
+  every renewal to
+  `<updates-dir>/fantalab/credentials.json`. It only needs to be captured
+  once, ever, regardless of the FantaLab login method (email/password,
+  Google, …), because Firebase issues its own refresh token after any
+  successful sign-in. If both variables are set, the refresh token takes
+  priority; `FISHERTIGER_FANTALAB_TOKEN` is used only if renewing from the
+  refresh token fails.
+
+To capture the initial refresh token: log into `app.fantalab.it`, open the
+auction room, open DevTools (F12), go to the **Console** tab and paste (Chrome
+may ask you to type `allow pasting` first, as a self-XSS guard):
+
+```js
+(async () => {
+  for (const {name} of await indexedDB.databases()) {
+    if (!/firebase/i.test(name)) continue;
+    const db = await new Promise((res, rej) => {
+      const r = indexedDB.open(name);
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+    for (const store of db.objectStoreNames) {
+      const rows = await new Promise((res, rej) => {
+        const r = db.transaction(store).objectStore(store).getAll();
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+      });
+      console.log(name, store, rows);
+    }
+  }
+})();
+```
+
+This prints the browser's Firebase auth state. Expand the logged object(s) in
+the console until you find `stsTokenManager.refreshToken` (a long string) —
+right-click it and "Copy value". Set it as `FISHERTIGER_FANTALAB_REFRESH_TOKEN`
+in `/etc/astafanta-support.env` (systemd installation) and restart the
+service (`sudo systemctl restart astafanta-support.service`); no rebuild is
+needed since only an environment variable changed.
 
 The integration is deliberately read-only. AstaFanta Support cannot bid, assign a
 lot or change the FantaLab room.

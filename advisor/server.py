@@ -36,7 +36,7 @@ from .generate import (
 )
 from .auth import AccountError, CredentialStore
 from .freshness import dataset_configuration_hash, simulation_configuration_hash, source_fingerprints
-from .fantalab_live import FantaLabError, live_snapshot
+from .fantalab_live import FantaLabError, live_snapshot, resolve_fantalab_id_token
 from .scout import load_scout_snapshot
 from .scout_refresh import refresh_official_scout
 from .league_calendar import build_legacy_calendar_template, preprocess_legacy_calendar
@@ -417,7 +417,10 @@ class LocalApiHandler(BaseHTTPRequestHandler):
             {
                 "available": True,
                 "read_only": True,
-                "token_configured": bool(os.environ.get("FISHERTIGER_FANTALAB_TOKEN")),
+                "token_configured": bool(
+                    os.environ.get("FISHERTIGER_FANTALAB_REFRESH_TOKEN")
+                    or os.environ.get("FISHERTIGER_FANTALAB_TOKEN")
+                ),
             },
         )
 
@@ -441,10 +444,14 @@ class LocalApiHandler(BaseHTTPRequestHandler):
             if self.server.fantalab_reader is not None:
                 result = self.server.fantalab_reader(request)
             else:
+                renewed_token = resolve_fantalab_id_token(
+                    bootstrap_refresh_token=os.environ.get("FISHERTIGER_FANTALAB_REFRESH_TOKEN"),
+                    cache_path=self.server.updates_dir / "fantalab" / "credentials.json",
+                )
                 result = live_snapshot(
                     request,
                     cache_path=self.server.updates_dir / "fantalab" / "listone.json",
-                    token=os.environ.get("FISHERTIGER_FANTALAB_TOKEN"),
+                    token=renewed_token or os.environ.get("FISHERTIGER_FANTALAB_TOKEN"),
                 )
         except FantaLabError as error:
             self._error(HTTPStatus.BAD_GATEWAY, "fantalab_unavailable", str(error))

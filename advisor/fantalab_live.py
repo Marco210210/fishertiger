@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, urlencode, urlsplit
 from urllib.request import Request, urlopen
 
 
@@ -31,6 +31,14 @@ UUID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}
 LISTONE_MAX_AGE_SECONDS = 12 * 60 * 60
 LISTONE_RETRY_AGE_SECONDS = 60
 JsonRequester = Callable[[str, str, Mapping[str, Any] | None, Mapping[str, str] | None], Any]
+
+# FantaLab's own web app authenticates against this Firebase project. The web
+# API key is not a secret: Firebase ships it inside every client bundle, and
+# access is governed by Firebase's own auth checks, not by hiding this value.
+FANTALAB_FIREBASE_API_KEY = "AIzaSyAUil-4mmWcJc-eaTBhZdxd43EHLmVtcds"
+SECURE_TOKEN_URL = "https://securetoken.googleapis.com/v1/token"
+ID_TOKEN_SAFETY_MARGIN_SECONDS = 5 * 60
+FormRequester = Callable[[str, Mapping[str, str]], Any]
 
 
 class FantaLabError(RuntimeError):
@@ -111,6 +119,120 @@ def request_json(
         raise FantaLabError(f"FantaLab ha risposto con stato HTTP {error.code}.") from None
     except (URLError, TimeoutError, OSError, UnicodeDecodeError, json.JSONDecodeError):
         raise FantaLabError("FantaLab non è raggiungibile in questo momento.") from None
+
+
+def _request_form(url: str, params: Mapping[str, str]) -> Any:
+    """Form-encoded transport for Google's OAuth2-style token endpoint, which
+    (unlike FantaLab's own API) does not accept a JSON body."""
+    payload = urlencode(dict(params)).encode("utf-8")
+    request = Request(
+        url,
+        data=payload,
+        headers={
+            "Accept": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=12) as response:  # noqa: S310 - fixed host
+            return json.loads(response.read().decode("utf-8"))
+    except HTTPError as error:
+        raise FantaLabError(f"Google ha risposto con stato HTTP {error.code}.") from None
+    except (URLError, TimeoutError, OSError, UnicodeDecodeError, json.JSONDecodeError):
+        raise FantaLabError("Il servizio di autenticazione FantaLab non è raggiungibile in questo momento.") from None
+
+
+def _refresh_id_token(
+    refresh_token: str,
+    *,
+    api_key: str = FANTALAB_FIREBASE_API_KEY,
+    requester: FormRequester = _request_form,
+) -> dict[str, str]:
+    """Exchange a long-lived Firebase refresh token for a fresh ID token.
+
+    Google rotates the refresh token on every exchange; the caller must
+    persist the one returned here, not the one it sent, or the credential
+    goes stale after the first automatic renewal.
+    """
+    body = requester(
+        f"{SECURE_TOKEN_URL}?key={api_key}",
+        {"grant_type": "refresh_token", "refresh_token": refresh_token},
+    )
+    if (
+        not isinstance(body, Mapping)
+        or not isinstance(body.get("id_token"), str)
+        or not isinstance(body.get("refresh_token"), str)
+        or not isinstance(body.get("expires_in"), str)
+    ):
+        raise FantaLabError("Il rinnovo dell'accesso FantaLab non è riuscito.")
+    return {
+        "id_token": body["id_token"],
+        "refresh_token": body["refresh_token"],
+        "expires_in": body["expires_in"],
+    }
+
+
+def _load_cached_credentials(path: Path) -> dict[str, Any] | None:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if (
+        isinstance(value, dict)
+        and isinstance(value.get("refresh_token"), str)
+        and isinstance(value.get("id_token"), str)
+        and isinstance(value.get("expires_at"), (int, float))
+    ):
+        return value
+    return None
+
+
+def _save_cached_credentials(path: Path, value: Mapping[str, Any]) -> None:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(dict(value)), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def resolve_fantalab_id_token(
+    *,
+    bootstrap_refresh_token: str | None,
+    cache_path: Path,
+    requester: FormRequester = _request_form,
+    now: float | None = None,
+) -> str | None:
+    """Return a fresh FantaLab ID token, renewing it from the configured
+    refresh token whenever it is missing or close to expiry.
+
+    The renewal response's rotated refresh token is cached to disk, so the
+    integration keeps renewing itself indefinitely, across polls and across
+    server restarts, without ever needing a new manual capture — only the
+    very first ``bootstrap_refresh_token`` has to come from the browser.
+    """
+    if not bootstrap_refresh_token:
+        return None
+    current_time = time.time() if now is None else now
+    cached = _load_cached_credentials(cache_path)
+    if cached and cached["expires_at"] - ID_TOKEN_SAFETY_MARGIN_SECONDS > current_time:
+        return cached["id_token"]
+
+    for candidate in ([cached["refresh_token"]] if cached else []) + [bootstrap_refresh_token]:
+        try:
+            response = _refresh_id_token(candidate, requester=requester)
+        except FantaLabError:
+            continue
+        _save_cached_credentials(
+            cache_path,
+            {
+                "refresh_token": response["refresh_token"],
+                "id_token": response["id_token"],
+                "expires_at": current_time + int(response["expires_in"]),
+            },
+        )
+        return response["id_token"]
+    return None
 
 
 def _room_config(room_id: str, token: str, requester: JsonRequester) -> dict[str, Any]:
