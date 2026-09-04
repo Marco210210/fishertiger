@@ -62,6 +62,7 @@ export default function AuctionView({
   draft,
   setDraft,
   liveOwnerIndex = null,
+  readOnly = false,
 }) {
   const activeRules = normalizeRules(
     rules ?? data.league_rules ?? { startingCredits: 750 },
@@ -422,12 +423,14 @@ export default function AuctionView({
               onCancel={resetSelection}
               onOpenPlayer={() => openPlayer(player)}
               setPieces={setPiecesForPlayer(data.set_pieces, player.id)}
+              readOnly={readOnly}
             />
           ) : (
             <div className="card">
               <Empty title="Nessun giocatore in asta">
-                Scrivi almeno due lettere del nome chiamato per vedere il
-                consiglio e registrare il prezzo.
+                {readOnly
+                  ? "Scrivi almeno due lettere del nome chiamato per vedere il consiglio."
+                  : "Scrivi almeno due lettere del nome chiamato per vedere il consiglio e registrare il prezzo."}
               </Empty>
             </div>
           )}
@@ -442,22 +445,26 @@ export default function AuctionView({
             ) : (
               <span>Nessuna assegnazione registrata.</span>
             )}
-            <button
-              type="button"
-              className="btn btn--sm"
-              onClick={undo}
-              disabled={!board.history.length}
-            >
-              Annulla
-            </button>
-            <button
-              type="button"
-              className="btn btn--sm"
-              onClick={redo}
-              disabled={!board.undone.length}
-            >
-              Ripristina
-            </button>
+            {readOnly ? null : (
+              <>
+                <button
+                  type="button"
+                  className="btn btn--sm"
+                  onClick={undo}
+                  disabled={!board.history.length}
+                >
+                  Annulla
+                </button>
+                <button
+                  type="button"
+                  className="btn btn--sm"
+                  onClick={redo}
+                  disabled={!board.undone.length}
+                >
+                  Ripristina
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -501,13 +508,15 @@ export default function AuctionView({
             </div>
           </section>
 
-          <button
-            type="button"
-            className="btn btn--danger"
-            onClick={flushAuction}
-          >
-            Azzera l&apos;asta salvata
-          </button>
+          {readOnly ? null : (
+            <button
+              type="button"
+              className="btn btn--danger"
+              onClick={flushAuction}
+            >
+              Azzera l&apos;asta salvata
+            </button>
+          )}
         </aside>
       </div>
     </div>
@@ -599,6 +608,7 @@ function VerdictCard({
   onCancel,
   onOpenPlayer,
   setPieces,
+  readOnly = false,
 }) {
   /* The headline answers the question actually being asked at the table — "at
      this price, yes or no?" — so it follows the live number, not the static
@@ -610,7 +620,7 @@ function VerdictCard({
     legalMax,
   });
 
-  const forOther = owner !== userTeamIndex;
+  const forOther = !readOnly && owner !== userTeamIndex;
 
   return (
     <section
@@ -665,29 +675,31 @@ function VerdictCard({
           rules={rules}
           legalMax={legalMax}
           onPrice={onPrice}
-          onSubmit={onAssign}
+          onSubmit={readOnly ? undefined : onAssign}
         />
 
-        <div className="assign-row">
-          <select
-            className="select"
-            value={owner}
-            onChange={(event) => onOwner(Number(event.target.value))}
-            aria-label="Squadra acquirente"
-          >
-            {teams.map((team, index) => (
-              <option value={index} key={index}>
-                {index === userTeamIndex ? "→ " : ""}
-                {team.name} · {team.credits} cr.
-              </option>
-            ))}
-          </select>
-          {/* Recording a purchase is neutral: green here would read as approval
-              of the price, which is exactly what the gauge is for. */}
-          <button type="button" className="btn btn--primary" onClick={onAssign}>
-            Assegna
-          </button>
-        </div>
+        {readOnly ? null : (
+          <div className="assign-row">
+            <select
+              className="select"
+              value={owner}
+              onChange={(event) => onOwner(Number(event.target.value))}
+              aria-label="Squadra acquirente"
+            >
+              {teams.map((team, index) => (
+                <option value={index} key={index}>
+                  {index === userTeamIndex ? "→ " : ""}
+                  {team.name} · {team.credits} cr.
+                </option>
+              ))}
+            </select>
+            {/* Recording a purchase is neutral: green here would read as approval
+                of the price, which is exactly what the gauge is for. */}
+            <button type="button" className="btn btn--primary" onClick={onAssign}>
+              Assegna
+            </button>
+          </div>
+        )}
 
         <div className="bid-foot">
           <span className="micro">

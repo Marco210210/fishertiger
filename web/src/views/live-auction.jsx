@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { apiUrl } from "../profile-client.js";
 import {
   renameTeam,
+  resetAuction,
   setStartingCredits,
   syncLiveAssignments,
 } from "../auction-store.js";
@@ -219,6 +220,29 @@ export default function LiveAuctionView({
     setActive(true);
   };
 
+  /* The operator never assigns players by hand here — FantaLab is the only
+     source of truth — so the one manual control left is a full rebuild: wipe
+     the local rosters and reimport every current FantaLab purchase in one
+     shot, for when a price got corrected or a purchase briefly failed to
+     sync. */
+  const forceResync = () => {
+    if (!window.confirm("Svuota le rose salvate e le ricarica da FantaLab. Continuare?"))
+      return;
+    const wipe = resetAuction(profileId, data.players, rules);
+    if (!wipe.ok) {
+      setError(wipe.message || "Impossibile azzerare le rose salvate.");
+      return;
+    }
+    const sync = snapshot?.purchases
+      ? syncLiveAssignments(profileId, data.players, rules, snapshot.purchases, teamMapRef.current)
+      : null;
+    setMessage(
+      sync?.synced
+        ? `Rose ricaricate da FantaLab: ${sync.synced} ${sync.synced === 1 ? "acquisto importato" : "acquisti importati"}.`
+        : "Rose azzerate: verranno ricaricate al prossimo aggiornamento da FantaLab.",
+    );
+  };
+
   const updateMapping = (externalId, localIndex) => {
     const nextMap = { ...teamMapRef.current };
     if (localIndex === "") delete nextMap[externalId];
@@ -318,6 +342,11 @@ export default function LiveAuctionView({
             {active ? "Disconnetti" : "Collega"}
           </button>
         </div>
+        {snapshot ? (
+          <button type="button" className="btn btn--sm" onClick={forceResync}>
+            Forza aggiornamento rose
+          </button>
+        ) : null}
         {error ? <p className="notice notice--stop" role="alert">{error}</p> : null}
         {message ? <p className="notice notice--info" role="status">{message}</p> : null}
         {pendingPurchases ? (
@@ -412,6 +441,7 @@ export default function LiveAuctionView({
         draft={draft}
         setDraft={setDraft}
         liveOwnerIndex={liveOwnerIndex}
+        readOnly
       />
     </div>
   );

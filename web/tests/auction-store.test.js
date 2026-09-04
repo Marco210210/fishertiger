@@ -38,6 +38,7 @@ const {
   readAuction,
   readAuctionBoard,
   readAuctionPayload,
+  readFantalabUnsold,
   readUserTeamIndex,
   redoAssignment,
   renameTeam,
@@ -708,4 +709,32 @@ test("FantaLab imports rival purchases into separate rosters and updates both bu
   assert.equal(board.teams[1].roster.length, 1);
   assert.equal(board.teams[0].credits, board.teams[0].startingCredits - 4);
   assert.equal(board.teams[1].credits, board.teams[1].startingCredits - 8);
+});
+
+test("a player FantaLab calls and leaves unsold is tracked, and clears once bought", () => {
+  resetStore();
+  const teamMap = { "external-a": 0 };
+
+  const called = syncLiveAssignments(
+    PROFILE,
+    livePlayers,
+    liveRules,
+    [{ purchase_id: "gone", player_id: 1, buyer_team_id: null, price: 0, unsold: true }],
+    teamMap,
+  );
+  assert.equal(called.synced, 0);
+  assert.deepEqual(readFantalabUnsold(PROFILE), ["1"]);
+  assert.deepEqual(readAuctionBoard(PROFILE, livePlayers, liveRules).unsold, ["1"]);
+
+  // Called again later and actually bought this time: no longer unsold, and
+  // the purchase itself still syncs normally.
+  const bought = syncLiveAssignments(
+    PROFILE,
+    livePlayers,
+    liveRules,
+    [{ purchase_id: "bought", player_id: 1, buyer_team_id: "external-a", price: 4 }],
+    teamMap,
+  );
+  assert.equal(bought.synced, 1);
+  assert.deepEqual(readFantalabUnsold(PROFILE), []);
 });

@@ -187,7 +187,7 @@ export function PriceStepper({
         step={rules.auction.increment}
         value={price}
         onChange={(event) => onPrice(event.target.value)}
-        onKeyDown={(event) => event.key === "Enter" && onSubmit()}
+        onKeyDown={(event) => event.key === "Enter" && onSubmit?.()}
         placeholder="Prezzo"
         aria-label="Prezzo di acquisto in crediti"
       />

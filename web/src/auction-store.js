@@ -167,6 +167,7 @@ export const readAuctionBoard = (profileId, players, rules) => {
     userTeamIndex: readUserTeamIndex(profileId, rules),
     storageReadOk: loaded.ok,
     auctionStatus: loaded.status,
+    unsold: readFantalabUnsold(profileId),
   };
 };
 
@@ -288,6 +289,26 @@ const readFantalabProvenance = (profileId) => {
 const writeFantalabProvenance = (profileId, value) =>
   writeKey(fantalabProvenanceKey(profileId), JSON.stringify(value));
 
+const fantalabUnsoldKey = (profileId) =>
+  `fanta-fantalab-unsold-v1:${encodeURIComponent(profileId || "default")}`;
+
+/** Players FantaLab's ledger currently shows as called and gone unsold —
+ * still fully available, just already seen once. Read by the Listone to
+ * show that instead of a plain "never came up" blank. */
+export const readFantalabUnsold = (profileId) => {
+  const stored = readKey(fantalabUnsoldKey(profileId));
+  const value = stored.ok ? parsed(stored.value) : null;
+  return Array.isArray(value) ? value.map(String) : [];
+};
+
+const writeFantalabUnsold = (profileId, playerIds) => {
+  const next = [...new Set(playerIds.map(String))].sort();
+  const current = readFantalabUnsold(profileId).sort();
+  if (JSON.stringify(next) === JSON.stringify(current)) return;
+  if (writeKey(fantalabUnsoldKey(profileId), JSON.stringify(next)))
+    notifyAuctionChanged();
+};
+
 /** Merge the authoritative FantaLab purchase ledger into the local auction.
  * Existing assignments are never overwritten: a disagreement is reported and
  * left for the operator to resolve instead of silently corrupting a roster.
@@ -304,6 +325,12 @@ export const syncLiveAssignments = (
 ) => {
   let state = mutationState(profileId, players, rules);
   if (!state) return { ...readFailure(), synced: 0, pending: 0, conflicts: 0, retracted: 0 };
+  writeFantalabUnsold(
+    profileId,
+    (purchases || [])
+      .filter((purchase) => purchase?.unsold && purchase?.player_id != null)
+      .map((purchase) => purchase.player_id),
+  );
   let history = state.history.slice();
   let synced = 0;
   let pending = 0;

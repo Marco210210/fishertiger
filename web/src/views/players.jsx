@@ -14,6 +14,7 @@ import {
   playerAuctionStatus,
   releasePlayer,
 } from "../auction-store.js";
+import { readFantalabConnection } from "../fantalab-live.js";
 import { useAuctionBoard } from "../use-auction-store.js";
 import { useAdvisor } from "../use-advisor.js";
 import { reconcileSelectedPlayer } from "../player-selection.js";
@@ -148,6 +149,15 @@ export default function PlayersView({
   useEffect(() => setLimit(PAGE), [query, role, team, onlyTargets]);
 
   const board = useAuctionBoard(profileId, data.players, activeRules);
+  /* This league runs its auction through FantaLab: assigning a player from
+     here would just create a second, disconnected bookkeeping trail instead
+     of the one FantaLab already keeps, so the manual assign/release
+     controls stay hidden whenever a room is configured for this profile. */
+  const fantalabConnected = useMemo(
+    () => Boolean(readFantalabConnection(profileId).roomUrl?.trim()),
+    [profileId],
+  );
+  const unsoldIds = useMemo(() => new Set(board?.unsold || []), [board?.unsold]);
   /* Reconciled against the whole dataset, not the filtered rows: a player
      opened from elsewhere (search, overview, auction) must appear right
      away even if a leftover search/role/team filter here would otherwise
@@ -231,6 +241,8 @@ export default function PlayersView({
           adviceFailure,
           onAssign: runAssign,
           onRelease: runRelease,
+          readOnly: fantalabConnected,
+          unsold: unsoldIds.has(String(player.id)),
         }
       }
     />
@@ -303,13 +315,19 @@ export default function PlayersView({
       {board ? (
         <p className="live-legend">
           <span>
-            <i className="k-mine" />
+            <i className="status-dot status-dot--mine" />
             Presi da te
           </span>
           <span>
-            <i className="k-taken" />
+            <i className="status-dot status-dot--taken" />
             Presi dagli altri
           </span>
+          {fantalabConnected ? (
+            <span>
+              <i className="status-dot status-dot--unsold" />
+              Scartati, ancora disponibili
+            </span>
+          ) : null}
           <span className="live-legend-count">
             {board.taken
               ? `${board.taken} già assegnati`
@@ -333,6 +351,7 @@ export default function PlayersView({
                 {rows.slice(0, limit).map((item) => {
                   const itemMark = playerMark(notes, item.id);
                   const itemLive = playerAuctionStatus(board, item);
+                  const itemUnsold = !itemLive && fantalabConnected && unsoldIds.has(String(item.id));
                   return (
                     <PlayerRow
                       key={item.id}
@@ -342,7 +361,9 @@ export default function PlayersView({
                           ? itemLive.mine
                             ? " is-live-mine"
                             : " is-live-taken"
-                          : ""
+                          : itemUnsold
+                            ? " is-live-unsold"
+                            : ""
                       }`}
                       selected={isDesktop && player?.id === item.id}
                       value={valuation.normalizedFvm(item).toFixed(1)}
@@ -379,23 +400,31 @@ export default function PlayersView({
                           />
                         </button>
                       }
-                      trailing={itemLive ? (
-                        <span className="live-cell">
-                          <b title={itemLive.ownerName}>
-                            {itemLive.mine ? "Tu" : itemLive.ownerName}
-                          </b>
-                          <small>{itemLive.price} cr</small>
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          className="btn btn--sm live-assign-open"
-                          onClick={() => openAssign(item)}
-                          aria-label={`Assegna ${item.nome} a una squadra`}
-                        >
-                          Assegna
-                        </button>
-                      )}
+                      trailing={
+                        itemLive ? (
+                          <span className="live-cell">
+                            <b title={itemLive.ownerName}>
+                              <i className={`status-dot status-dot--${itemLive.mine ? "mine" : "taken"}`} />
+                              {itemLive.mine ? "Tu" : itemLive.ownerName}
+                            </b>
+                            <small>{itemLive.price} cr</small>
+                          </span>
+                        ) : itemUnsold ? (
+                          <span className="live-cell">
+                            <b><i className="status-dot status-dot--unsold" />Scartato</b>
+                            <small>disponibile</small>
+                          </span>
+                        ) : fantalabConnected ? null : (
+                          <button
+                            type="button"
+                            className="btn btn--sm live-assign-open"
+                            onClick={() => openAssign(item)}
+                            aria-label={`Assegna ${item.nome} a una squadra`}
+                          >
+                            Assegna
+                          </button>
+                        )
+                      }
                     />
                   );
                 })}
@@ -629,6 +658,8 @@ function LiveAuctionPanel({
   adviceFailure,
   onAssign,
   onRelease,
+  readOnly = false,
+  unsold = false,
 }) {
   const priceInput = useRef(null);
   useEffect(() => {
@@ -654,18 +685,23 @@ function LiveAuctionPanel({
           <b>{live.mine ? "Preso da te" : `Preso da ${live.ownerName}`}</b>
           <p style={{ marginTop: 4 }}>{live.price} crediti</p>
         </div>
-        <button type="button" className="btn btn--block" onClick={onRelease}>
-          Rimetti tra i disponibili
-        </button>
+        {readOnly ? null : (
+          <button type="button" className="btn btn--block" onClick={onRelease}>
+            Rimetti tra i disponibili
+          </button>
+        )}
         {note}
       </div>
     );
 
-  const buyer = board.teams[owner];
+  // The advice, suggested price and legal ceiling are always about the
+  // user's own team, never about whoever the assign-row's buyer selector
+  // happens to be pointed at (only meaningful outside FantaLab mode).
+  const buyer = board.teams[board.userTeamIndex];
   const legalMax = buyer?.maxBid ?? 0;
   const blockedRole = board.activeRole && player.ruolo !== board.activeRole;
   const summary = advice?.summary || {};
-  const forOther = owner !== board.userTeamIndex;
+  const forOther = !readOnly && owner !== board.userTeamIndex;
   const { tone, headline, recommendation, purpose } = bidVerdict({
     advice,
     price,
@@ -679,6 +715,13 @@ function LiveAuctionPanel({
         className={`verdict verdict--bare${tone ? ` is-${tone}` : ""}`}
         aria-label={`Consiglio d'asta per ${player.nome}`}
       >
+        {unsold ? (
+          <div className="notice notice--warn">
+            <b><i className="status-dot status-dot--unsold" />Scartato su FantaLab</b>
+            <p style={{ marginTop: 4 }}>Nessuna squadra l&apos;ha preso: è ancora disponibile e può tornare in asta.</p>
+          </div>
+        ) : null}
+
         <div className="verdict-call">
           <strong className="verdict-word">{headline}</strong>
           <span className="verdict-sub">
@@ -709,33 +752,35 @@ function LiveAuctionPanel({
             rules={rules}
             legalMax={legalMax}
             onPrice={setPrice}
-            onSubmit={onAssign}
+            onSubmit={readOnly ? undefined : onAssign}
             inputRef={priceInput}
           />
 
-          <div className="assign-row">
-            <select
-              className="select"
-              value={owner}
-              onChange={(event) => setOwner(Number(event.target.value))}
-              aria-label="Squadra acquirente"
-            >
-              {board.teams.map((item) => (
-                <option value={item.index} key={item.index}>
-                  {item.index === board.userTeamIndex ? "→ " : ""}
-                  {item.name} · {item.credits} cr.
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className="btn btn--primary"
-              onClick={onAssign}
-              disabled={blockedRole}
-            >
-              Assegna
-            </button>
-          </div>
+          {readOnly ? null : (
+            <div className="assign-row">
+              <select
+                className="select"
+                value={owner}
+                onChange={(event) => setOwner(Number(event.target.value))}
+                aria-label="Squadra acquirente"
+              >
+                {board.teams.map((item) => (
+                  <option value={item.index} key={item.index}>
+                    {item.index === board.userTeamIndex ? "→ " : ""}
+                    {item.name} · {item.credits} cr.
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="btn btn--primary"
+                onClick={onAssign}
+                disabled={blockedRole}
+              >
+                Assegna
+              </button>
+            </div>
+          )}
 
           <div className="bid-foot">
             <span className="micro">

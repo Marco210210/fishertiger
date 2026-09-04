@@ -1100,6 +1100,38 @@
   font-variant-numeric: tabular-nums;
 }
 
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 5px;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+
+.status-dot--mine {
+  background: var(--c-info);
+}
+
+.status-dot--taken {
+  background: var(--c-text-mute);
+}
+
+.status-dot--unsold {
+  background: var(--c-warn);
+}
+
+.player-row.is-live-unsold {
+  background: var(--c-warn-tint);
+}
+
+.player-row.is-live-unsold .role-chip,
+.player-row.is-live-unsold .avail,
+.player-row.is-live-unsold .player-avatar,
+.player-row.is-live-unsold .team-logo {
+  opacity: 0.7;
+}
+
 .live-assign-open {
   flex: 0 0 auto;
 }
@@ -1124,14 +1156,6 @@
   width: 8px;
   height: 8px;
   border-radius: 2px;
-}
-
-.live-legend .k-mine {
-  background: var(--c-info);
-}
-
-.live-legend .k-taken {
-  background: var(--c-text-mute);
 }
 
 .live-legend-count {
