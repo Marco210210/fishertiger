@@ -160,7 +160,7 @@ export default function LiveAuctionView({
           next.purchases,
           mapped,
         );
-        if (sync.synced || sync.conflicts)
+        if (sync.synced || sync.conflicts || sync.retracted)
           setMessage(sync.message || `${sync.synced} acquisti sincronizzati.`);
 
         const player = current.players.find((candidate) =>

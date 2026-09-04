@@ -602,15 +602,56 @@ test("FantaLab ledger imports are idempotent and never overwrite a conflict", ()
   assert.equal(second.synced, 0);
   assert.equal(readAuctionBoard(PROFILE, livePlayers, liveRules).taken, 1);
 
+  // FantaLab's ledger always reflects every purchase, including this
+  // corrected one (same purchase_id, different team/price) — a real caller
+  // never sends a partial list, only ever the full current ledger.
   const conflict = syncLiveAssignments(
     PROFILE,
     livePlayers,
     liveRules,
-    [{ player_id: 1, buyer_team_id: "ext-b", price: 9 }],
+    [{ purchase_id: "one", player_id: 1, buyer_team_id: "ext-b", price: 9 }, purchases[1], purchases[2]],
     { "ext-b": 1 },
   );
   assert.equal(conflict.conflicts, 1);
+  assert.equal(conflict.retracted, 0);
   assert.equal(readAuctionBoard(PROFILE, livePlayers, liveRules).assigned["1"].owner, 0);
+});
+
+test("a purchase deleted from FantaLab's ledger is retracted from the local roster", () => {
+  resetStore();
+  const purchases = [
+    { purchase_id: "one", player_id: 1, buyer_team_id: "ext-a", price: 4 },
+    { purchase_id: "two", player_id: 2, buyer_team_id: "ext-a", price: 6 },
+  ];
+  const teamMap = { "ext-a": 0 };
+
+  const first = syncLiveAssignments(PROFILE, livePlayers, liveRules, purchases, teamMap);
+  assert.equal(first.synced, 2);
+  assert.equal(readAuctionBoard(PROFILE, livePlayers, liveRules).taken, 2);
+
+  // FantaLab's admin deleted "one" (e.g. it was a test bid); the ledger
+  // FantaLab now serves no longer contains it, while "two" stays untouched.
+  const after = syncLiveAssignments(
+    PROFILE,
+    livePlayers,
+    liveRules,
+    [purchases[1]],
+    teamMap,
+  );
+  assert.equal(after.retracted, 1);
+  assert.equal(after.synced, 0);
+  const board = readAuctionBoard(PROFILE, livePlayers, liveRules);
+  assert.equal(board.taken, 1);
+  assert.equal(board.assigned["1"], undefined);
+  assert.equal(board.assigned["2"].owner, 0);
+  assert.equal(board.teams[0].credits, board.teams[0].startingCredits - 6);
+
+  // Retraction only ever touches a slot FantaLab itself filled: an operator's
+  // own manual assignment for the freed player must survive the next poll.
+  assignPlayer(PROFILE, livePlayers, liveRules, { playerId: 1, owner: 1, price: 2 });
+  const untouched = syncLiveAssignments(PROFILE, livePlayers, liveRules, [purchases[1]], teamMap);
+  assert.equal(untouched.retracted, 0);
+  assert.equal(readAuctionBoard(PROFILE, livePlayers, liveRules).assigned["1"].owner, 1);
 });
 
 test("FantaLab imports rival purchases into separate rosters and updates both budgets", () => {

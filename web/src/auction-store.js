@@ -272,9 +272,29 @@ export const replaceAuctionPayload = (profileId, players, rules, payload) =>
     "Lo stato dell'asta ricevuto dal server non è compatibile con questa lega.",
   );
 
+const fantalabProvenanceKey = (profileId) =>
+  `fanta-fantalab-provenance-v1:${encodeURIComponent(profileId || "default")}`;
+
+/** Which currently-assigned players came from a FantaLab purchase, and which
+ * ledger row each one came from — the only way to tell "this local slot was
+ * filled by FantaLab and should follow its ledger" apart from a slot the
+ * operator filled by hand, which must never be touched automatically. */
+const readFantalabProvenance = (profileId) => {
+  const stored = readKey(fantalabProvenanceKey(profileId));
+  const value = stored.ok ? parsed(stored.value) : null;
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+};
+
+const writeFantalabProvenance = (profileId, value) =>
+  writeKey(fantalabProvenanceKey(profileId), JSON.stringify(value));
+
 /** Merge the authoritative FantaLab purchase ledger into the local auction.
  * Existing assignments are never overwritten: a disagreement is reported and
- * left for the operator to resolve instead of silently corrupting a roster. */
+ * left for the operator to resolve instead of silently corrupting a roster.
+ * A FantaLab-sourced assignment whose ledger row later disappears (deleted
+ * or corrected on FantaLab) is retracted the same way an undo would be,
+ * since otherwise the local roster could only ever grow and never mirror a
+ * cancellation made on FantaLab's side. */
 export const syncLiveAssignments = (
   profileId,
   players,
@@ -283,11 +303,36 @@ export const syncLiveAssignments = (
   teamMap,
 ) => {
   let state = mutationState(profileId, players, rules);
-  if (!state) return { ...readFailure(), synced: 0, pending: 0, conflicts: 0 };
+  if (!state) return { ...readFailure(), synced: 0, pending: 0, conflicts: 0, retracted: 0 };
   let history = state.history.slice();
   let synced = 0;
   let pending = 0;
   let conflicts = 0;
+  let retracted = 0;
+
+  const provenance = readFantalabProvenance(profileId);
+  const nextProvenance = { ...provenance };
+  const livePurchaseIds = new Set(
+    (purchases || [])
+      .filter((purchase) => !purchase?.unsold && Number(purchase?.price) >= rules.auction.minPrice)
+      .map((purchase) => purchase.purchase_id),
+  );
+
+  for (const [key, purchaseId] of Object.entries(provenance)) {
+    if (livePurchaseIds.has(purchaseId)) continue;
+    delete nextProvenance[key];
+    if (!history.some((transaction) => playerIdKey(transaction.playerId) === key)) continue;
+    history = history.filter((transaction) => playerIdKey(transaction.playerId) !== key);
+    retracted += 1;
+  }
+  if (retracted) {
+    const retractedState = rehydrateAuction(
+      payloadFrom(state, { history, undone: [] }),
+      players,
+      rules,
+    );
+    if (retractedState) state = retractedState;
+  }
 
   for (const purchase of purchases || []) {
     if (purchase?.unsold || Number(purchase?.price) < rules.auction.minPrice)
@@ -315,10 +360,14 @@ export const syncLiveAssignments = (
     }
     history = next.history;
     state = next;
+    nextProvenance[playerIdKey(player.id)] = purchase.purchase_id;
     synced += 1;
   }
 
-  if (!synced)
+  const provenanceChanged = JSON.stringify(nextProvenance) !== JSON.stringify(provenance);
+
+  if (!synced && !retracted) {
+    if (provenanceChanged) writeFantalabProvenance(profileId, nextProvenance);
     return {
       ok: conflicts === 0,
       message: conflicts
@@ -327,16 +376,25 @@ export const syncLiveAssignments = (
       synced,
       pending,
       conflicts,
+      retracted,
     };
+  }
 
+  writeFantalabProvenance(profileId, nextProvenance);
+  const message =
+    synced && retracted
+      ? `${synced} ${synced === 1 ? "acquisto importato" : "acquisti importati"}, ${retracted} ${retracted === 1 ? "rimosso" : "rimossi"} perché non più su FantaLab.`
+      : retracted
+        ? `${retracted} ${retracted === 1 ? "acquisto rimosso" : "acquisti rimossi"}: non ${retracted === 1 ? "risulta" : "risultano"} più su FantaLab.`
+        : `${synced} ${synced === 1 ? "acquisto importato" : "acquisti importati"} da FantaLab.`;
   const result = persist(
     profileId,
     payloadFrom(state, { history, undone: [] }),
     players,
     rules,
-    `${synced} ${synced === 1 ? "acquisto importato" : "acquisti importati"} da FantaLab.`,
+    message,
   );
-  return { ...result, synced, pending, conflicts };
+  return { ...result, synced, pending, conflicts, retracted };
 };
 
 export const releasePlayer = (profileId, players, rules, playerId) => {
