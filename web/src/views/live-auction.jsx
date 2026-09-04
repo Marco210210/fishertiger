@@ -66,7 +66,9 @@ export default function LiveAuctionView({
   apiBase,
 }) {
   const [connection, setConnection] = useState(() => readFantalabConnection(profileId));
-  const [active, setActive] = useState(false);
+  /* A saved room link reconnects on its own — there is no reason to make the
+     operator click "Collega" again just because this is a fresh mount. */
+  const [active, setActive] = useState(() => Boolean(readFantalabConnection(profileId).roomUrl?.trim()));
   const [snapshot, setSnapshot] = useState(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -85,7 +87,7 @@ export default function LiveAuctionView({
     const next = readFantalabConnection(profileId);
     teamMapRef.current = next.teamMap;
     setConnection(next);
-    setActive(false);
+    setActive(Boolean(next.roomUrl.trim()));
     setSnapshot(null);
     setError("");
     setMessage("");

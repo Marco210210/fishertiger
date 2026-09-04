@@ -954,7 +954,12 @@ function App() {
           {view === "scout" ? (
             <ScoutAiView data={data} snapshot={scout} openPlayer={openPlayer} />
           ) : null}
-          {view === "live" ? (
+          {/* Always mounted, never just conditionally rendered like the other
+              views: its FantaLab connection and poll loop live in its own
+              state, so unmounting it on every navigation away from "Asta"
+              would drop the connection and require reconnecting by hand
+              each time. Hidden (not removed) when another view is active. */}
+          <div hidden={view !== "live"}>
             <LiveAuctionView
               data={data}
               openPlayer={openPlayer}
@@ -964,7 +969,7 @@ function App() {
               setDraft={setAuctionDraft}
               apiBase={apiBase}
             />
-          ) : null}
+          </div>
           {view === "updates" ? (
             <Updates
               profile={profile}
