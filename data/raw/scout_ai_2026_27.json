@@ -1,7 +1,7 @@
 {
   "version": 1,
   "season": "2026/27",
-  "generated_at": "2026-09-05T10:38:41.025554+00:00",
+  "generated_at": "2026-09-06T11:00:42.440933+00:00",
   "provider": "Fantacalcio.it · elenco ufficiale",
   "lookback_days": 10,
   "players": {
@@ -73,23 +73,6 @@
       ],
       "promoted": false
     },
-    "7317": {
-      "player_id": 7317,
-      "name": "Trepy",
-      "team": "Cagliari",
-      "status": "doubt",
-      "availability": 0.4,
-      "starter": 0.5,
-      "impact_percent": -3.0,
-      "multiplier": 0.97,
-      "confidence": 0.9,
-      "headline": "Trepy: indisponibilità da valutare nell'asta",
-      "summary": "Il calciatore ricoverato il 16 agosto dopo che avrebbe rischiato di annegare in piscina. Dimesso poi il 28 agosto, ora condizioni monitorate da parte dello staff medico rossoblù. Tempi di recupero da valutare, assente di certo nel prossimo turno di campionato.",
-      "sources": [
-        "https://www.fantacalcio.it/serie-a/indisponibili"
-      ],
-      "promoted": false
-    },
     "7125": {
       "player_id": 7125,
       "name": "Idrissi R.",
@@ -102,6 +85,23 @@
       "confidence": 0.9,
       "headline": "Idrissi R.: indisponibilità da valutare nell'asta",
       "summary": "il calciatore in ripresa dalla rottura del legamento crociato, può tornare arruolabile dalla fine di ottobre.",
+      "sources": [
+        "https://www.fantacalcio.it/serie-a/indisponibili"
+      ],
+      "promoted": false
+    },
+    "7317": {
+      "player_id": 7317,
+      "name": "Trepy",
+      "team": "Cagliari",
+      "status": "doubt",
+      "availability": 0.4,
+      "starter": 0.5,
+      "impact_percent": -3.0,
+      "multiplier": 0.97,
+      "confidence": 0.9,
+      "headline": "Trepy: indisponibilità da valutare nell'asta",
+      "summary": "Il calciatore ricoverato il 16 agosto dopo che avrebbe rischiato di annegare in piscina. Dimesso poi il 28 agosto, ora condizioni monitorate da parte dello staff medico rossoblù. Tempi di recupero da valutare, assente di certo nel prossimo turno di campionato.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
@@ -192,6 +192,23 @@
       ],
       "promoted": false
     },
+    "5680": {
+      "player_id": 5680,
+      "name": "Sarr P.",
+      "team": "Juventus",
+      "status": "monitor",
+      "availability": 0.55,
+      "starter": 0.5,
+      "impact_percent": -2.0,
+      "multiplier": 0.98,
+      "confidence": 0.9,
+      "headline": "Sarr P.: indisponibilità da valutare nell'asta",
+      "summary": "Il centrocampista out domenica contro il Milan per noie fisiche, ma si confida di recuperarlo dalla 4a giornata di campionato.",
+      "sources": [
+        "https://www.fantacalcio.it/serie-a/indisponibili"
+      ],
+      "promoted": false
+    },
     "6822": {
       "player_id": 6822,
       "name": "Ekhator",
@@ -221,6 +238,40 @@
       "confidence": 0.9,
       "headline": "Thuram K.: indisponibilità da valutare nell'asta",
       "summary": "il centrocampista condizionato da una sindrome femoro-rotulea e, dopo un consulto medico a fine agosto, è stato sottoposto il 3 settembre a operazione chirurgica. Lungo stop, ipotizziamo un rientro da gennaio.",
+      "sources": [
+        "https://www.fantacalcio.it/serie-a/indisponibili"
+      ],
+      "promoted": false
+    },
+    "4973": {
+      "player_id": 4973,
+      "name": "McKennie",
+      "team": "Juventus",
+      "status": "doubt",
+      "availability": 0.4,
+      "starter": 0.5,
+      "impact_percent": -3.0,
+      "multiplier": 0.97,
+      "confidence": 0.9,
+      "headline": "McKennie: indisponibilità da valutare nell'asta",
+      "summary": "il centrocampista dal 27 agosto alle prese con un affaticamento muscolare alla gamba. Assente contro Parma e Milan, da valutare in vista della 4a giornata di campionato.",
+      "sources": [
+        "https://www.fantacalcio.it/serie-a/indisponibili"
+      ],
+      "promoted": false
+    },
+    "5520": {
+      "player_id": 5520,
+      "name": "Cambiaso",
+      "team": "Juventus",
+      "status": "doubt",
+      "availability": 0.4,
+      "starter": 0.5,
+      "impact_percent": -3.0,
+      "multiplier": 0.97,
+      "confidence": 0.9,
+      "headline": "Cambiaso: indisponibilità da valutare nell'asta",
+      "summary": "il difensore alle prese con un fastidio alla caviglia e out nel prossimo turno di campionato domenica contro il Milan. Da valutare in vista della 4a giornata.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
@@ -441,7 +492,7 @@
       "multiplier": 0.9,
       "confidence": 0.9,
       "headline": "McTominay: indisponibilità da valutare nell'asta",
-      "summary": "Il centrocampista l'1 settembre a causa di una lieve aritmia benigna ha deciso di sottoporsi a un intervento di correzione tramite ablazione. Rientro in campo da inizio ottobre.",
+      "summary": "Il centrocampista l'1 settembre a causa di una lieve aritmia benigna ha deciso di sottoporsi a un intervento di correzione tramite ablazione. Rientro in campo da metà ottobre.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
@@ -493,6 +544,40 @@
       "confidence": 0.9,
       "headline": "Nicolussi Caviglia: indisponibilità da valutare nell'asta",
       "summary": "il centrocampista alle prese dalla seconda metà di luglio con una lesione di medio grado alla coscia destra, ma a fine agosto ha deciso, assieme allo staff medico ducale, di operarsi. Lungo stop e ipotesi di ritorno in campo da novembre.",
+      "sources": [
+        "https://www.fantacalcio.it/serie-a/indisponibili"
+      ],
+      "promoted": false
+    },
+    "6666": {
+      "player_id": 6666,
+      "name": "Bernabè",
+      "team": "Parma",
+      "status": "doubt",
+      "availability": 0.4,
+      "starter": 0.5,
+      "impact_percent": -3.0,
+      "multiplier": 0.97,
+      "confidence": 0.9,
+      "headline": "Bernabè: indisponibilità da valutare nell'asta",
+      "summary": "Il centrocampista ha lamentato nella rifinitura un problema fisico e non è stato convocato per domenica contro il Monza. Da valutare in vista della 4a giornata di campionato.",
+      "sources": [
+        "https://www.fantacalcio.it/serie-a/indisponibili"
+      ],
+      "promoted": false
+    },
+    "7536": {
+      "player_id": 7536,
+      "name": "Diallo O.",
+      "team": "Parma",
+      "status": "doubt",
+      "availability": 0.4,
+      "starter": 0.5,
+      "impact_percent": -3.0,
+      "multiplier": 0.97,
+      "confidence": 0.9,
+      "headline": "Diallo O.: indisponibilità da valutare nell'asta",
+      "summary": "Il calciatore non al meglio per noie fisiche, forfait domenica contro il Monza. Da valutare in vista della 4a giornata.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
@@ -594,7 +679,7 @@
       "multiplier": 0.97,
       "confidence": 0.9,
       "headline": "Casadei: indisponibilità da valutare nell'asta",
-      "summary": "Il centrocampista fuori causa sabato scorso contro il Sassuolo a causa di un affaticamento muscolare alla gamba che andrà valutato, a rischio la sua convocazione anche per sabato a Firenze nella 3a di campionato.",
+      "summary": "Il centrocampista fuori causa contro Fiorentina e Sassuolo a causa di un affaticamento muscolare, da valutare in vista della 4a di campionato.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
@@ -668,23 +753,6 @@
       ],
       "promoted": false
     },
-    "6890": {
-      "player_id": 6890,
-      "name": "Moreno M.",
-      "team": "Venezia",
-      "status": "doubt",
-      "availability": 0.4,
-      "starter": 0.5,
-      "impact_percent": -3.0,
-      "multiplier": 0.97,
-      "confidence": 0.9,
-      "headline": "Moreno M.: indisponibilità da valutare nell'asta",
-      "summary": "Il difensore non al meglio per noie fisiche, forfait contro Lecce e Milan. Punta a tornare arruolabile dall'inizio di settembre, da valutare convocazione per Frosinone.",
-      "sources": [
-        "https://www.fantacalcio.it/serie-a/indisponibili"
-      ],
-      "promoted": false
-    },
     "6673": {
       "player_id": 6673,
       "name": "Sverko",
@@ -713,7 +781,7 @@
       "multiplier": 0.97,
       "confidence": 0.9,
       "headline": "Franjic: indisponibilità da valutare nell'asta",
-      "summary": "il difensore costretto al cambio a Milano contro i rossoneri per un guaio fisico che andrà valutato. Forfait per domenica a Frosinone.",
+      "summary": "il difensore costretto al cambio a Milano contro i rossoneri a fine agosto per un guaio alla spalla che andrà valutato. Forfait certo per domenica a Frosinone.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
