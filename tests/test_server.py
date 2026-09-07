@@ -132,6 +132,7 @@ class LocalApiServerTests(unittest.TestCase):
         self.assertEqual(unauthorized.status, 401)
         self.assertEqual(page.status, 200)
         self.assertEqual(page_payload, "<h1>Fishertiger</h1>")
+        self.assertEqual(page.getheader("Cache-Control"), "no-cache")
         self.assertEqual(asset.status, 200)
         self.assertEqual(asset_payload, "console.log('ready')")
 

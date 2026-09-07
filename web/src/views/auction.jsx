@@ -4,20 +4,15 @@ import {
   draftForQuery,
   draftPlayer,
   legalMaxBid,
-  nearestAuctionPrice,
   playerIdKey,
   reconcileAuctionDraft,
   slotsLeft,
 } from "../auction-state.js";
 import { normalizeRules } from "../league-rules.js";
 import {
-  assignPlayer,
   defaultUserTeamIndex as configuredUserTeamIndex,
-  redoAssignment,
   renameTeam,
-  resetAuction,
   setStartingCredits,
-  undoAssignment,
   writeUserTeamIndex,
 } from "../auction-store.js";
 import { useAuctionBoard } from "../use-auction-store.js";
@@ -25,11 +20,12 @@ import { useAdvisor } from "../use-advisor.js";
 import {
   AdviceDetail,
   BidGauge,
-  PriceStepper,
+  QuickAlternatives,
   bidVerdict,
 } from "../auction-advice.jsx";
 import {
   ClubCrest,
+  PlayerAuctionSnapshot,
   PlayerPortrait,
   PlayerSignals,
   ScoutAiCard,
@@ -61,8 +57,8 @@ export default function AuctionView({
   profileId,
   draft,
   setDraft,
-  liveOwnerIndex = null,
-  readOnly = false,
+  readOnly = true,
+  liveMode = false,
 }) {
   const activeRules = normalizeRules(
     rules ?? data.league_rules ?? { startingCredits: 750 },
@@ -87,7 +83,6 @@ export default function AuctionView({
       ...current,
       playerId: candidate ? candidate.id : null,
     }));
-  const [owner, setOwner] = useState(userTeamIndex);
   const [message, setMessage] = useState(null);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
@@ -98,7 +93,6 @@ export default function AuctionView({
   const [openTeams, setOpenTeams] = useState({});
   const toggleTeamOpen = (index, isOpen) =>
     setOpenTeams((current) => ({ ...current, [index]: isOpen }));
-  const priceTouched = useRef(false);
   const resetSignature = `${storageKey}|${rulesSignature}|${defaultUserTeamIndex}`;
   const lastResetSignature = useRef(resetSignature);
   const lastConfiguredUserTeam = useRef({
@@ -117,7 +111,6 @@ export default function AuctionView({
       index: defaultUserTeamIndex,
     };
     if (configuredChanged) writeUserTeamIndex(activeProfileId, defaultUserTeamIndex);
-    setOwner(configuredChanged ? defaultUserTeamIndex : userTeamIndex);
     if (lastResetSignature.current !== resetSignature) {
       setPlayer(null);
       setQuery("");
@@ -126,20 +119,6 @@ export default function AuctionView({
     }
     lastResetSignature.current = resetSignature;
   }, [storageKey, rulesSignature, defaultUserTeamIndex]);
-
-  useEffect(() => setOwner(userTeamIndex), [userTeamIndex]);
-
-  // In the FantaLab view the buyer selector is not a personal preference: it
-  // must follow the team currently leading the external lot. Previously it
-  // stayed on `userTeamIndex`, which made every rival bid look like our own.
-  useEffect(() => {
-    if (
-      Number.isInteger(liveOwnerIndex) &&
-      liveOwnerIndex >= 0 &&
-      liveOwnerIndex < board.teams.length
-    )
-      setOwner(liveOwnerIndex);
-  }, [liveOwnerIndex, board.teams.length]);
 
   useEffect(() => {
     setDraft((current) => reconcileAuctionDraft(current, data.players, board));
@@ -182,21 +161,6 @@ export default function AuctionView({
       .slice(0, 8);
   }, [data.players, board.assigned, activeRole, query]);
 
-  /* The price box opens on the estimated market price so the common case needs
-     no typing; the moment the user edits it we stop overwriting their number. */
-  useEffect(() => {
-    if (!player || !advice || priceTouched.current) return;
-    const estimate = Number(advice.summary?.estimatedMarketPrice);
-    if (!Number.isFinite(estimate) || estimate < activeRules.auction.minPrice)
-      return;
-    const suggested = nearestAuctionPrice(
-      estimate,
-      myMax,
-      activeRules,
-    );
-    if (suggested != null) setPrice(String(suggested));
-  }, [player, advice, myMax, rulesSignature]);
-
   const say = (text, tone = "info") => setMessage({ text, tone });
 
   /** Every store answer reaches the user: a refused write is not a silent one. */
@@ -211,7 +175,6 @@ export default function AuctionView({
     setPlayer(null);
     setQuery("");
     setPrice("");
-    priceTouched.current = false;
     setSuggestionsOpen(false);
   };
 
@@ -223,39 +186,11 @@ export default function AuctionView({
       );
       return;
     }
-    priceTouched.current = false;
     setPlayer(candidate);
     setQuery(candidate.nome);
     setPrice("");
     setSuggestionsOpen(false);
     setMessage(null);
-  };
-
-  const assign = () => {
-    if (!player) return;
-    const result = assignPlayer(activeProfileId, data.players, activeRules, {
-      playerId: player.id,
-      owner,
-      price: Number(price),
-    });
-    if (report(result)) resetSelection();
-  };
-
-  const undo = () =>
-    report(undoAssignment(activeProfileId, data.players, activeRules), "info");
-
-  const redo = () =>
-    report(redoAssignment(activeProfileId, data.players, activeRules));
-
-  const flushAuction = () => {
-    if (
-      !window.confirm(
-        "Vuoi cancellare tutta l'asta salvata? L'operazione non può essere annullata.",
-      )
-    )
-      return;
-    if (report(resetAuction(activeProfileId, data.players, activeRules)))
-      resetSelection();
   };
 
   const updateStartingCredits = (teamIndex, value) => {
@@ -278,7 +213,6 @@ export default function AuctionView({
     );
 
   const chooseUserTeam = (index) => {
-    setOwner(index);
     report(writeUserTeamIndex(activeProfileId, index));
   };
 
@@ -344,8 +278,6 @@ export default function AuctionView({
                 value={query}
                 onChange={(event) => {
                   const nextQuery = event.target.value;
-                  if (player && nextQuery !== player.nome)
-                    priceTouched.current = false;
                   setDraft((current) =>
                     draftForQuery(current, data.players, nextQuery),
                   );
@@ -411,19 +343,10 @@ export default function AuctionView({
               price={price}
               rules={activeRules}
               legalMax={myMax}
-              teams={board.teams}
-              owner={owner}
-              userTeamIndex={userTeamIndex}
-              onOwner={setOwner}
-              onPrice={(value) => {
-                priceTouched.current = true;
-                setPrice(value);
-              }}
-              onAssign={assign}
               onCancel={resetSelection}
               onOpenPlayer={() => openPlayer(player)}
               setPieces={setPiecesForPlayer(data.set_pieces, player.id)}
-              readOnly={readOnly}
+              liveMode={liveMode}
             />
           ) : (
             <div className="card">
@@ -444,26 +367,6 @@ export default function AuctionView({
               </span>
             ) : (
               <span>Nessuna assegnazione registrata.</span>
-            )}
-            {readOnly ? null : (
-              <>
-                <button
-                  type="button"
-                  className="btn btn--sm"
-                  onClick={undo}
-                  disabled={!board.history.length}
-                >
-                  Annulla
-                </button>
-                <button
-                  type="button"
-                  className="btn btn--sm"
-                  onClick={redo}
-                  disabled={!board.undone.length}
-                >
-                  Ripristina
-                </button>
-              </>
             )}
           </div>
         </div>
@@ -508,15 +411,6 @@ export default function AuctionView({
             </div>
           </section>
 
-          {readOnly ? null : (
-            <button
-              type="button"
-              className="btn btn--danger"
-              onClick={flushAuction}
-            >
-              Azzera l&apos;asta salvata
-            </button>
-          )}
         </aside>
       </div>
     </div>
@@ -599,16 +493,10 @@ function VerdictCard({
   price,
   rules,
   legalMax,
-  teams,
-  owner,
-  userTeamIndex,
-  onOwner,
-  onPrice,
-  onAssign,
   onCancel,
   onOpenPlayer,
   setPieces,
-  readOnly = false,
+  liveMode = false,
 }) {
   /* The headline answers the question actually being asked at the table — "at
      this price, yes or no?" — so it follows the live number, not the static
@@ -619,8 +507,6 @@ function VerdictCard({
     rules,
     legalMax,
   });
-
-  const forOther = !readOnly && owner !== userTeamIndex;
 
   return (
     <section
@@ -652,16 +538,17 @@ function VerdictCard({
         <strong className="verdict-word">{headline}</strong>
         <span className="verdict-sub">
           {advice
-            ? `Utilità: ${purpose} · prezzo: ${recommendation} · confidenza ${Math.round(advice.confidence * 100)}% · ${advice.utility}`
+            ? `Utilità: ${purpose} · prezzo: ${recommendation} · confidenza ${Math.round(advice.confidence * 100)}%${advice.summary?.marketSampleSize != null ? ` · mercato ${advice.summary.marketSampleSize} prezzi (${String(advice.summary.marketReliability).toLowerCase()})` : ""} · ${advice.utility}`
             : "Sto valutando la rosa e il mercato."}
         </span>
       </div>
 
       {advice ? (
         <div className="price-summary" aria-label="Valutazione economica">
+          {liveMode ? <span className="price-summary__live"><small>Prezzo FantaLab ora</small><b>{price || "—"}</b></span> : null}
           <span><small>Prezzo medio stimato</small><b>{advice.summary?.estimatedMarketPrice}</b></span>
           <span><small>Fascia consigliata</small><b>{advice.idealMin}–{advice.idealMax}</b></span>
-          <span><small>Non superare</small><b>{advice.maxBid}</b></span>
+          <span><small>Non superare</small><b>{advice.maxBid || "—"}</b></span>
         </div>
       ) : null}
 
@@ -669,52 +556,13 @@ function VerdictCard({
 
       <PlayerSignals player={player} setPieces={setPieces} compact showScout={false} />
 
-      <div className="bidbar">
-        <PriceStepper
-          price={price}
-          rules={rules}
-          legalMax={legalMax}
-          onPrice={onPrice}
-          onSubmit={readOnly ? undefined : onAssign}
-        />
+      {liveMode ? <PlayerAuctionSnapshot player={player} /> : null}
 
-        {readOnly ? null : (
-          <div className="assign-row">
-            <select
-              className="select"
-              value={owner}
-              onChange={(event) => onOwner(Number(event.target.value))}
-              aria-label="Squadra acquirente"
-            >
-              {teams.map((team, index) => (
-                <option value={index} key={index}>
-                  {index === userTeamIndex ? "→ " : ""}
-                  {team.name} · {team.credits} cr.
-                </option>
-              ))}
-            </select>
-            {/* Recording a purchase is neutral: green here would read as approval
-                of the price, which is exactly what the gauge is for. */}
-            <button type="button" className="btn btn--primary" onClick={onAssign}>
-              Assegna
-            </button>
-          </div>
-        )}
+      <QuickAlternatives advice={advice} />
 
-        <div className="bid-foot">
-          <span className="micro">
-            {forOther
-              ? "Stai registrando l'acquisto di un'altra squadra: il consiglio resta calcolato sulla tua."
-              : `Massimo consentito dalle regole: ${legalMax} crediti.`}
-          </span>
-          <button
-            type="button"
-            className="btn btn--ghost btn--sm"
-            onClick={onCancel}
-          >
-            Annulla
-          </button>
-        </div>
+      <div className="readonly-auction-note">
+        <span><b>Sola lettura</b> · {liveMode ? "Prezzo e assegnazioni arrivano da FantaLab. Da AstaFanta non si può puntare." : "Questa schermata serve solo per analizzare il giocatore. Le offerte si fanno esclusivamente su FantaLab."}</span>
+        <button type="button" className="btn btn--ghost btn--sm" onClick={onCancel}>Chiudi</button>
       </div>
 
       <AdviceDetail advice={advice} />
@@ -772,8 +620,9 @@ function RosePlan({ overview }) {
         })}
       </div>
       <p className="micro" style={{ marginTop: "var(--s-3)" }}>
-        Mercato rilevato {overview.summary.marketInflation.toFixed(2)}× rispetto
-        ai valori base. Il piano si aggiorna dopo ogni assegnazione.
+        Mercato rilevato {overview.summary.marketInflation.toFixed(2)}× su {overview.summary.marketSampleSize ?? 0} acquisti
+        {" · "}affidabilità {String(overview.summary.marketReliability || "limitata").toLowerCase()}.
+        Il piano si aggiorna dopo ogni assegnazione.
       </p>
     </section>
   );

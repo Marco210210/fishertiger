@@ -93,7 +93,7 @@ test("league demand cutoff replaces the best-player benchmark", () => {
   assert.ok(result.maxBid > 0);
 });
 
-test("a dominated minimum-value player is never recommended", () => {
+test("a dominated minimum-value player remains only a one-credit fallback", () => {
   const candidate = player("P", 1, {
     nome: "Non classificato",
     fvm_original: 1,
@@ -127,17 +127,18 @@ test("a dominated minimum-value player is never recommended", () => {
 
   assert.equal(result.summary.estimatedMarketPrice, 1);
   assert.equal(result.summary.marginalValue, -99);
-  assert.equal(result.maxBid, 0);
-  assert.equal(result.idealMin, 0);
-  assert.equal(result.idealMax, 0);
-  assert.equal(result.recommendation, "PASS");
+  assert.equal(result.maxBid, 1);
+  assert.equal(result.idealMin, 1);
+  assert.equal(result.idealMax, 1);
+  assert.equal(result.recommendation, "VALUE_ONLY");
+  assert.equal(result.summary.flexibleFallback, true);
   assert.ok(
     result.summary.completionValueAtMaxBid <
       result.summary.baselineCompletionValue,
   );
 });
 
-test("an infeasible baseline does not rescue a negative-margin player", () => {
+test("an infeasible ideal plan still offers a conservative legal fallback", () => {
   const candidate = player("P", 1, { fvm_scaled: 0.75 });
   const unaffordableAlternative = player("P", 100, { fvm_scaled: 75 });
   const teams = [{ name: "Mine", credits: 100, roster: [] }];
@@ -161,8 +162,8 @@ test("an infeasible baseline does not rescue a negative-margin player", () => {
 
   assert.equal(result.summary.baselineCompletionValue, null);
   assert.equal(result.summary.marginalValue, -99);
-  assert.equal(result.maxBid, 0);
-  assert.equal(result.recommendation, "PASS");
+  assert.equal(result.maxBid, 1);
+  assert.equal(result.recommendation, "VALUE_ONLY");
 });
 
 test("reservation price stays anchored to market instead of consuming all credits", () => {
@@ -202,6 +203,27 @@ test("confidence is capped when no auction prices have been observed", () => {
   );
 
   assert.ok(result.confidence <= 0.58);
+});
+
+test("market history becomes reliable and removes the limited-history warning", () => {
+  const candidate = player("A", 10, { fvm_scaled: 12 });
+  const alternative = player("A", 8, { fvm_scaled: 9 });
+  const sold = Array.from({ length: 12 }, (_, index) =>
+    player(index % 2 ? "A" : "C", 7 + index / 10, { fvm_scaled: 8 + index }),
+  );
+  const teams = [team("Mine", 200, { A: 1 }), team("Rival", 200, { A: 1 })];
+  const result = evaluateAuction({
+    ...payloadFor({ candidate, teams, remaining: [candidate, alternative] }),
+    history: sold.map((item, index) => ({
+      player: item,
+      owner: index % teams.length,
+      price: 10 + index,
+    })),
+  });
+
+  assert.equal(result.summary.marketSampleSize, 12);
+  assert.equal(result.summary.marketReliability, "ALTA");
+  assert.equal(result.risks.some((risk) => risk.includes("acquisti osservati")), false);
 });
 
 test("legal max preserves one credit for every slot remaining after purchase", () => {

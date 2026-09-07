@@ -306,11 +306,146 @@
 }
 
 .verdict > .price-summary {
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
   padding: 0 var(--s-4) var(--s-3);
 }
 
 .verdict > .player-signals {
   padding: var(--s-2) var(--s-4) var(--s-4);
+}
+
+.price-summary__live {
+  border-color: var(--c-brand-line) !important;
+  background: var(--c-brand-tint) !important;
+}
+
+.price-summary__live b {
+  color: var(--c-brand-bright);
+}
+
+.auction-player-snapshot {
+  display: grid;
+  gap: var(--s-3);
+  margin: 0 var(--s-4) var(--s-4);
+  padding: var(--s-3);
+  border: 1px solid var(--c-line-soft);
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+}
+
+.auction-player-snapshot__status {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-2);
+}
+
+.auction-player-snapshot__status > span {
+  display: grid;
+  gap: 2px;
+}
+
+.auction-player-snapshot small,
+.auction-history__head {
+  color: var(--c-text-mute);
+  font-size: var(--fs-2xs);
+}
+
+.auction-player-snapshot__status b {
+  font-size: var(--fs-sm);
+}
+
+.auction-history {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--c-line-soft);
+  border-radius: var(--r-sm);
+}
+
+.auction-history__head,
+.auction-history__row {
+  padding: var(--s-2) var(--s-3);
+}
+
+.auction-history__row {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, .9fr) repeat(4, minmax(3.6rem, 1fr));
+  gap: var(--s-2);
+  align-items: center;
+  background: var(--c-surface);
+}
+
+.auction-history__row b {
+  font-family: var(--font-num);
+  font-size: var(--fs-xs);
+}
+
+.quick-alternatives {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0 var(--s-4) var(--s-4);
+  padding: var(--s-3);
+  border-left: 3px solid var(--c-brand);
+  border-radius: var(--r-sm);
+  background: var(--c-surface-2);
+}
+
+.quick-alternatives > strong {
+  font-size: var(--fs-xs);
+}
+
+.quick-alternatives > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-2);
+}
+
+.quick-alternatives span {
+  display: grid;
+  min-width: 0;
+}
+
+.quick-alternatives b {
+  overflow: hidden;
+  font-size: var(--fs-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-alternatives small {
+  color: var(--c-text-mute);
+  font-size: var(--fs-2xs);
+}
+
+.readonly-auction-note {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin: 0 var(--s-4) var(--s-4);
+  padding: var(--s-3);
+  border: 1px solid var(--c-line-soft);
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  color: var(--c-text-dim);
+  font-size: var(--fs-xs);
+}
+
+.readonly-auction-note > span {
+  flex: 1;
+}
+
+@media (max-width: 620px) {
+  .auction-history__row {
+    grid-template-columns: minmax(4.5rem, 1fr) repeat(2, minmax(3.5rem, .7fr));
+  }
+
+  .auction-history__row small:nth-last-child(-n + 2) {
+    display: none;
+  }
+
+  .quick-alternatives > div {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* --------------------------------------------------------------- bid gauge */
@@ -431,82 +566,6 @@
 
 .gauge-legend .k-market {
   background: var(--c-text-mute);
-}
-
-/* -------------------------------------------------------------- bid controls */
-
-.bidbar {
-  display: grid;
-  gap: var(--s-2);
-  padding: 0 var(--s-4) var(--s-4);
-}
-
-.stepper {
-  display: grid;
-  grid-template-columns: var(--tap) var(--tap) minmax(0, 1fr) var(--tap) var(--tap);
-  gap: var(--s-2);
-  align-items: center;
-}
-
-.stepper button {
-  display: grid;
-  place-items: center;
-  height: var(--tap);
-  border: 1px solid var(--c-line);
-  border-radius: var(--r-md);
-  background: var(--c-raised);
-  font-family: var(--font-num);
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--c-text-dim);
-}
-
-.stepper button:hover:not(:disabled) {
-  background: var(--c-hover);
-  color: var(--c-text);
-}
-
-.stepper button:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.stepper .input {
-  height: var(--tap);
-  font-family: var(--font-num);
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  text-align: center;
-  appearance: textfield;
-}
-
-.stepper .input::-webkit-outer-spin-button,
-.stepper .input::-webkit-inner-spin-button {
-  appearance: none;
-  margin: 0;
-}
-
-.assign-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--s-2);
-}
-
-@media (min-width: 560px) {
-  .assign-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-}
-
-.bid-foot {
-  display: flex;
-  align-items: center;
-  gap: var(--s-3);
-}
-
-.bid-foot .micro {
-  flex: 1;
-  min-width: 0;
 }
 
 .verdict .verdict-more {

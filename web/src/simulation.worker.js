@@ -98,7 +98,25 @@ const marketModel = (data, teams, rules, baseValueFor) => {
       return [role, shrunk];
     }),
   );
-  return { records, inflation, roleInflation, budgetScale };
+  const roleSamples = Object.fromEntries(
+    Object.keys(rules.rosterSlots).map((role) => [
+      role,
+      records.filter((record) => record.player?.ruolo === role).length,
+    ]),
+  );
+  const reliability = records.length >= 12
+    ? "ALTA"
+    : records.length >= 5
+      ? "MEDIA"
+      : "LIMITATA";
+  return {
+    records,
+    inflation,
+    roleInflation,
+    roleSamples,
+    reliability,
+    budgetScale,
+  };
 };
 
 const scarcityModel = (pool, teams, rules) =>
@@ -452,6 +470,8 @@ export const evaluateOverview = (data = {}) => {
       reservedCredits,
       spendableCredits,
       marketInflation: Number(market.inflation.toFixed(3)),
+      marketSampleSize: market.records.length,
+      marketReliability: market.reliability,
       slotsOpen,
       deterministic: true,
     },
@@ -617,7 +637,8 @@ export const evaluateAuction = (data = {}) => {
       ...baseline.picks[credits],
     ]).utility - ownedUtility
     : EMPTY;
-  let maxBid = 0;
+  let strictMaxBid = 0;
+  let feasibleMaxBid = 0;
   for (
     let bid = rules.auction.minPrice;
     bid <= Math.min(legalMax, valueCap, roleBidCap);
@@ -633,13 +654,31 @@ export const evaluateAuction = (data = {}) => {
       : EMPTY;
     if (
       candidateValue > 1e-9 &&
-      marginalValue >= 0 &&
-      completionFeasible &&
-      (!baselineFeasible || completionValue >= baselineValue)
+      completionFeasible
     ) {
-      maxBid = bid;
+      feasibleMaxBid = bid;
+      if (
+        marginalValue >= 0 &&
+        (!baselineFeasible || completionValue >= baselineValue)
+      )
+        strictMaxBid = bid;
     }
   }
+
+  /* The optimal completion is a benchmark, not a single squad the manager is
+     forced to reproduce. A weaker candidate that still allows a legal squad
+     gets a conservative fallback ceiling, so missing one target does not make
+     every later alternative look impossible. */
+  const fallbackCap =
+    auctionPriceAtOrBelow(
+      Math.min(
+        feasibleMaxBid,
+        Math.max(rules.auction.minPrice, rounded(candidateCost * 0.72)),
+      ),
+      rules,
+    ) ?? 0;
+  const maxBid = strictMaxBid || fallbackCap;
+  const flexibleFallback = strictMaxBid < rules.auction.minPrice && maxBid > 0;
 
   const idealMax =
     auctionPriceAtOrBelow(
@@ -662,6 +701,8 @@ export const evaluateAuction = (data = {}) => {
   const recommendation =
     maxBid < 1
       ? "PASS"
+      : flexibleFallback
+        ? "VALUE_ONLY"
       : maxBid >= candidateCost * 1.2
         ? "STRONG_BUY"
         : maxBid >= candidateCost * 0.9
@@ -711,7 +752,6 @@ export const evaluateAuction = (data = {}) => {
     );
   }
   const risks = [];
-  valuation.outliersFor(player).forEach((outlier) => risks.push(outlier.label));
   if (!baselineFeasible)
     risks.push(
       "Senza comprare questo giocatore, secondo la stima non basterebbero i giocatori rimasti sul mercato per completare la rosa.",
@@ -722,7 +762,11 @@ export const evaluateAuction = (data = {}) => {
     );
   if (market.records.length < 5)
     risks.push(
-      "Pochi acquisti osservati finora in questa asta: la stima di quanto si sta pagando in più o in meno rispetto ai valori base è ancora poco affidabile.",
+      `Solo ${market.records.length} acquisti osservati finora: dopo il quinto prezzo la stima del mercato inizia a pesare davvero sui consigli.`,
+    );
+  if (flexibleFallback)
+    risks.push(
+      "È una scelta di ripiego, non il giocatore del piano ideale: il limite indicato è volutamente prudente e la rosa verrà ricalcolata dopo ogni acquisto.",
     );
   if (!classified)
     risks.push(
@@ -736,11 +780,6 @@ export const evaluateAuction = (data = {}) => {
     risks.push(
       `Il prezzo che si sta pagando in questa lega (${candidateCost}) è più alto di quanto valga per te (${maxBid}).`,
     );
-  if (opponents.maxBudget > legalMax)
-    risks.push(
-      "Almeno una squadra rivale può legalmente rilanciare più di quanto tu possa offrire.",
-    );
-
   const rolePlan = Object.fromEntries(
     roles.map((role) => {
       const available = pool.filter((item) => item.ruolo === role);
@@ -781,13 +820,14 @@ export const evaluateAuction = (data = {}) => {
     simulations: 0,
     reasons,
     risks,
-    alternatives: roleAlternatives.slice(0, 3).map((item) => ({
+    alternatives: roleAlternatives.slice(0, 6).map((item) => ({
       id: item.player.id,
       name: item.player.nome,
       role: item.player.ruolo,
       projectedValue: rounded(item.value),
       estimatedCost: item.estimatedCost,
       valueGap: rounded(candidateValue - item.value),
+      availability: item.player?.disponibilita?.status || "NON_CLASSIFICATO",
     })),
     rolePlan,
     summary: {
@@ -833,10 +873,14 @@ export const evaluateAuction = (data = {}) => {
         ) ?? rules.auction.minPrice,
       marketInflation: Number(market.inflation.toFixed(3)),
       roleInflation: Number(market.roleInflation[player.ruolo].toFixed(3)),
+      marketSampleSize: market.records.length,
+      marketRoleSampleSize: market.roleSamples[player.ruolo] || 0,
+      marketReliability: market.reliability,
       roleScarcity: Number(scarcityInfo.ratio.toFixed(3)),
       opponentDemand: opponents.needing,
       opponentAffordable: opponents.affordable,
       purpose: maxBid > 0 ? candidateUtility.purpose : "NO_FIT",
+      flexibleFallback,
       upsideGain: Number(candidateUtility.upsideGain.toFixed(2)),
       goalkeeper: candidateUtility.goalkeeper,
       deterministic: true,

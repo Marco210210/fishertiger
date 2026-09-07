@@ -1713,7 +1713,12 @@ class LocalApiHandler(BaseHTTPRequestHandler):
         content_type = mimetypes.guess_type(candidate.name)[0] or "application/octet-stream"
         if content_type.startswith("text/") or content_type in {"application/javascript", "application/json"}:
             content_type += "; charset=utf-8"
-        self._send_bytes(HTTPStatus.OK, body, content_type)
+        self._send_bytes(
+            HTTPStatus.OK,
+            body,
+            content_type,
+            cache_control="no-cache" if candidate.name == "index.html" else None,
+        )
 
     def _error(self, status: HTTPStatus, code: str, message: str) -> None:
         self._send_json(status, {"error": {"code": code, "message": message}})
@@ -1722,7 +1727,14 @@ class LocalApiHandler(BaseHTTPRequestHandler):
         body = b"" if value is None else json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode("utf-8")
         self._send_bytes(status, body, "application/json; charset=utf-8")
 
-    def _send_bytes(self, status: HTTPStatus, body: bytes, content_type: str, filename: str | None = None) -> None:
+    def _send_bytes(
+        self,
+        status: HTTPStatus,
+        body: bytes,
+        content_type: str,
+        filename: str | None = None,
+        cache_control: str | None = None,
+    ) -> None:
         self.send_response(status)
         origin = self.headers.get("Origin")
         if origin and VITE_ORIGIN.fullmatch(origin):
@@ -1733,6 +1745,8 @@ class LocalApiHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", content_type)
         if filename:
             self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+        if cache_control:
+            self.send_header("Cache-Control", cache_control)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         if body:

@@ -1,12 +1,11 @@
-import { nearestAuctionPrice } from "./auction-state.js";
 import { Disclosure, RoleChip } from "./ui.jsx";
 
 export const RECOMMENDATION_LABELS = {
   STRONG_BUY: "Ottimo prezzo",
   BID: "Prezzo corretto",
   VALUE_ONLY: "Solo al prezzo giusto",
-  PASS: "Lascia andare",
-  INELIGIBLE: "Non acquistabile",
+  PASS: "Passa a questo prezzo",
+  INELIGIBLE: "Acquisto impossibile",
 };
 
 export const PURPOSE_LABELS = {
@@ -27,8 +26,6 @@ export const RECOMMENDATION_TONE = {
   INELIGIBLE: "stop",
 };
 
-export const BID_STEPS = [-5, -1, 1, 5];
-
 const clampPercent = (value) => Math.max(0, Math.min(100, value));
 
 export const recommendationLabel = (advice) =>
@@ -42,6 +39,7 @@ export const bidVerdict = ({ advice, price, rules, legalMax }) => {
   const hasPrice = Number.isFinite(value) && value > 0;
   const maxBid = Number(advice?.maxBid ?? 0);
   const idealMax = Number(advice?.idealMax ?? 0);
+  const hardBlocked = advice?.recommendation === "INELIGIBLE";
   const unaffordable = maxBid < rules.auction.minPrice;
   const priceTone = unaffordable
     ? "stop"
@@ -65,8 +63,10 @@ export const bidVerdict = ({ advice, price, rules, legalMax }) => {
         : RECOMMENDATION_TONE[advice.recommendation] || null,
     headline: !advice
       ? "Calcolo…"
-      : unaffordable
+      : hardBlocked
         ? "Non acquistabile"
+        : unaffordable
+          ? "Passa ora"
         : !hasPrice
           ? purpose
           : value > legalMax
@@ -82,7 +82,7 @@ export const bidVerdict = ({ advice, price, rules, legalMax }) => {
 export function BidGauge({ advice, price, rules, legalMax }) {
   const { value, hasPrice } = bidVerdict({ advice, price, rules, legalMax });
   const maxBid = Number(advice?.maxBid ?? 0);
-  if (!advice || maxBid < rules.auction.minPrice) return null;
+  if (!advice) return null;
   const market = Number(advice.summary?.estimatedMarketPrice);
   const idealMin = Number(advice.idealMin ?? 0);
   const idealMax = Number(advice.idealMax ?? 0);
@@ -113,10 +113,12 @@ export function BidGauge({ advice, price, rules, legalMax }) {
             style={{ "--at": `${pct(market)}%` }}
           />
         ) : null}
-        <span
-          className="gauge-mark gauge-mark--cap"
-          style={{ "--at": `${pct(maxBid)}%` }}
-        />
+        {maxBid >= rules.auction.minPrice ? (
+          <span
+            className="gauge-mark gauge-mark--cap"
+            style={{ "--at": `${pct(maxBid)}%` }}
+          />
+        ) : null}
         {hasPrice ? (
           <span className="gauge-thumb" style={{ "--now": `${pct(value)}%` }}>
             {value}
@@ -124,17 +126,18 @@ export function BidGauge({ advice, price, rules, legalMax }) {
         ) : null}
       </div>
       <div className="gauge-legend">
-        <span>
-          <i className="k-band" />
-          ideale{" "}
-          <b>
-            {idealMin}–{idealMax}
-          </b>
-        </span>
-        <span>
-          <i className="k-cap" />
-          non superare <b>{maxBid}</b>
-        </span>
+        {idealMax >= rules.auction.minPrice ? (
+          <span>
+            <i className="k-band" />
+            ideale <b>{idealMin}–{idealMax}</b>
+          </span>
+        ) : null}
+        {maxBid >= rules.auction.minPrice ? (
+          <span>
+            <i className="k-cap" />
+            non superare <b>{maxBid}</b>
+          </span>
+        ) : null}
         {Number.isFinite(market) ? (
           <span>
             <i className="k-market" />
@@ -146,61 +149,20 @@ export function BidGauge({ advice, price, rules, legalMax }) {
   );
 }
 
-export function PriceStepper({
-  price,
-  rules,
-  legalMax,
-  onPrice,
-  onSubmit,
-  inputRef,
-}) {
-  const bump = (steps) => {
-    const current = nearestAuctionPrice(price, legalMax, rules);
-    if (current == null) return;
-    const next = nearestAuctionPrice(
-      current + steps * rules.auction.increment,
-      legalMax,
-      rules,
-    );
-    if (next != null) onPrice(String(next));
-  };
-
+export function QuickAlternatives({ advice, limit = 3 }) {
+  const alternatives = advice?.alternatives?.slice(0, limit) || [];
+  if (!alternatives.length) return null;
   return (
-    <div className="stepper">
-      {BID_STEPS.slice(0, 2).map((step) => (
-        <button
-          key={step}
-          type="button"
-          onClick={() => bump(step)}
-          aria-label={`Riduci di ${Math.abs(step * rules.auction.increment)}`}
-        >
-          {step * rules.auction.increment}
-        </button>
-      ))}
-      <input
-        ref={inputRef}
-        className="input"
-        type="number"
-        inputMode="numeric"
-        min={rules.auction.minPrice}
-        max={legalMax}
-        step={rules.auction.increment}
-        value={price}
-        onChange={(event) => onPrice(event.target.value)}
-        onKeyDown={(event) => event.key === "Enter" && onSubmit?.()}
-        placeholder="Prezzo"
-        aria-label="Prezzo di acquisto in crediti"
-      />
-      {BID_STEPS.slice(2).map((step) => (
-        <button
-          key={step}
-          type="button"
-          onClick={() => bump(step)}
-          aria-label={`Aumenta di ${step * rules.auction.increment}`}
-        >
-          +{step * rules.auction.increment}
-        </button>
-      ))}
+    <div className="quick-alternatives" aria-label="Alternative ancora disponibili">
+      <strong>Se passa, guarda subito</strong>
+      <div>
+        {alternatives.map((alternative) => (
+          <span key={alternative.id}>
+            <b>{alternative.name}</b>
+            <small>circa {alternative.estimatedCost} cr.</small>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -217,12 +179,12 @@ export function AdviceDetail({ advice }) {
         </ul>
       </Disclosure>
       <Disclosure
-        summary="Attenzione"
+        summary="Rischi concreti"
         badge={advice.risks.length ? `${advice.risks.length}` : "0"}
       >
         {advice.risks.length ? (
           <ul className="bullets bullets--warn">
-            {advice.risks.slice(0, 4).map((risk) => (
+            {advice.risks.slice(0, 6).map((risk) => (
               <li key={risk}>{risk}</li>
             ))}
           </ul>
@@ -242,7 +204,7 @@ export function AdviceDetail({ advice }) {
                 <span className="row-main">
                   <span className="row-title">{alternative.name}</span>
                   <span className="row-sub">
-                    differenza di valore {alternative.valueGap}
+                    valore {alternative.projectedValue} · {String(alternative.availability || "").replaceAll("_", " ").toLowerCase()}
                   </span>
                 </span>
                 <span className="row-value">≈ {alternative.estimatedCost}</span>

@@ -10,7 +10,6 @@ import {
 import { useAuctionBoard } from "../use-auction-store.js";
 import {
   autoTeamMap,
-  mappedTeamIndex,
   readFantalabConnection,
   secondsRemaining,
   writeFantalabConnection,
@@ -372,11 +371,6 @@ export default function LiveAuctionView({
     [snapshot?.teams, connection.teamMap, board.teams],
   );
   const currentLeader = teamNames[snapshot?.lot?.leader_team_id] || shortId(snapshot?.lot?.leader_team_id);
-  const liveOwnerIndex = mappedTeamIndex(
-    snapshot?.lot?.leader_team_id,
-    connection.teamMap,
-    board.teams.length,
-  );
   const unmappedTeams = (snapshot?.teams || []).filter(
     (team) => !Number.isInteger(Number(connection.teamMap?.[team.id])),
   );
@@ -605,8 +599,8 @@ export default function LiveAuctionView({
         profileId={profileId}
         draft={draft}
         setDraft={setDraft}
-        liveOwnerIndex={liveOwnerIndex}
         readOnly
+        liveMode
       />
     </div>
   );

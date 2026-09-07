@@ -154,3 +154,44 @@ export function PlayerSignals({ player, setPieces = [], compact = false, showSco
     </div>
   );
 }
+
+/** The few facts needed while the FantaLab timer is running. It deliberately
+ * duplicates the useful part of the full player sheet so opening another view
+ * is never required to check starts, votes or the latest seasons. */
+export function PlayerAuctionSnapshot({ player }) {
+  const history = Object.entries(player?.storico || {})
+    .sort(([left], [right]) => right.localeCompare(left, "it"))
+    .slice(0, 3);
+  const availability = String(
+    player?.disponibilita?.status || "NON_CLASSIFICATO",
+  ).replaceAll("_", " ");
+  const playChance = Number(player?.proiezione?.p_gioca);
+
+  return (
+    <section className="auction-player-snapshot" aria-label="Presenze e storico recente">
+      <div className="auction-player-snapshot__status">
+        <span><small>Gerarchia attuale</small><b>{availability}</b></span>
+        <span><small>Probabilità di voto</small><b>{Number.isFinite(playChance) ? `${Math.round(playChance * 100)}%` : "—"}</b></span>
+      </div>
+      {player?.disponibilita?.nota ? (
+        <p className="micro">{player.disponibilita.nota}</p>
+      ) : null}
+      {history.length ? (
+        <div className="auction-history">
+          <span className="auction-history__head">Ultime stagioni</span>
+          {history.map(([season, stat]) => (
+            <span className="auction-history__row" key={season}>
+              <b>{season}</b>
+              <small>{stat.Pv ?? "—"} pres.</small>
+              <small>MV {stat.Mv ?? "—"}</small>
+              <small>FM {stat.Fm ?? "—"}</small>
+              <small>{stat.Gf ?? 0} G · {stat.Ass ?? 0} A</small>
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="micro">Nessuna stagione precedente disponibile nel listone.</p>
+      )}
+    </section>
+  );
+}

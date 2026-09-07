@@ -5,7 +5,7 @@ import { generateRandomAuctionReplay } from "./random-auction-engine.js";
 
 const RECOMMENDATIONS = {
   STRONG_BUY: "Compra con decisione",
-  BID: "Fai un'offerta",
+  BID: "Acquisto consigliato nella simulazione",
   VALUE_ONLY: "Solo al prezzo giusto",
   PASS: "Lascia andare",
   INELIGIBLE: "Non acquistabile",

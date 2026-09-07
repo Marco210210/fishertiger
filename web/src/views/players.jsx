@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Asterisk, Star, StickyNote } from "lucide-react";
 import { createRoleValuation, sourceFvm } from "../player-valuation.js";
 import {
@@ -9,11 +9,7 @@ import {
   setPiecesForPlayer,
 } from "../player-intelligence.jsx";
 import { normalizeRules } from "../league-rules.js";
-import {
-  assignPlayer,
-  playerAuctionStatus,
-  releasePlayer,
-} from "../auction-store.js";
+import { playerAuctionStatus } from "../auction-store.js";
 import { readFantalabConnection } from "../fantalab-live.js";
 import { scoutTone } from "../scout-ai.js";
 import { useAuctionBoard } from "../use-auction-store.js";
@@ -22,7 +18,7 @@ import { reconcileSelectedPlayer } from "../player-selection.js";
 import {
   AdviceDetail,
   BidGauge,
-  PriceStepper,
+  QuickAlternatives,
   bidVerdict,
 } from "../auction-advice.jsx";
 import { loadPlayerFilters, savePlayerFilters } from "../player-filters.js";
@@ -91,10 +87,6 @@ export default function PlayersView({
   const [notesWarning, setNotesWarning] = useState("");
   const [limit, setLimit] = useState(PAGE);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [assignOwner, setAssignOwner] = useState(0);
-  const [assignPrice, setAssignPrice] = useState("");
-  const [feedback, setFeedback] = useState(null);
-  const [priceFocusToken, setPriceFocusToken] = useState(0);
   const isDesktop = useMediaQuery("(min-width: 1000px)");
   const { query, role, team, onlyTargets } = filters;
 
@@ -102,7 +94,6 @@ export default function PlayersView({
     setFilters(loadPlayerFilters(profileId, ROLE_VALUES, teamValues));
     setNotes(loadPlayerNotes(profileId));
     setNotesWarning("");
-    setFeedback(null);
   }, [profileId]);
 
   const updateFilters = (patch) =>
@@ -177,15 +168,6 @@ export default function PlayersView({
   });
 
   useEffect(() => {
-    if (board) setAssignOwner(board.userTeamIndex);
-  }, [board?.userTeamIndex]);
-
-  useEffect(() => {
-    setAssignPrice("");
-    setFeedback(null);
-  }, [player?.id]);
-
-  useEffect(() => {
     if (selected && !reconciledPlayer) setSelected(null);
   }, [selected, reconciledPlayer, setSelected]);
 
@@ -193,28 +175,6 @@ export default function PlayersView({
     setSelected(next);
     if (!isDesktop) setSheetOpen(true);
   };
-
-  const openAssign = (candidate) => {
-    pick(candidate);
-    setAssignPrice("");
-    setFeedback(null);
-    setPriceFocusToken((token) => token + 1);
-  };
-
-  const runAssign = () => {
-    const result = assignPlayer(profileId, data.players, activeRules, {
-      playerId: player.id,
-      owner: assignOwner,
-      price: Number(assignPrice),
-    });
-    setFeedback(result);
-    if (result.ok) setAssignPrice("");
-  };
-
-  const runRelease = () =>
-    setFeedback(
-      releasePlayer(profileId, data.players, activeRules, player.id),
-    );
 
   const detail = player ? (
     <PlayerDetail
@@ -232,17 +192,8 @@ export default function PlayersView({
           live,
           board,
           rules: activeRules,
-          owner: assignOwner,
-          setOwner: setAssignOwner,
-          price: assignPrice,
-          setPrice: setAssignPrice,
-          feedback,
-          focusToken: priceFocusToken,
           advice,
           adviceFailure,
-          onAssign: runAssign,
-          onRelease: runRelease,
-          readOnly: fantalabConnected,
           unsold: unsoldIds.has(String(player.id)),
         }
       }
@@ -425,16 +376,7 @@ export default function PlayersView({
                             <b><i className="status-dot status-dot--unsold" />Scartato</b>
                             <small>disponibile</small>
                           </span>
-                        ) : fantalabConnected ? null : (
-                          <button
-                            type="button"
-                            className="btn btn--sm live-assign-open"
-                            onClick={() => openAssign(item)}
-                            aria-label={`Assegna ${item.nome} a una squadra`}
-                          >
-                            Assegna
-                          </button>
-                        )
+                        ) : null
                       }
                     />
                   );
@@ -659,36 +601,10 @@ function LiveAuctionPanel({
   live,
   board,
   rules,
-  owner,
-  setOwner,
-  price,
-  setPrice,
-  feedback,
-  focusToken,
   advice,
   adviceFailure,
-  onAssign,
-  onRelease,
-  readOnly = false,
   unsold = false,
 }) {
-  const priceInput = useRef(null);
-  useEffect(() => {
-    if (!focusToken) return undefined;
-    const frame = requestAnimationFrame(() => priceInput.current?.focus());
-    return () => cancelAnimationFrame(frame);
-  }, [focusToken]);
-
-  const note = feedback ? (
-    <p
-      className={`notice notice--${feedback.ok ? "go" : "stop"}`}
-      role="status"
-      aria-live="polite"
-    >
-      {feedback.message}
-    </p>
-  ) : null;
-
   if (live)
     return (
       <div className="live-panel">
@@ -696,12 +612,6 @@ function LiveAuctionPanel({
           <b>{live.mine ? "Preso da te" : `Preso da ${live.ownerName}`}</b>
           <p style={{ marginTop: 4 }}>{live.price} crediti</p>
         </div>
-        {readOnly ? null : (
-          <button type="button" className="btn btn--block" onClick={onRelease}>
-            Rimetti tra i disponibili
-          </button>
-        )}
-        {note}
       </div>
     );
 
@@ -710,12 +620,10 @@ function LiveAuctionPanel({
   // happens to be pointed at (only meaningful outside FantaLab mode).
   const buyer = board.teams[board.userTeamIndex];
   const legalMax = buyer?.maxBid ?? 0;
-  const blockedRole = board.activeRole && player.ruolo !== board.activeRole;
   const summary = advice?.summary || {};
-  const forOther = !readOnly && owner !== board.userTeamIndex;
   const { tone, headline, recommendation, purpose } = bidVerdict({
     advice,
-    price,
+    price: "",
     rules,
     legalMax,
   });
@@ -737,7 +645,7 @@ function LiveAuctionPanel({
           <strong className="verdict-word">{headline}</strong>
           <span className="verdict-sub">
             {advice
-              ? `Utilità: ${purpose} · prezzo: ${recommendation} · confidenza ${Math.round(advice.confidence * 100)}% · ${advice.utility}`
+              ? `Utilità: ${purpose} · prezzo: ${recommendation} · confidenza ${Math.round(advice.confidence * 100)}%${advice.summary?.marketSampleSize != null ? ` · mercato ${advice.summary.marketSampleSize} prezzi (${String(advice.summary.marketReliability).toLowerCase()})` : ""} · ${advice.utility}`
               : adviceFailure || "Sto valutando la rosa e il mercato."}
           </span>
         </div>
@@ -752,63 +660,19 @@ function LiveAuctionPanel({
 
         <BidGauge
           advice={advice}
-          price={price}
+          price=""
           rules={rules}
           legalMax={legalMax}
         />
 
-        <div className="bidbar">
-          <PriceStepper
-            price={price}
-            rules={rules}
-            legalMax={legalMax}
-            onPrice={setPrice}
-            onSubmit={readOnly ? undefined : onAssign}
-            inputRef={priceInput}
-          />
+        <QuickAlternatives advice={advice} />
 
-          {readOnly ? null : (
-            <div className="assign-row">
-              <select
-                className="select"
-                value={owner}
-                onChange={(event) => setOwner(Number(event.target.value))}
-                aria-label="Squadra acquirente"
-              >
-                {board.teams.map((item) => (
-                  <option value={item.index} key={item.index}>
-                    {item.index === board.userTeamIndex ? "→ " : ""}
-                    {item.name} · {item.credits} cr.
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                className="btn btn--primary"
-                onClick={onAssign}
-                disabled={blockedRole}
-              >
-                Assegna
-              </button>
-            </div>
-          )}
-
-          <div className="bid-foot">
-            <span className="micro">
-              {blockedRole
-                ? `Fase ${ROLE_LABELS[board.activeRole].toLowerCase()}: questo ruolo non è ancora in asta.`
-                : `Massimo ${legalMax} crediti · ${buyer?.slotsLeft?.[player.ruolo] ?? 0} posti ${player.ruolo} liberi.`}
-              {forOther
-                ? " Stai registrando l'acquisto di un'altra squadra: il consiglio resta calcolato sulla tua."
-                : ""}
-            </span>
-          </div>
+        <div className="readonly-auction-note">
+          <span><b>Sola lettura</b> · Le offerte e le assegnazioni si fanno esclusivamente su FantaLab.</span>
         </div>
 
         <AdviceDetail advice={advice} />
       </section>
-
-      {note}
 
       {advice ? (
         <div className="detail-figures">
@@ -843,7 +707,7 @@ function LiveAuctionPanel({
               {(summary.marketInflation ?? 1).toFixed(2)}x
             </span>
             <span className="stat-note">
-              scarsità ruolo {Math.round((summary.roleScarcity ?? 0) * 100)}%
+              {summary.marketSampleSize ?? 0} prezzi · affidabilità {String(summary.marketReliability || "limitata").toLowerCase()} · scarsità ruolo {Math.round((summary.roleScarcity ?? 0) * 100)}%
             </span>
           </div>
         </div>

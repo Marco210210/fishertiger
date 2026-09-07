@@ -395,10 +395,9 @@
   }
 
   .players-split > .player-detail-panel {
-    position: sticky;
-    top: calc(var(--h-topbar) + var(--safe-top) + var(--s-4));
-    max-height: calc(100dvh - var(--h-topbar) - var(--s-8));
-    overflow-y: auto;
+    position: static;
+    max-height: none;
+    overflow: visible;
   }
 
   .filters {

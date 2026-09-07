@@ -55,7 +55,7 @@ const TABS = [
     hero: true,
     views: [
       ["live", "FantaLab live"],
-      ["auction", "Manuale"],
+      ["auction", "Analisi giocatore"],
     ],
   },
   {
@@ -994,6 +994,7 @@ function App() {
               profileId={activeProfileId}
               draft={auctionDraft}
               setDraft={setAuctionDraft}
+              readOnly
             />
           ) : null}
           {view === "scout" ? (

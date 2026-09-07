@@ -31,6 +31,8 @@ export const useAdvisor = ({
   const boardSignature = board
     ? JSON.stringify([
       board.assigned,
+      board.history,
+      board.undone,
       board.teams.map((team) => [team.name, team.credits]),
       board.userTeamIndex,
     ])
