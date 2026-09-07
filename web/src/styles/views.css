@@ -860,6 +860,111 @@
 
 /* -------------------------------------------------------------- simulation */
 
+.roster-analysis-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+  background: var(--c-line);
+}
+
+.roster-analysis-summary > span,
+.roster-analysis-numbers > span {
+  display: grid;
+  gap: 2px;
+}
+
+.roster-analysis-summary > span {
+  padding: var(--s-3);
+  background: var(--c-surface);
+}
+
+.roster-analysis-summary small,
+.roster-analysis-numbers small {
+  color: var(--c-text-mute);
+  font-size: var(--fs-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.roster-analysis-summary b,
+.roster-analysis-numbers b {
+  font-family: var(--font-num);
+  font-size: var(--fs-lg);
+}
+
+.roster-analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: var(--s-3);
+}
+
+.roster-analysis-card {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-3);
+  border-left: 3px solid var(--c-warn);
+}
+
+.roster-analysis-card.is-complete {
+  border-left-color: var(--c-go);
+}
+
+.roster-analysis-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.roster-analysis-head h2 {
+  overflow: hidden;
+  margin: 0;
+  font-size: var(--fs-md);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roster-analysis-head p {
+  margin: 2px 0 0;
+  color: var(--c-text-mute);
+  font-size: var(--fs-xs);
+}
+
+.roster-analysis-numbers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-2);
+}
+
+.roster-role-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1);
+}
+
+.roster-role-progress span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--c-go-tint);
+  color: var(--c-go);
+  font-family: var(--font-num);
+  font-size: var(--fs-xs);
+}
+
+.roster-role-progress span.is-missing {
+  background: var(--c-warn-tint);
+  color: var(--c-warn);
+}
+
+@media (max-width: 520px) {
+  .roster-analysis-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
 .sim-row {
   grid-template-columns: auto auto minmax(0, 1fr) auto;
 }

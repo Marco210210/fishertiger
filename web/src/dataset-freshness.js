@@ -41,9 +41,9 @@ export const simulationFreshness = (profile, data, season, auction = null) => {
     season?.meta?.dataset_input_hash === datasetHash &&
     season?.meta?.simulation_configuration_hash ===
       profile?.simulation_configuration_hash
-  if (!current) return "simulazione da aggiornare";
-  if (season?.meta?.roster_mode !== "auction") return "simulazione corrente";
+  if (!current || season?.meta?.roster_mode !== "auction")
+    return "analisi rose da calcolare";
   return auction?.complete && sameAuctionRosters(season.rosters, auction.rosters)
-    ? "simulazione corrente"
-    : "simulazione da aggiornare";
+    ? "analisi rose corrente"
+    : "analisi rose da calcolare";
 };

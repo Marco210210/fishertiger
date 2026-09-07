@@ -1,262 +1,172 @@
-import { useState } from "react";
-import RandomAuctionView from "../random-auction.jsx";
-import { Empty, PlayerRow, Segmented } from "../ui.jsx";
+import { useMemo } from "react";
 
-const MODES = [
-  { value: "report", label: "Report rose" },
-  { value: "auction", label: "Asta casuale" },
-];
+import { sameAuctionRosters } from "../auction-simulation.js";
 
-/** Monte Carlo section: season reports and the replayable mock auction. */
+const percentage = (value) => `${(Number(value || 0) * 100).toFixed(1)}%`;
+
+/**
+ * Real-roster analysis. The old random auction and sample rosters deliberately
+ * stay out of this screen: FantaLab's shared ledger is the only source that is
+ * useful to the people running the actual auction.
+ */
 export default function SimulationView({
   season,
   data,
-  openPlayer,
-  rules,
-  profileId,
   onRerun,
   isSimulating,
   simulationStatus,
-  auctionInput,
+  auctionInput = {
+    complete: false,
+    reason: "Asta non disponibile.",
+    report: [],
+    assigned: 0,
+    expectedAssignments: 0,
+    rosters: null,
+    aliases: {},
+  },
 }) {
-  const [mode, setMode] = useState("report");
+  const report = auctionInput.report || [];
+  const currentPrediction = Boolean(
+    season?.meta?.roster_mode === "auction" &&
+      auctionInput.complete &&
+      sameAuctionRosters(season.rosters, auctionInput.rosters),
+  );
+  const sortedReport = useMemo(
+    () => [...report].sort((a, b) => b.projectedValue - a.projectedValue || a.name.localeCompare(b.name)),
+    [report],
+  );
+  const run = () => onRerun({ rosterMode: "auction", rosters: auctionInput.rosters });
+
   return (
-    <div className="stack">
-      <Segmented
-        options={MODES}
-        value={mode}
-        onChange={setMode}
-        label="Modalità simulazione"
-      />
-      {mode === "auction" ? (
-        <RandomAuctionView data={data} rules={rules} profileId={profileId} />
+    <div className="stack stack--lg">
+      <div className="page-head">
+        <span className="kicker">Dati reali FantaLab</span>
+        <h1>Analisi delle rose</h1>
+        <p>
+          Confronta le rose importate dall&apos;asta condivisa. Qui non vengono
+          inventati acquisti e non viene simulata un&apos;altra asta.
+        </p>
+      </div>
+
+      <section className="roster-analysis-summary" aria-label="Stato dell'asta reale">
+        <span><small>Giocatori importati</small><b>{auctionInput.assigned}/{auctionInput.expectedAssignments || "—"}</b></span>
+        <span><small>Rose complete</small><b>{report.filter((team) => team.complete).length}/{report.length || "—"}</b></span>
+        <span><small>Fonte</small><b>FantaLab live</b></span>
+      </section>
+
+      {sortedReport.length ? (
+        <section className="roster-analysis-grid" aria-label="Confronto rose reali">
+          {sortedReport.map((team, rank) => (
+            <article className={`card roster-analysis-card${team.complete ? " is-complete" : " is-incomplete"}`} key={team.index}>
+              <div className="roster-analysis-head">
+                <span className="sim-medal">{rank + 1}</span>
+                <div>
+                  <h2>{team.name}</h2>
+                  <p>{team.complete ? "Rosa completa" : `${team.rosterSize}/${team.expectedSize} giocatori`}</p>
+                </div>
+              </div>
+              <div className="roster-analysis-numbers">
+                <span><small>Valore rosa</small><b>{team.projectedValue}</b></span>
+                <span><small>Spesi</small><b>{team.spent}</b></span>
+                <span><small>Rimasti</small><b>{team.credits}</b></span>
+              </div>
+              <div className="roster-role-progress" aria-label={`Composizione di ${team.name}`}>
+                {Object.entries(team.roles).map(([role, value]) => (
+                  <span className={value.missing ? "is-missing" : ""} key={role}>
+                    <b>{role}</b> {value.current}/{value.expected}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </section>
       ) : (
-        <SeasonReport
-          season={season}
-          data={data}
-          openPlayer={openPlayer}
-          onRerun={onRerun}
-          isSimulating={isSimulating}
-          simulationStatus={simulationStatus}
-          auctionInput={auctionInput}
-        />
+        <div className="notice notice--warn">Le rose condivise non sono ancora disponibili.</div>
+      )}
+
+      <section className="card stack">
+        <div className="section-head">
+          <div>
+            <span className="kicker">Funzione opzionale</span>
+            <h2>Previsione della stagione</h2>
+          </div>
+        </div>
+        <p className="muted">
+          Serve solo dopo l&apos;asta: usa calendario, regole e rose reali per
+          stimare probabilità di vittoria, podio e punti attesi. Non suggerisce
+          offerte e non modifica nessuna rosa.
+        </p>
+        <div className={`notice notice--${auctionInput.complete ? "go" : "warn"}`} role="status">
+          {auctionInput.complete
+            ? "Tutte le rose sono complete: la previsione può essere calcolata."
+            : auctionInput.reason}
+        </div>
+        <div className="btn-row" style={{ alignItems: "center" }}>
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={run}
+            disabled={isSimulating || !auctionInput.complete}
+          >
+            {isSimulating ? "Calcolo in corso…" : "Calcola sulle rose reali"}
+          </button>
+          {simulationStatus ? <span className="micro" role="status">{simulationStatus}</span> : null}
+        </div>
+      </section>
+
+      {currentPrediction ? (
+        <SeasonPrediction season={season} aliases={auctionInput.aliases} data={data} />
+      ) : (
+        <div className="card">
+          <div className="empty">
+            <h2>Previsione non calcolata</h2>
+            <p>
+              {auctionInput.complete
+                ? "Premi il pulsante quando vuoi confrontare le possibilità delle rose reali."
+                : "Il confronto delle rose qui sopra funziona già; la previsione si sblocca quando non manca più nessun giocatore."}
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
-function RunButton({ onRerun, isSimulating, status, disabled = false }) {
-  return (
-    <div className="btn-row" style={{ alignItems: "center" }}>
-      <button
-        type="button"
-        className="btn btn--primary"
-        onClick={onRerun}
-        disabled={isSimulating || disabled}
-      >
-        {isSimulating ? "Simulazione in corso…" : "Riesegui Monte Carlo"}
-      </button>
-      {status ? (
-        <span className="micro" role="status">
-          {status}
-        </span>
-      ) : null}
-    </div>
+function SeasonPrediction({ season, aliases, data }) {
+  const rows = Object.entries(season.teams || {}).sort(
+    ([, a], [, b]) => Number(b.rank_probabilities?.[0] || 0) - Number(a.rank_probabilities?.[0] || 0),
   );
-}
-
-function SeasonReport({
-  season,
-  data,
-  openPlayer,
-  onRerun,
-  isSimulating,
-  simulationStatus,
-  auctionInput = { complete: false, reason: "Asta non disponibile.", rosters: null, aliases: {} },
-}) {
-  const [selected, setSelected] = useState(null);
-  const [rosterMode, setRosterMode] = useState("sample");
-  const realAuction = rosterMode === "auction";
-  const run = () => onRerun(realAuction ? { rosterMode: "auction", rosters: auctionInput.rosters } : undefined);
-
-  if (!data.calendario_lega)
-    return (
-      <div className="page-head">
-        <span className="kicker">Monte Carlo offline</span>
-        <h1>Serve il calendario della lega</h1>
-        <p>
-          Dashboard, proiezioni e asta funzionano già. Carica il calendario in
-          Impostazioni per simulare la stagione.
-        </p>
-      </div>
-    );
-
-  if (!season)
-    return (
-      <div className="stack">
-        <div className="page-head">
-          <span className="kicker">Monte Carlo offline</span>
-          <h1>Simulazione non generata</h1>
-          <p>
-            Scegli rose di esempio oppure l'asta reale salvata nel browser.
-          </p>
+  return (
+    <section className="stack">
+      <div className="section-head">
+        <div>
+          <span className="kicker">{season.iterations.toLocaleString("it-IT")} stagioni elaborate</span>
+          <h2>Probabilità stimate</h2>
         </div>
-        <RosterMode
-          value={rosterMode}
-          onChange={setRosterMode}
-          auctionInput={auctionInput}
-        />
-        <RunButton
-          onRerun={run}
-          isSimulating={isSimulating}
-          status={simulationStatus}
-          disabled={realAuction && !auctionInput.complete}
-        />
+        <span className="count">{data.calendario_lega?.matchdays?.length || "n/d"} giornate</span>
       </div>
-    );
-
-  const rows = Object.entries(season.teams).sort(
-    ([, a], [, b]) => b.expected_utility - a.expected_utility,
-  );
-  const activeTeam = selected || rows[0][0];
-  const roster = (season.rosters[activeTeam] || [])
-    .map((id) => data.players.find((player) => player.id === id))
-    .filter(Boolean)
-    .sort(
-      (a, b) => a.ruolo.localeCompare(b.ruolo) || b.fvm_scaled - a.fvm_scaled,
-    );
-  const scenario = season.scenarios?.[activeTeam];
-  const reportIsAuction = season.meta?.roster_mode === "auction";
-
-  return (
-    <div className="stack stack--lg">
-      <div className="page-head">
-        <span className="kicker">Monte Carlo offline</span>
-        <h1>{reportIsAuction ? "Esiti dell'asta reale" : "Esiti delle rose esempio"}</h1>
-        <p>
-          {season.iterations.toLocaleString("it-IT")} stagioni simulate · seed{" "}
-          {season.diagnostics.seed} ·{" "}
-          {data.calendario_lega?.matchdays?.length || "n/d"} giornate di lega
-        </p>
-      </div>
-
-      <RosterMode
-        value={rosterMode}
-        onChange={setRosterMode}
-        auctionInput={auctionInput}
-      />
-      <RunButton
-        onRerun={run}
-        isSimulating={isSimulating}
-        status={simulationStatus}
-        disabled={realAuction && !auctionInput.complete}
-      />
-
-      <section className="card card--flush">
+      <div className="card card--flush">
         <div className="rows">
           {rows.map(([team, result], index) => (
-            <button
-              type="button"
-              key={team}
-              className={`row sim-row${activeTeam === team ? " is-selected" : ""}`}
-              onClick={() => setSelected(team)}
-            >
-              <span className={`sim-medal${index < 3 ? " is-podium" : ""}`}>
-                {index + 1}
-              </span>
+            <div className="row sim-row" key={team}>
+              <span className={`sim-medal${index < 3 ? " is-podium" : ""}`}>{index + 1}</span>
               <span className="row-main">
-                <span className="row-title">{auctionInput.aliases?.[team] || team}</span>
+                <span className="row-title">{aliases?.[team] || team}</span>
                 <span className="row-sub">
-                  top 3 {(result.top3_probability * 100).toFixed(1)}% ·{" "}
-                  {result.expected_points.toFixed(1)} punti attesi
+                  Podio {percentage(result.top3_probability)} · {Number(result.expected_points || 0).toFixed(1)} punti attesi
                 </span>
               </span>
               <span className="player-metric">
-                <b
-                  className={
-                    result.expected_utility >= 0 ? "trend-up" : "trend-down"
-                  }
-                >
-                  {result.expected_utility >= 0 ? "+" : ""}
-                  {result.expected_utility.toFixed(0)}
-                </b>
-                <small>eur attesi</small>
+                <b>{percentage(result.rank_probabilities?.[0])}</b>
+                <small>vittoria</small>
               </span>
-            </button>
+            </div>
           ))}
         </div>
-      </section>
-
-      <section className="stack">
-        <div className="section-head">
-          <div>
-            <span className="kicker">Rosa selezionata</span>
-            <h2>{auctionInput.aliases?.[activeTeam] || activeTeam}</h2>
-          </div>
-          <span className="count">{roster.length} giocatori</span>
-        </div>
-
-        <div className="extremes">
-          <div className="extreme extreme--best">
-            <span className="stat-label">Migliore stagione estratta</span>
-            <strong>{scenario?.best_score}</strong>
-            <span className="micro">
-              {scenario?.best_points} punti · {scenario?.best_rank}º posto
-            </span>
-          </div>
-          <div className="extreme extreme--worst">
-            <span className="stat-label">Peggiore stagione estratta</span>
-            <strong>{scenario?.worst_score}</strong>
-            <span className="micro">
-              {scenario?.worst_points} punti · {scenario?.worst_rank}º posto
-            </span>
-          </div>
-        </div>
-
-        {roster.length ? (
-          <div className="card card--flush">
-            <div className="roster-grid" style={{ padding: "var(--s-2)" }}>
-              {roster.map((player) => (
-                <PlayerRow
-                  key={player.id}
-                  player={player}
-                  className="player-row"
-                  value={player.fvm_scaled}
-                  valueLabel="valore"
-                  onClick={() => openPlayer(player)}
-                />
-              ))}
-            </div>
-          </div>
-        ) : (
-          <Empty title="Rosa non disponibile" />
-        )}
-      </section>
-
+      </div>
       <p className="micro">
-        {reportIsAuction
-          ? "Il report usa le rose complete salvate nella tua asta locale."
-          : "Le rose sono generate con uno snake draft bilanciato sulle proiezioni: non sono ancora le rose della tua lega."}{" "}
-        Gli estremi mostrano la variabilità della stessa rosa nelle {season.iterations.toLocaleString("it-IT")} simulazioni.
+        Sono stime probabilistiche basate sui dati disponibili, non una previsione certa della classifica finale.
       </p>
-    </div>
-  );
-}
-
-function RosterMode({ value, onChange, auctionInput }) {
-  return (
-    <div className="stack" style={{ gap: "var(--s-2)" }}>
-      <Segmented
-        options={[{ value: "sample", label: "Rose di esempio" }, { value: "auction", label: "Asta reale" }]}
-        value={value}
-        onChange={onChange}
-        label="Origine rose"
-      />
-      {value === "auction" ? (
-        <p className="micro" role={auctionInput.complete ? "status" : "alert"}>
-          {auctionInput.complete ? "Rose complete: la simulazione userà l'asta salvata in questo browser." : auctionInput.reason}
-        </p>
-      ) : null}
-    </div>
+    </section>
   );
 }

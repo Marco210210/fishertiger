@@ -20,13 +20,18 @@ test("builds complete roster input from owner indexes, not renamed aliases", () 
   assert.equal(result.complete, true);
   assert.deepEqual(result.rosters, { "Calendario A": [1, 2], "Calendario B": [3, 4] });
   assert.deepEqual(result.aliases, { "Calendario A": "Alias A", "Calendario B": "Alias B" });
+  assert.equal(result.assigned, 4);
+  assert.equal(result.expectedAssignments, 4);
+  assert.deepEqual(result.report.map((team) => team.complete), [true, true]);
 });
 
-test("requires complete compatible auction rosters", () => {
+test("reports the exact gaps while waiting for complete auction rosters", () => {
   const result = auctionSimulationInput({ ...board, teams: [{ ...board.teams[0], roster: [board.teams[0].roster[0]] }, board.teams[1]] }, calendar, rules);
 
   assert.equal(result.complete, false);
-  assert.match(result.reason, /Completa tutte/);
+  assert.equal(result.assigned, 3);
+  assert.match(result.reason, /Alias A \(1 P\)/);
+  assert.deepEqual(result.report[0].roles.P, { current: 0, expected: 1, missing: 1 });
 });
 
 test("roster comparison ignores aliases and player order but sees ownership changes", () => {

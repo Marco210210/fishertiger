@@ -69,9 +69,9 @@ const TABS = [
   },
   {
     id: "simulation",
-    label: "Simulazione",
+    label: "Analisi rose",
     icon: "chart",
-    views: [["simulation", "Simulazione"]],
+    views: [["simulation", "Analisi rose"]],
   },
   {
     id: "scout",
@@ -977,9 +977,6 @@ function App() {
             <SimulationView
               season={season}
               data={data}
-              openPlayer={openPlayer}
-              rules={activeRules}
-              profileId={activeProfileId}
               onRerun={rerunSimulation}
               isSimulating={isSimulating}
               simulationStatus={simulationStatus}
