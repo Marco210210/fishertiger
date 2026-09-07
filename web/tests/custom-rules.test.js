@@ -1,7 +1,5 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { generateRandomAuction } from "../src/random-auction-engine.js";
-import { simulateMockLeague } from "../src/mock-league-engine.js";
 import { evaluateAuction, evaluateOverview } from "../src/simulation.worker.js";
 
 const rules = {
@@ -30,37 +28,6 @@ for (const [role, slots] of Object.entries(rules.rosterSlots)) {
     players.push({ id: id++, nome: `${role}-${index}`, ruolo: role, fvm_scaled: 10 + index, p_gioca_per_giornata: [1, 1], voto_puro_mean_per_giornata: [6.5, 6.5], voto_puro_std_per_giornata: [0, 0], bonus_atteso_per_giornata: [0, 0], gol_subiti_per_giornata: [0, 0] });
   }
 }
-
-test("custom auction derives team, slots, credits, reserve and increment from rules", () => {
-  const events = generateRandomAuction(players, { rules, seed: "custom" });
-  assert.equal(events.length, 48);
-  assert.ok(events.every((event) => event.price >= 2 && (event.price - 2) % 2 === 0));
-  for (let owner = 0; owner < rules.participants; owner++) {
-    const roster = events.filter((event) => event.owner === owner).map((event) => players.find((player) => player.id === event.playerId));
-    assert.equal(roster.length, 12);
-    for (const [role, slots] of Object.entries(rules.rosterSlots)) assert.equal(roster.filter((player) => player.ruolo === role).length, slots);
-  }
-});
-
-test("mock league uses supplied calendar and configured standings profile", () => {
-  const events = generateRandomAuction(players, { rules, seed: "calendar" });
-  const standings = simulateMockLeague({ players, events, rules, seed: 4 });
-  assert.equal(standings.length, 4);
-  assert.ok(standings.every((row) => row.wins + row.draws + row.losses === 2));
-  assert.ok(standings.every((row) => row.points === row.wins * 2 + row.draws));
-});
-
-test("mock league uses canonical calendar matchdays and Serie A indexes", () => {
-  const events = generateRandomAuction(players, { rules, seed: "canonical-calendar" });
-  const canonicalCalendar = {
-    matchdays: [
-      { number: 1, serie_a_matchday: 2, fixtures: [{ home: "Arco", away: "Borgo" }, { home: "Cima", away: "Duna" }] },
-      { number: 2, serie_a_matchday: 1, fixtures: [{ home: "Arco", away: "Cima" }, { home: "Borgo", away: "Duna" }] },
-    ],
-  };
-  const standings = simulateMockLeague({ players, events, rules: { ...rules, calendario_lega: canonicalCalendar }, seed: 4 });
-  assert.ok(standings.every((row) => row.wins + row.draws + row.losses === 2));
-});
 
 test("worker plans custom roles and preserves the configured two-credit reserve", () => {
   const roster = players.filter((player) => player.ruolo === "P").slice(0, 1);

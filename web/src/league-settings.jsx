@@ -573,9 +573,7 @@ export function LeagueSettings({
         setStatus(
           generate
             ? "Dati rigenerati per questa asta."
-            : changePolicy.action === "rerun_simulation"
-              ? "Asta salvata: riesegui la simulazione per aggiornare i risultati."
-              : "Asta aggiornata.",
+            : "Asta aggiornata.",
         );
         return;
       }
@@ -693,7 +691,7 @@ export function LeagueSettings({
           </label>
           {source.name === "league_calendar" ? (
             <p className="ls-source-help">
-              Facoltativo per generare dati, necessario per la simulazione. {" "}
+              Facoltativo: conserva calendario e abbinamenti della lega. {" "}
               <a href={endpoint("/api/templates/league-calendar.xlsx")}>Scarica modello</a>
             </p>
           ) : null}
@@ -957,7 +955,7 @@ export function LeagueSettings({
         </div>
         <div className="ls-subheading">
           <h3>Panchina e sostituzioni</h3>
-          <span>La simulazione usa questa composizione e il limite globale indicato.</span>
+          <span>Definisci la composizione della panchina e il limite globale.</span>
         </div>
         <div className="ls-slots">
           {roles.map((role) => (
@@ -1403,9 +1401,7 @@ export function LeagueSettings({
             <small>
               Azione consigliata: {changePolicy.action === "regenerate_dataset"
                 ? "salva e rigenera dati"
-                : changePolicy.action === "rerun_simulation"
-                  ? "salva e riesegui simulazione"
-                  : "salva modifiche"}.
+                : "salva modifiche"}.
             </small>
           </aside>
         )}

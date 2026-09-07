@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { datasetFreshness, simulationFreshness } from "../src/dataset-freshness.js";
+import { datasetFreshness } from "../src/dataset-freshness.js";
 
 const profile = {
   dataset_configuration_hash: "dataset-config",
@@ -16,7 +16,6 @@ const dataset = (meta) => ({ meta: { profile: { dataset_configuration_hash: "dat
 test("a dataset generated from the active profile is current", () => {
   assert.equal(datasetFreshness(profile, dataset({})), "dataset corrente");
 });
-
 test("an optional source that was never provided is not a change", () => {
   const data = dataset({
     source_fingerprints: [
@@ -71,34 +70,4 @@ test("save-only profile changes do not make a dataset stale", () => {
 test("a dataset without freshness metadata is not claimed to be current", () => {
   assert.equal(datasetFreshness(profile, { meta: {} }), "dataset da rigenerare");
   assert.equal(datasetFreshness(profile, undefined), "dataset da rigenerare");
-});
-
-test("sample simulations are ignored by the real-roster analysis", () => {
-  const data = dataset({ dataset_input_hash: "d1" });
-  assert.equal(
-    simulationFreshness(profile, data, { meta: { dataset_input_hash: "d1", simulation_configuration_hash: "simulation-config" } }),
-    "analisi rose da calcolare",
-  );
-  assert.equal(
-    simulationFreshness(profile, data, { meta: { dataset_input_hash: "d0", simulation_configuration_hash: "simulation-config" } }),
-    "analisi rose da calcolare",
-  );
-  assert.equal(
-    simulationFreshness({ ...profile, simulation_configuration_hash: "changed" }, data, { meta: { dataset_input_hash: "d1", simulation_configuration_hash: "simulation-config" } }),
-    "analisi rose da calcolare",
-  );
-  assert.equal(simulationFreshness(profile, data, null), "analisi rose da calcolare");
-  assert.equal(
-    simulationFreshness(profile, dataset({}), { meta: { dataset_input_hash: "d1", simulation_configuration_hash: "simulation-config" } }),
-    "analisi rose da calcolare",
-  );
-});
-
-test("an auction simulation becomes stale when ownership changes", () => {
-  const profile = { simulation_configuration_hash: "rules" };
-  const data = { meta: { profile: { dataset_input_hash: "dataset" } } };
-  const season = { meta: { dataset_input_hash: "dataset", simulation_configuration_hash: "rules", roster_mode: "auction" }, rosters: { A: [1, 2], B: [3, 4] } };
-
-  assert.equal(simulationFreshness(profile, data, season, { complete: true, rosters: { A: [2, 1], B: [4, 3] } }), "analisi rose corrente");
-  assert.equal(simulationFreshness(profile, data, season, { complete: true, rosters: { A: [1, 3], B: [2, 4] } }), "analisi rose da calcolare");
 });

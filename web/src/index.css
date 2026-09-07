@@ -17,7 +17,6 @@
 /* Two screens keep their own namespaced stylesheets; both are retimed to the
    shared tokens rather than carrying private palettes. */
 @import "./league-settings.css" layer(components);
-@import "./random-auction.css" layer(components);
 
 @layer components {
   .app-crash {

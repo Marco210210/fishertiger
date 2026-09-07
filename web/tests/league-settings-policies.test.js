@@ -16,8 +16,8 @@ test("profile change policy returns the strongest required operation", () => {
     name: "League", season: { fantasy_matchdays: 36 }, scoring: { goal: 3 },
     defense_modifier: { enabled: false }, credits: { starting: 500 },
   };
-  assert.deepEqual(profileChangePolicy(baseline, baseline), { action: "none", fields: [], datasetFields: [], simulationFields: [], saveFields: [], dirty: false });
+  assert.deepEqual(profileChangePolicy(baseline, baseline), { action: "none", fields: [], datasetFields: [], saveFields: [], dirty: false });
   assert.equal(profileChangePolicy(baseline, { ...baseline, credits: { starting: 600 } }).action, "save");
-  assert.equal(profileChangePolicy(baseline, { ...baseline, defense_modifier: { enabled: true } }).action, "rerun_simulation");
+  assert.equal(profileChangePolicy(baseline, { ...baseline, defense_modifier: { enabled: true } }).action, "save");
   assert.equal(profileChangePolicy(baseline, { ...baseline, scoring: { goal: 4 }, defense_modifier: { enabled: true } }).action, "regenerate_dataset");
 });

@@ -1,5 +1,3 @@
-import { sameAuctionRosters } from "./auction-simulation.js";
-
 const list = (value) => (Array.isArray(value) ? value : []);
 
 const missesRequiredSource = (profile, fingerprints) => {
@@ -13,7 +11,6 @@ const missesRequiredSource = (profile, fingerprints) => {
     return match ? match.required !== false : true;
   });
 };
-
 const changedSourceContent = (generated, current) => {
   if (!Array.isArray(current)) return false;
   return list(generated).some((source) => {
@@ -33,17 +30,4 @@ export const datasetFreshness = (profile, data, currentSources) => {
   if (changedSourceContent(meta.source_fingerprints, currentSources))
     return "fonti cambiate";
   return "dataset corrente";
-};
-
-export const simulationFreshness = (profile, data, season, auction = null) => {
-  const datasetHash = data?.meta?.profile?.dataset_input_hash;
-  const current = datasetHash &&
-    season?.meta?.dataset_input_hash === datasetHash &&
-    season?.meta?.simulation_configuration_hash ===
-      profile?.simulation_configuration_hash
-  if (!current || season?.meta?.roster_mode !== "auction")
-    return "analisi rose da calcolare";
-  return auction?.complete && sameAuctionRosters(season.rosters, auction.rosters)
-    ? "analisi rose corrente"
-    : "analisi rose da calcolare";
 };

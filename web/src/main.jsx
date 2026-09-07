@@ -5,12 +5,10 @@ import "./index.css";
 import { LeagueSettings } from "./league-settings.jsx";
 import { createRequestGate } from "./latest-request.js";
 import { adoptLatestPlayerListUpdate } from "./player-list-adoption.js";
-import { datasetFreshness, simulationFreshness } from "./dataset-freshness.js";
+import { datasetFreshness } from "./dataset-freshness.js";
 import { emptyDraft } from "./auction-state.js";
 import { Updates } from "./updates.jsx";
 import { clearProfileBrowserData } from "./profile-storage.js";
-import { useAuctionBoard } from "./use-auction-store.js";
-import { auctionSimulationInput } from "./auction-simulation.js";
 import { enrichPlayersWithScout, loadScoutAi, loadScoutAiClaude, mergeScoutSnapshots } from "./scout-ai.js";
 import {
   apiUrl,
@@ -23,13 +21,11 @@ import {
   loadProfile,
   rulesFor,
   saveProfile,
-  seasonSimulationPath,
 } from "./profile-client.js";
 import { Icon, Segmented, Sheet } from "./ui.jsx";
 import OverviewView from "./views/overview.jsx";
 import PlayersView from "./views/players.jsx";
 import TeamsView, { SetPiecesView } from "./views/teams.jsx";
-import SimulationView from "./views/simulation.jsx";
 import AuctionView from "./views/auction.jsx";
 import LiveAuctionView from "./views/live-auction.jsx";
 import ScoutAiView from "./views/scout-ai.jsx";
@@ -66,12 +62,6 @@ const TABS = [
       ["teams", "Squadre"],
       ["setpieces", "Piazzati"],
     ],
-  },
-  {
-    id: "simulation",
-    label: "Analisi rose",
-    icon: "chart",
-    views: [["simulation", "Analisi rose"]],
   },
   {
     id: "scout",
@@ -124,7 +114,6 @@ const writeStoredProfileId = (id) => {
 
 function App() {
   const [dataset, setDataset] = useState(null);
-  const [season, setSeason] = useState(null);
   const [profile, setProfile] = useState(null);
   const [profileError, setProfileError] = useState("");
   const [profiles, setProfiles] = useState([]);
@@ -132,8 +121,6 @@ function App() {
   const [auctionDraft, setAuctionDraft] = useState(emptyDraft());
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStatus, setGenerationStatus] = useState("");
-  const [isSimulating, setIsSimulating] = useState(false);
-  const [simulationStatus, setSimulationStatus] = useState("");
   const [currentSourceFingerprints, setCurrentSourceFingerprints] = useState(null);
   const [scout, setScout] = useState(null);
   const [scoutClaude, setScoutClaude] = useState(null);
@@ -167,14 +154,11 @@ function App() {
   const loadedProfileId = useRef(null);
   const profileRequests = useRef(null);
   const generationRequests = useRef(null);
-  const simulationRequests = useRef(null);
   const generatedProfileCommit = useRef(null);
 
   if (!profileRequests.current) profileRequests.current = createRequestGate();
   if (!generationRequests.current)
     generationRequests.current = createRequestGate();
-  if (!simulationRequests.current)
-    simulationRequests.current = createRequestGate();
 
   useEffect(() => {
     let cancelled = false;
@@ -194,20 +178,10 @@ function App() {
   const claimProfileRequest = () => profileRequests.current.claim();
   const isCurrentProfileRequest = (request) =>
     profileRequests.current.isCurrent(request);
-  const latestProfileRequest = () => profileRequests.current.latest();
   const invalidateGeneration = () => {
     generationRequests.current.claim();
     setIsGenerating(false);
     setGenerationStatus("");
-  };
-  const invalidateSimulation = () => {
-    simulationRequests.current.claim();
-    setIsSimulating(false);
-    setSimulationStatus("");
-  };
-  const invalidateOperations = () => {
-    invalidateGeneration();
-    invalidateSimulation();
   };
 
   const applyDataset = (nextData, nextProfile) => {
@@ -316,7 +290,6 @@ function App() {
     if (pathError) {
       setProfileError(pathError);
       clearDataset();
-      setSeason(null);
       return;
     }
     let cancelled = false;
@@ -327,14 +300,6 @@ function App() {
       })
       .catch(() => {
         if (!cancelled) clearDataset();
-      });
-    fetch(apiUrl(`/api/datasets/${seasonSimulationPath(profile)}`, apiBase))
-      .then((response) => (response.ok ? response.json() : null))
-      .then((nextSeason) => {
-        if (!cancelled) setSeason(nextSeason);
-      })
-      .catch(() => {
-        if (!cancelled) setSeason(null);
       });
     return () => {
       cancelled = true;
@@ -446,9 +411,6 @@ function App() {
   );
   const activeProfileId = dataset?.profileId || "default";
   const activeRules = rulesFor(dataset?.profile ?? profile, data || {});
-  const auctionBoard = useAuctionBoard(activeProfileId, data?.players || [], activeRules, Boolean(data));
-  const auctionInput = auctionSimulationInput(auctionBoard, data?.calendario_lega, activeRules);
-
   const updateProfile = async (nextProfile, generate = false) => {
     setProfileError("");
     const pathError = datasetPathError(nextProfile);
@@ -461,9 +423,9 @@ function App() {
       generationRequest = generationRequests.current.claim();
       setIsGenerating(true);
       setGenerationStatus("Rigenerazione in corso...");
-      invalidateSimulation();
+      invalidateGeneration();
     } else {
-      invalidateOperations();
+      invalidateGeneration();
     }
     const request = claimProfileRequest();
     let saveWarning = "";
@@ -522,7 +484,6 @@ function App() {
       generatedProfileCommit.current = generatedProfile;
       setProfile(generatedProfile);
       applyDataset(nextData, generatedProfile);
-      setSeason(null);
       navigate("overview");
       if (saveWarning) setProfileError(saveWarning);
       setGenerationStatus("Dati rigenerati.");
@@ -549,7 +510,7 @@ function App() {
   };
 
   const selectProfile = async (id) => {
-    invalidateOperations();
+    invalidateGeneration();
     setProfileError("");
     const request = claimProfileRequest();
     if (!id) {
@@ -582,7 +543,7 @@ function App() {
       )
     )
       return;
-    invalidateOperations();
+    invalidateGeneration();
     setProfileError("");
     try {
       await deleteProfile(id, { apiBase });
@@ -644,7 +605,7 @@ function App() {
       )
     )
       return;
-    invalidateOperations();
+    invalidateGeneration();
     const request = claimProfileRequest();
     try {
       const stored = await saveProfile(incoming, { apiBase });
@@ -690,7 +651,7 @@ function App() {
       setProfileError("Impossibile preparare una nuova asta in questo momento.");
       return;
     }
-    invalidateOperations();
+    invalidateGeneration();
     writeStoredProfileId("");
     applyProfileForLoading({ ...template, profile_id: id, name });
     setStatusOpen(false);
@@ -763,7 +724,7 @@ function App() {
   };
 
   const beginPlayerListUpdate = () => {
-    invalidateOperations();
+    invalidateGeneration();
     return claimProfileRequest();
   };
 
@@ -781,7 +742,6 @@ function App() {
         generatedProfileCommit.current = nextProfile;
         setProfile(nextProfile);
         applyDataset(nextData, nextProfile);
-        setSeason(null);
       },
     });
 
@@ -791,39 +751,6 @@ function App() {
     return next;
   };
 
-  const rerunSimulation = async ({ rosterMode = "sample", rosters = null } = {}) => {
-    if (isSimulating) return;
-    const request = latestProfileRequest();
-    const operation = simulationRequests.current.claim();
-    setIsSimulating(true);
-    setSimulationStatus("Simulazione in corso...");
-    try {
-      const response = await fetch(apiUrl("/api/simulate", apiBase), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile, iterations: 1000, seed: 202627, roster_mode: rosterMode, ...(rosterMode === "auction" ? { rosters } : {}) }),
-      });
-      const result = await response.json();
-      if (!response.ok)
-        throw new Error(result.error?.message || "Simulazione non completata.");
-      if (
-        !isCurrentProfileRequest(request) ||
-        !simulationRequests.current.isCurrent(operation)
-      )
-        return;
-      setSeason(result);
-      setSimulationStatus("Simulazione aggiornata.");
-    } catch (error) {
-      if (
-        isCurrentProfileRequest(request) &&
-        simulationRequests.current.isCurrent(operation)
-      )
-        setSimulationStatus(error.message || "Simulazione non riuscita.");
-    } finally {
-      if (simulationRequests.current.isCurrent(operation))
-        setIsSimulating(false);
-    }
-  };
   if (!profile)
     return (
       <main className="boot">
@@ -877,7 +804,6 @@ function App() {
     );
 
   const datasetState = datasetFreshness(profile, data, currentSourceFingerprints);
-  const simulationState = simulationFreshness(profile, data, season, auctionInput);
   const datasetStale = datasetState !== "dataset corrente";
   const tab = tabOf(view, availableTabs);
   const moreActive = !MOBILE_PRIMARY_IDS.has(tab.id);
@@ -972,16 +898,6 @@ function App() {
           ) : null}
           {view === "setpieces" ? (
             <SetPiecesView data={data} openPlayer={openPlayer} />
-          ) : null}
-          {view === "simulation" ? (
-            <SimulationView
-              season={season}
-              data={data}
-              onRerun={rerunSimulation}
-              isSimulating={isSimulating}
-              simulationStatus={simulationStatus}
-              auctionInput={auctionInput}
-            />
           ) : null}
           {view === "auction" ? (
             <AuctionView
@@ -1089,7 +1005,6 @@ function App() {
           <div className={`notice notice--${datasetStale ? "warn" : "go"}`}>
             {datasetState}
           </div>
-          <div className="notice">{simulationState}</div>
           <p className="micro">
             Generato il {data.meta?.generato_il?.slice(0, 10) || "n/d"} ·
             ID asta {activeProfileId}

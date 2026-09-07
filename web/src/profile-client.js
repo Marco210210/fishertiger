@@ -30,9 +30,6 @@ export const auctionDatasetPath = (profile) => {
   return `${id}/${season}/auction_data.json`;
 };
 
-export const seasonSimulationPath = (profile) =>
-  auctionDatasetPath(profile).replace("auction_data.json", "season_simulation.json");
-
 export const isValidProfileId = (value) =>
   typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(value);
 
