@@ -1,7 +1,7 @@
 {
   "version": 1,
   "season": "2026/27",
-  "generated_at": "2026-09-06T11:00:42.440933+00:00",
+  "generated_at": "2026-09-07T12:38:05.976286+00:00",
   "provider": "Fantacalcio.it · elenco ufficiale",
   "lookback_days": 10,
   "players": {
@@ -73,18 +73,18 @@
       ],
       "promoted": false
     },
-    "7125": {
-      "player_id": 7125,
-      "name": "Idrissi R.",
+    "4210": {
+      "player_id": 4210,
+      "name": "Mina",
       "team": "Cagliari",
-      "status": "out",
-      "availability": 0.2,
+      "status": "monitor",
+      "availability": 0.55,
       "starter": 0.5,
-      "impact_percent": -10.0,
-      "multiplier": 0.9,
+      "impact_percent": -2.0,
+      "multiplier": 0.98,
       "confidence": 0.9,
-      "headline": "Idrissi R.: indisponibilità da valutare nell'asta",
-      "summary": "il calciatore in ripresa dalla rottura del legamento crociato, può tornare arruolabile dalla fine di ottobre.",
+      "headline": "Mina: indisponibilità da valutare nell'asta",
+      "summary": "Il colombiano in recupero da noie fisiche, può tornare convocabile dalla 4a giornata di campionato.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
@@ -102,6 +102,23 @@
       "confidence": 0.9,
       "headline": "Trepy: indisponibilità da valutare nell'asta",
       "summary": "Il calciatore ricoverato il 16 agosto dopo che avrebbe rischiato di annegare in piscina. Dimesso poi il 28 agosto, ora condizioni monitorate da parte dello staff medico rossoblù. Tempi di recupero da valutare, assente di certo nel prossimo turno di campionato.",
+      "sources": [
+        "https://www.fantacalcio.it/serie-a/indisponibili"
+      ],
+      "promoted": false
+    },
+    "7125": {
+      "player_id": 7125,
+      "name": "Idrissi R.",
+      "team": "Cagliari",
+      "status": "out",
+      "availability": 0.2,
+      "starter": 0.5,
+      "impact_percent": -10.0,
+      "multiplier": 0.9,
+      "confidence": 0.9,
+      "headline": "Idrissi R.: indisponibilità da valutare nell'asta",
+      "summary": "il calciatore in ripresa dalla rottura del legamento crociato, può tornare arruolabile dalla fine di ottobre.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
@@ -481,18 +498,18 @@
       ],
       "promoted": false
     },
-    "4777": {
-      "player_id": 4777,
-      "name": "McTominay",
+    "6809": {
+      "player_id": 6809,
+      "name": "Marianucci",
       "team": "Napoli",
       "status": "out",
-      "availability": 0.2,
+      "availability": 0.15,
       "starter": 0.5,
-      "impact_percent": -10.0,
-      "multiplier": 0.9,
+      "impact_percent": -18.0,
+      "multiplier": 0.82,
       "confidence": 0.9,
-      "headline": "McTominay: indisponibilità da valutare nell'asta",
-      "summary": "Il centrocampista l'1 settembre a causa di una lieve aritmia benigna ha deciso di sottoporsi a un intervento di correzione tramite ablazione. Rientro in campo da metà ottobre.",
+      "headline": "Marianucci: indisponibilità da valutare nell'asta",
+      "summary": "Il difensore KO in amichevole l'8 agosto vittima di una lesione di alto grado del collaterale mediale del ginocchio sinistro. Tempi di recupero da valutare, ma rischia uno stop di almeno due mesi.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
@@ -515,18 +532,18 @@
       ],
       "promoted": false
     },
-    "6809": {
-      "player_id": 6809,
-      "name": "Marianucci",
+    "4777": {
+      "player_id": 4777,
+      "name": "McTominay",
       "team": "Napoli",
       "status": "out",
-      "availability": 0.15,
+      "availability": 0.2,
       "starter": 0.5,
-      "impact_percent": -18.0,
-      "multiplier": 0.82,
+      "impact_percent": -10.0,
+      "multiplier": 0.9,
       "confidence": 0.9,
-      "headline": "Marianucci: indisponibilità da valutare nell'asta",
-      "summary": "Il difensore KO in amichevole l'8 agosto vittima di una lesione di alto grado del collaterale mediale del ginocchio sinistro. Tempi di recupero da valutare, ma rischia uno stop di almeno due mesi.",
+      "headline": "McTominay: indisponibilità da valutare nell'asta",
+      "summary": "Il centrocampista l'1 settembre a causa di una lieve aritmia benigna ha deciso di sottoporsi a un intervento di correzione tramite ablazione. Rientro in campo da metà ottobre.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
@@ -714,6 +731,23 @@
       "confidence": 0.9,
       "headline": "Zanoli: indisponibilità da valutare nell'asta",
       "summary": "il calciatore operato a fine gennaio per la lesione del legamento crociato anteriore del ginocchio destro, sta ultimando la fase di recupero e può tornare in campo da ottobre.",
+      "sources": [
+        "https://www.fantacalcio.it/serie-a/indisponibili"
+      ],
+      "promoted": false
+    },
+    "7312": {
+      "player_id": 7312,
+      "name": "Arizala",
+      "team": "Udinese",
+      "status": "monitor",
+      "availability": 0.55,
+      "starter": 0.5,
+      "impact_percent": -2.0,
+      "multiplier": 0.98,
+      "confidence": 0.9,
+      "headline": "Arizala: indisponibilità da valutare nell'asta",
+      "summary": "Non ci sarà con la Lazio, lesione al bicipite femorale.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
