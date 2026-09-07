@@ -1023,8 +1023,6 @@ function App() {
                 openPlayer={openPlayer}
                 rules={activeRules}
                 profileId={activeProfileId}
-                draft={auctionDraft}
-                setDraft={setAuctionDraft}
                 apiBase={apiBase}
               />
             </div>

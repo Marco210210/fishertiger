@@ -263,68 +263,70 @@ export default function AuctionView({
             onChangeUserTeam={chooseUserTeam}
           />
 
-          <div className="nominate">
-            <div
-              className="nominate-field"
-              onBlur={(event) => {
-                if (!event.currentTarget.contains(event.relatedTarget))
-                  setSuggestionsOpen(false);
-              }}
-            >
-              <Icon name="search" className="nominate-icon" />
-              <input
-                id="auction-player"
-                className="input"
-                value={query}
-                onChange={(event) => {
-                  const nextQuery = event.target.value;
-                  setDraft((current) =>
-                    draftForQuery(current, data.players, nextQuery),
-                  );
-                  setSuggestionsOpen(true);
+          {!liveMode ? (
+            <div className="nominate">
+              <div
+                className="nominate-field"
+                onBlur={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget))
+                    setSuggestionsOpen(false);
                 }}
-                onFocus={() => setSuggestionsOpen(true)}
-                onKeyDown={(event) =>
-                  event.key === "Escape" && setSuggestionsOpen(false)
-                }
-                placeholder="Chi è in asta?"
-                autoComplete="off"
-                aria-label="Giocatore in asta"
-                aria-describedby="auction-results"
-              />
-              {query ? (
-                <button
-                  type="button"
-                  className="icon-btn nominate-clear"
-                  onClick={resetSelection}
-                  aria-label="Svuota la ricerca"
-                >
-                  <Icon name="close" />
-                </button>
-              ) : null}
-              {suggestionsOpen && query.trim().length >= 2 ? (
-                <div className="results" id="auction-results">
-                  <span className="results-note">
-                    {choices.length
-                      ? `${choices.length} giocatori disponibili`
-                      : "Nessun giocatore disponibile"}
-                  </span>
-                  <div className="rows">
-                    {choices.map((candidate) => (
-                      <PlayerRow
-                        key={candidate.id}
-                        player={candidate}
-                        className="player-row"
-                        value={candidate.fvm_scaled}
-                        valueLabel="valore"
-                        onClick={() => selectPlayer(candidate)}
-                      />
-                    ))}
+              >
+                <Icon name="search" className="nominate-icon" />
+                <input
+                  id="auction-player"
+                  className="input"
+                  value={query}
+                  onChange={(event) => {
+                    const nextQuery = event.target.value;
+                    setDraft((current) =>
+                      draftForQuery(current, data.players, nextQuery),
+                    );
+                    setSuggestionsOpen(true);
+                  }}
+                  onFocus={() => setSuggestionsOpen(true)}
+                  onKeyDown={(event) =>
+                    event.key === "Escape" && setSuggestionsOpen(false)
+                  }
+                  placeholder="Chi è in asta?"
+                  autoComplete="off"
+                  aria-label="Giocatore in asta"
+                  aria-describedby="auction-results"
+                />
+                {query ? (
+                  <button
+                    type="button"
+                    className="icon-btn nominate-clear"
+                    onClick={resetSelection}
+                    aria-label="Svuota la ricerca"
+                  >
+                    <Icon name="close" />
+                  </button>
+                ) : null}
+                {suggestionsOpen && query.trim().length >= 2 ? (
+                  <div className="results" id="auction-results">
+                    <span className="results-note">
+                      {choices.length
+                        ? `${choices.length} giocatori disponibili`
+                        : "Nessun giocatore disponibile"}
+                    </span>
+                    <div className="rows">
+                      {choices.map((candidate) => (
+                        <PlayerRow
+                          key={candidate.id}
+                          player={candidate}
+                          className="player-row"
+                          value={candidate.fvm_scaled}
+                          valueLabel="valore"
+                          onClick={() => selectPlayer(candidate)}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ) : null}
+                ) : null}
+              </div>
             </div>
-          </div>
+          ) : null}
 
           {message ? (
             <p
@@ -351,7 +353,9 @@ export default function AuctionView({
           ) : (
             <div className="card">
               <Empty title="Nessun giocatore in asta">
-                {readOnly
+                {liveMode
+                  ? "In attesa del prossimo giocatore battuto su FantaLab."
+                  : readOnly
                   ? "Scrivi almeno due lettere del nome chiamato per vedere il consiglio."
                   : "Scrivi almeno due lettere del nome chiamato per vedere il consiglio e registrare il prezzo."}
               </Empty>
@@ -562,7 +566,7 @@ function VerdictCard({
 
       <div className="readonly-auction-note">
         <span><b>Sola lettura</b> · {liveMode ? "Prezzo e assegnazioni arrivano da FantaLab. Da AstaFanta non si può puntare." : "Questa schermata serve solo per analizzare il giocatore. Le offerte si fanno esclusivamente su FantaLab."}</span>
-        <button type="button" className="btn btn--ghost btn--sm" onClick={onCancel}>Chiudi</button>
+        {!liveMode ? <button type="button" className="btn btn--ghost btn--sm" onClick={onCancel}>Chiudi</button> : null}
       </div>
 
       <AdviceDetail advice={advice} />

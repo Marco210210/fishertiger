@@ -27,6 +27,7 @@ const errorMessage = async (response) => {
 
 const shortId = (value) => (value ? `…${String(value).slice(-6)}` : "sconosciuta");
 const POLL_INTERVAL_MS = 1200;
+const EMPTY_LIVE_DRAFT = Object.freeze({ playerId: null, query: "", price: "" });
 const FANTALAB_TOKEN_CAPTURE = `(async()=>{const direct=localStorage.getItem("refresh_token");if(direct){copy(direct);console.log("Token FantaLab copiato.");return;}for(const {name} of await indexedDB.databases()){if(!/firebase/i.test(name))continue;const db=await new Promise((ok,no)=>{const r=indexedDB.open(name);r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});for(const store of db.objectStoreNames){const rows=await new Promise((ok,no)=>{const r=db.transaction(store).objectStore(store).getAll();r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});for(const row of rows){const token=row?.value?.stsTokenManager?.refreshToken;if(token){copy(token);console.log("Token FantaLab copiato.");return;}}}}console.log("Token non trovato: accedi prima a FantaLab.");})();`;
 
 const importRoomSetup = (profileId, players, rules, board, snapshot, teamMap) => {
@@ -61,10 +62,9 @@ export default function LiveAuctionView({
   openPlayer,
   rules,
   profileId,
-  draft,
-  setDraft,
   apiBase,
 }) {
+  const [draft, setDraft] = useState(EMPTY_LIVE_DRAFT);
   const [connection, setConnection] = useState(() => readFantalabConnection(profileId));
   /* A saved room link reconnects on its own — there is no reason to make the
      operator click "Collega" again just because this is a fresh mount. */
@@ -100,6 +100,7 @@ export default function LiveAuctionView({
     setError("");
     setMessage("");
     setRoomNotice("");
+    setDraft(EMPTY_LIVE_DRAFT);
   }, [profileId]);
 
   useEffect(() => {
@@ -276,7 +277,7 @@ export default function LiveAuctionView({
             query: player.nome,
             price: String(next.lot.price || current.rules.auction.minPrice),
           });
-        }
+        } else setDraft(EMPTY_LIVE_DRAFT);
       } catch (failure) {
         if (!cancelled) {
           const detail = failure instanceof Error
@@ -303,6 +304,10 @@ export default function LiveAuctionView({
       if (timer) window.clearTimeout(timer);
     };
   }, [active, connection.roomUrl, connection.db, apiBase, profileId, setDraft]);
+
+  useEffect(() => {
+    if (!active) setDraft(EMPTY_LIVE_DRAFT);
+  }, [active]);
 
   const saveConnection = (next) => {
     const stored = writeFantalabConnection(profileId, next);
