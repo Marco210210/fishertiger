@@ -1,7 +1,7 @@
 {
   "version": 1,
   "season": "2026/27",
-  "generated_at": "2026-09-09T11:27:17.803311+00:00",
+  "generated_at": "2026-09-10T11:23:36.228936+00:00",
   "provider": "Fantacalcio.it · elenco ufficiale",
   "lookback_days": 10,
   "players": {
@@ -73,40 +73,6 @@
       ],
       "promoted": false
     },
-    "7317": {
-      "player_id": 7317,
-      "name": "Trepy",
-      "team": "Cagliari",
-      "status": "doubt",
-      "availability": 0.4,
-      "starter": 0.5,
-      "impact_percent": -3.0,
-      "multiplier": 0.97,
-      "confidence": 0.9,
-      "headline": "Trepy: indisponibilità da valutare nell'asta",
-      "summary": "Il calciatore ricoverato il 16 agosto dopo che avrebbe rischiato di annegare in piscina. Dimesso poi il 28 agosto, ora condizioni monitorate da parte dello staff medico rossoblù. Tempi di recupero da valutare, assente di certo nel prossimo turno di campionato.",
-      "sources": [
-        "https://www.fantacalcio.it/serie-a/indisponibili"
-      ],
-      "promoted": false
-    },
-    "6640": {
-      "player_id": 6640,
-      "name": "Felici",
-      "team": "Cagliari",
-      "status": "doubt",
-      "availability": 0.4,
-      "starter": 0.5,
-      "impact_percent": -3.0,
-      "multiplier": 0.97,
-      "confidence": 0.9,
-      "headline": "Felici: indisponibilità da valutare nell'asta",
-      "summary": "il centrocampista KO il 7 settembre contro il Lecce in casa vittima di un problema al ginocchio destro. Condizioni da valutare, di certo assente nel prossimo turno di campionato.",
-      "sources": [
-        "https://www.fantacalcio.it/serie-a/indisponibili"
-      ],
-      "promoted": false
-    },
     "7125": {
       "player_id": 7125,
       "name": "Idrissi R.",
@@ -119,6 +85,40 @@
       "confidence": 0.9,
       "headline": "Idrissi R.: indisponibilità da valutare nell'asta",
       "summary": "il calciatore in ripresa dalla rottura del legamento crociato, può tornare arruolabile dalla fine di ottobre.",
+      "sources": [
+        "https://www.fantacalcio.it/serie-a/indisponibili"
+      ],
+      "promoted": false
+    },
+    "6640": {
+      "player_id": 6640,
+      "name": "Felici",
+      "team": "Cagliari",
+      "status": "monitor",
+      "availability": 0.55,
+      "starter": 0.5,
+      "impact_percent": -2.0,
+      "multiplier": 0.98,
+      "confidence": 0.9,
+      "headline": "Felici: indisponibilità da valutare nell'asta",
+      "summary": "il centrocampista KO il 7 settembre contro il Lecce in casa vittima della rottura del legamento crociato anteriore. Verrà operato e costretto a un lungo stop (ipotizziamo un rientro da marzo).",
+      "sources": [
+        "https://www.fantacalcio.it/serie-a/indisponibili"
+      ],
+      "promoted": false
+    },
+    "7317": {
+      "player_id": 7317,
+      "name": "Trepy",
+      "team": "Cagliari",
+      "status": "doubt",
+      "availability": 0.4,
+      "starter": 0.5,
+      "impact_percent": -3.0,
+      "multiplier": 0.97,
+      "confidence": 0.9,
+      "headline": "Trepy: indisponibilità da valutare nell'asta",
+      "summary": "Il calciatore ricoverato il 16 agosto dopo che avrebbe rischiato di annegare in piscina. Dimesso poi il 28 agosto, ora condizioni monitorate da parte dello staff medico rossoblù. Tempi di recupero da valutare, assente di certo nel prossimo turno di campionato.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
@@ -213,14 +213,31 @@
       "player_id": 2832,
       "name": "Boga",
       "team": "Juventus",
-      "status": "monitor",
-      "availability": 0.55,
+      "status": "out",
+      "availability": 0.2,
       "starter": 0.5,
-      "impact_percent": -2.0,
-      "multiplier": 0.98,
+      "impact_percent": -10.0,
+      "multiplier": 0.9,
       "confidence": 0.9,
       "headline": "Boga: indisponibilità da valutare nell'asta",
-      "summary": "l'ala offensiva dei bianconeri non al meglio per un sospetto stiramento al flessore della coscia, gli esami medici chiariranno la situazione. Di certo out per domenica sera contro il Sassuolo.",
+      "summary": "l'ala offensiva dei bianconeri fermo dopo il match contro il Milan (6 settembre) per una lesione di medio grado del bicipite femorale. Attesi nuovi esami medici a fine settembre per stabilire con esattezza i tempi di recupero, ma ipotizziamo oggi un possibile rientro dalla metà di ottobre.",
+      "sources": [
+        "https://www.fantacalcio.it/serie-a/indisponibili"
+      ],
+      "promoted": false
+    },
+    "827": {
+      "player_id": 827,
+      "name": "Locatelli",
+      "team": "Juventus",
+      "status": "out",
+      "availability": 0.05,
+      "starter": 0.5,
+      "impact_percent": -30.0,
+      "multiplier": 0.7,
+      "confidence": 0.9,
+      "headline": "Locatelli: indisponibilità da valutare nell'asta",
+      "summary": "il metronomo del centrocampo bianconero ha rimediato la rottura del menisco esterno del ginocchio. Verrà operato a Lione a stretto giro. Lungo stop e possibilità di rivederlo in campo da gennaio.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
@@ -243,18 +260,18 @@
       ],
       "promoted": false
     },
-    "827": {
-      "player_id": 827,
-      "name": "Locatelli",
+    "5520": {
+      "player_id": 5520,
+      "name": "Cambiaso",
       "team": "Juventus",
       "status": "out",
-      "availability": 0.05,
+      "availability": 0.3,
       "starter": 0.5,
-      "impact_percent": -30.0,
-      "multiplier": 0.7,
+      "impact_percent": -6.0,
+      "multiplier": 0.94,
       "confidence": 0.9,
-      "headline": "Locatelli: indisponibilità da valutare nell'asta",
-      "summary": "il metronomo del centrocampo bianconero ha rimediato la rottura del menisco esterno del ginocchio. Verrà operato a Lione a stretto giro. Lungo stop e possibilità di rivederlo in campo da gennaio.",
+      "headline": "Cambiaso: indisponibilità da valutare nell'asta",
+      "summary": "il difensore alle prese con una distorsione alla caviglia destra e sarà out anche nel prossimo turno di campionato. Si confida di riaverlo a disposizione dalla seconda metà di settembre.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
@@ -430,6 +447,23 @@
       ],
       "promoted": false
     },
+    "7260": {
+      "player_id": 7260,
+      "name": "Ziolkowski",
+      "team": "Monza",
+      "status": "doubt",
+      "availability": 0.4,
+      "starter": 0.5,
+      "impact_percent": -3.0,
+      "multiplier": 0.97,
+      "confidence": 0.9,
+      "headline": "Ziolkowski: indisponibilità da valutare nell'asta",
+      "summary": "Il difensore condizionato da una fastidiosa fascite plantare, di certo assente nel prossimo turno di campionato. Tempi di recupero da valutare.",
+      "sources": [
+        "https://www.fantacalcio.it/serie-a/indisponibili"
+      ],
+      "promoted": false
+    },
     "2724": {
       "player_id": 2724,
       "name": "Buongiorno",
@@ -459,6 +493,23 @@
       "confidence": 0.9,
       "headline": "Giovane: indisponibilità da valutare nell'asta",
       "summary": "L'attaccante operato il 3 settembre a causa di un'ernia inguinale e recuperabile dall'inizio di ottobre.",
+      "sources": [
+        "https://www.fantacalcio.it/serie-a/indisponibili"
+      ],
+      "promoted": false
+    },
+    "7351": {
+      "player_id": 7351,
+      "name": "Santos A.",
+      "team": "Napoli",
+      "status": "doubt",
+      "availability": 0.4,
+      "starter": 0.5,
+      "impact_percent": -3.0,
+      "multiplier": 0.97,
+      "confidence": 0.9,
+      "headline": "Santos A.: indisponibilità da valutare nell'asta",
+      "summary": "Il brasiliano costretto al cambio mercoledì in Champions League per noie muscolari che andranno valutate. Forfait certo per domenica contro il Bologna in campionato.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
@@ -498,6 +549,23 @@
       ],
       "promoted": false
     },
+    "572": {
+      "player_id": 572,
+      "name": "Meret",
+      "team": "Napoli",
+      "status": "doubt",
+      "availability": 0.4,
+      "starter": 0.5,
+      "impact_percent": -3.0,
+      "multiplier": 0.97,
+      "confidence": 0.9,
+      "headline": "Meret: indisponibilità da valutare nell'asta",
+      "summary": "Il portiere uscito claudicante dal match di mercoledì in Champions League per un fastidio muscolare alla coscia sinistra. Condizioni da valutare, forfait per domenica in campionato contro il Bologna.",
+      "sources": [
+        "https://www.fantacalcio.it/serie-a/indisponibili"
+      ],
+      "promoted": false
+    },
     "4349": {
       "player_id": 4349,
       "name": "Nicolussi Caviglia",
@@ -515,23 +583,6 @@
       ],
       "promoted": false
     },
-    "6666": {
-      "player_id": 6666,
-      "name": "Bernabè",
-      "team": "Parma",
-      "status": "doubt",
-      "availability": 0.4,
-      "starter": 0.5,
-      "impact_percent": -3.0,
-      "multiplier": 0.97,
-      "confidence": 0.9,
-      "headline": "Bernabè: indisponibilità da valutare nell'asta",
-      "summary": "Il centrocampista ha lamentato nella rifinitura di sabato scorso un problema fisico e non è stato convocato poi contro il Monza. Da valutare in settimana verso la sfida di domenica a Como, ma rimane a rischio.",
-      "sources": [
-        "https://www.fantacalcio.it/serie-a/indisponibili"
-      ],
-      "promoted": false
-    },
     "7536": {
       "player_id": 7536,
       "name": "Diallo O.",
@@ -544,6 +595,23 @@
       "confidence": 0.9,
       "headline": "Diallo O.: indisponibilità da valutare nell'asta",
       "summary": "Il calciatore non al meglio per noie fisiche, forfait domenica scorsa contro il Monza e non ci sarà neppure nel prossimo turno a Como. Da valutare in vista della 5a giornata.",
+      "sources": [
+        "https://www.fantacalcio.it/serie-a/indisponibili"
+      ],
+      "promoted": false
+    },
+    "6666": {
+      "player_id": 6666,
+      "name": "Bernabè",
+      "team": "Parma",
+      "status": "doubt",
+      "availability": 0.4,
+      "starter": 0.5,
+      "impact_percent": -3.0,
+      "multiplier": 0.97,
+      "confidence": 0.9,
+      "headline": "Bernabè: indisponibilità da valutare nell'asta",
+      "summary": "Il centrocampista ha lamentato nella rifinitura di sabato scorso un problema fisico e non è stato convocato poi contro il Monza. Da valutare in settimana verso la sfida di domenica a Como, ma rimane a rischio.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
@@ -685,57 +753,6 @@
       ],
       "promoted": false
     },
-    "6925": {
-      "player_id": 6925,
-      "name": "Palma",
-      "team": "Udinese",
-      "status": "doubt",
-      "availability": 0.45,
-      "starter": 0.5,
-      "impact_percent": -4.0,
-      "multiplier": 0.96,
-      "confidence": 0.9,
-      "headline": "Palma: indisponibilità da valutare nell'asta",
-      "summary": "il difensore nel primo turno di A contro il Como costretto al cambio per un lieve problema muscolare all'adduttore della coscia destra che lo terrà ai box fino alla metà di settembre.",
-      "sources": [
-        "https://www.fantacalcio.it/serie-a/indisponibili"
-      ],
-      "promoted": false
-    },
-    "6956": {
-      "player_id": 6956,
-      "name": "Solet",
-      "team": "Udinese",
-      "status": "monitor",
-      "availability": 0.55,
-      "starter": 0.5,
-      "impact_percent": -2.0,
-      "multiplier": 0.98,
-      "confidence": 0.9,
-      "headline": "Solet: indisponibilità da valutare nell'asta",
-      "summary": "il difensore il 7 settembre contro la Lazio costretto al cambio per un problema muscolare alla gamba che andrà valutato. Di certo out per lunedì contro l'Inter a San Siro.",
-      "sources": [
-        "https://www.fantacalcio.it/serie-a/indisponibili"
-      ],
-      "promoted": false
-    },
-    "5527": {
-      "player_id": 5527,
-      "name": "Zanoli",
-      "team": "Udinese",
-      "status": "out",
-      "availability": 0.2,
-      "starter": 0.5,
-      "impact_percent": -10.0,
-      "multiplier": 0.9,
-      "confidence": 0.9,
-      "headline": "Zanoli: indisponibilità da valutare nell'asta",
-      "summary": "il calciatore operato a fine gennaio per la lesione del legamento crociato anteriore del ginocchio destro, sta ultimando la fase di recupero e può tornare in campo da ottobre.",
-      "sources": [
-        "https://www.fantacalcio.it/serie-a/indisponibili"
-      ],
-      "promoted": false
-    },
     "7312": {
       "player_id": 7312,
       "name": "Arizala",
@@ -748,23 +765,6 @@
       "confidence": 0.9,
       "headline": "Arizala: indisponibilità da valutare nell'asta",
       "summary": "il difensore fermo dal 6 settembre vittima di una lesione muscolare al bicipite femorale. Condizioni da valutare, ma dovrebbe tornare convocabile dalla prima metà di ottobre.",
-      "sources": [
-        "https://www.fantacalcio.it/serie-a/indisponibili"
-      ],
-      "promoted": false
-    },
-    "7198": {
-      "player_id": 7198,
-      "name": "Piotrowski",
-      "team": "Udinese",
-      "status": "out",
-      "availability": 0.2,
-      "starter": 0.5,
-      "impact_percent": -10.0,
-      "multiplier": 0.9,
-      "confidence": 0.9,
-      "headline": "Piotrowski: indisponibilità da valutare nell'asta",
-      "summary": "Il centrocampista ha ravvisato il 7 settembre contro la Lazio una lieve aritmia cardiaca benigna e si sottoporrà nei prossimi giorni ad un intervento di ablazione cardiaca. Osservato un periodo di riposo, potrà tornare alla regolare attività agonistica (ipotizziamo da fine ottobre).",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
@@ -787,18 +787,86 @@
       ],
       "promoted": false
     },
+    "7198": {
+      "player_id": 7198,
+      "name": "Piotrowski",
+      "team": "Udinese",
+      "status": "out",
+      "availability": 0.2,
+      "starter": 0.5,
+      "impact_percent": -10.0,
+      "multiplier": 0.9,
+      "confidence": 0.9,
+      "headline": "Piotrowski: indisponibilità da valutare nell'asta",
+      "summary": "Il centrocampista ha ravvisato il 7 settembre contro la Lazio una lieve aritmia cardiaca benigna e si sottoporrà nei prossimi giorni ad un intervento di ablazione cardiaca. Osservato un periodo di riposo, potrà tornare alla regolare attività agonistica (ipotizziamo da fine ottobre).",
+      "sources": [
+        "https://www.fantacalcio.it/serie-a/indisponibili"
+      ],
+      "promoted": false
+    },
+    "5527": {
+      "player_id": 5527,
+      "name": "Zanoli",
+      "team": "Udinese",
+      "status": "out",
+      "availability": 0.2,
+      "starter": 0.5,
+      "impact_percent": -10.0,
+      "multiplier": 0.9,
+      "confidence": 0.9,
+      "headline": "Zanoli: indisponibilità da valutare nell'asta",
+      "summary": "il calciatore operato a fine gennaio per la lesione del legamento crociato anteriore del ginocchio destro, sta ultimando la fase di recupero e può tornare in campo da ottobre.",
+      "sources": [
+        "https://www.fantacalcio.it/serie-a/indisponibili"
+      ],
+      "promoted": false
+    },
+    "6956": {
+      "player_id": 6956,
+      "name": "Solet",
+      "team": "Udinese",
+      "status": "monitor",
+      "availability": 0.55,
+      "starter": 0.5,
+      "impact_percent": -2.0,
+      "multiplier": 0.98,
+      "confidence": 0.9,
+      "headline": "Solet: indisponibilità da valutare nell'asta",
+      "summary": "il difensore il 7 settembre contro la Lazio costretto al cambio per un problema muscolare alla gamba che andrà valutato. Di certo out per lunedì contro l'Inter a San Siro.",
+      "sources": [
+        "https://www.fantacalcio.it/serie-a/indisponibili"
+      ],
+      "promoted": false
+    },
+    "6925": {
+      "player_id": 6925,
+      "name": "Palma",
+      "team": "Udinese",
+      "status": "doubt",
+      "availability": 0.45,
+      "starter": 0.5,
+      "impact_percent": -4.0,
+      "multiplier": 0.96,
+      "confidence": 0.9,
+      "headline": "Palma: indisponibilità da valutare nell'asta",
+      "summary": "il difensore nel primo turno di A contro il Como costretto al cambio per un lieve problema muscolare all'adduttore della coscia destra che lo terrà ai box fino alla metà di settembre.",
+      "sources": [
+        "https://www.fantacalcio.it/serie-a/indisponibili"
+      ],
+      "promoted": false
+    },
     "7253": {
       "player_id": 7253,
       "name": "Bella-Kotchap",
       "team": "Venezia",
-      "status": "doubt",
-      "availability": 0.4,
+      "status": "out",
+      "availability": 0.2,
       "starter": 0.5,
-      "impact_percent": -3.0,
-      "multiplier": 0.97,
+      "impact_percent": -10.0,
+      "multiplier": 0.9,
       "confidence": 0.9,
       "headline": "Bella-Kotchap: indisponibilità da valutare nell'asta",
-      "summary": "il difensore costretto al cambio a Frosinone il 6 settembre per un fastidio che andrà valutato, ora viaggia verso il forfait per venerdì in casa contro la Fiorentina.",
+      "summary": "il difensore costretto al cambio a Frosinone il 6 settembre per un risentimento muscolare mio-fasciale all'adduttore della gamba destra. Recuperabile dall'inizio di ottobre.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
@@ -825,14 +893,31 @@
       "player_id": 7478,
       "name": "Franjic",
       "team": "Venezia",
+      "status": "out",
+      "availability": 0.1,
+      "starter": 0.5,
+      "impact_percent": -24.0,
+      "multiplier": 0.76,
+      "confidence": 0.9,
+      "headline": "Franjic: indisponibilità da valutare nell'asta",
+      "summary": "il difensore costretto al cambio a Milano contro i rossoneri a fine agosto per un guaio alla spalla che ha richiesto l'intervento chirurgico. Lungo stop e rientro dalla metà di dicembre.",
+      "sources": [
+        "https://www.fantacalcio.it/serie-a/indisponibili"
+      ],
+      "promoted": false
+    },
+    "5674": {
+      "player_id": 5674,
+      "name": "Basic",
+      "team": "Venezia",
       "status": "doubt",
       "availability": 0.4,
       "starter": 0.5,
       "impact_percent": -3.0,
       "multiplier": 0.97,
       "confidence": 0.9,
-      "headline": "Franjic: indisponibilità da valutare nell'asta",
-      "summary": "il difensore costretto al cambio a Milano contro i rossoneri a fine agosto per un guaio alla spalla che andrà valutato. Forfait certo per venerdì contro la Fiorentina.",
+      "headline": "Basic: indisponibilità da valutare nell'asta",
+      "summary": "Il centrocampista out contro Frosinone e Fiorentina per noie fisiche, rimane da valutare quotidianamente in vista della 5a giornata di campionato.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
