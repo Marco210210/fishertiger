@@ -1,7 +1,7 @@
 {
   "version": 1,
   "season": "2026/27",
-  "generated_at": "2026-09-13T11:56:15.095691+00:00",
+  "generated_at": "2026-09-14T12:52:34.750177+00:00",
   "provider": "Fantacalcio.it · elenco ufficiale",
   "lookback_days": 10,
   "players": {
@@ -702,23 +702,6 @@
       ],
       "promoted": false
     },
-    "6666": {
-      "player_id": 6666,
-      "name": "Bernabè",
-      "team": "Parma",
-      "status": "doubt",
-      "availability": 0.4,
-      "starter": 0.5,
-      "impact_percent": -3.0,
-      "multiplier": 0.97,
-      "confidence": 0.9,
-      "headline": "Bernabè: indisponibilità da valutare nell'asta",
-      "summary": "Il centrocampista ha lamentato nella rifinitura di sabato scorso un problema fisico e non è stato convocato poi contro il Monza. Da valutare in settimana verso la sfida di domenica a Como, ma rimane a rischio.",
-      "sources": [
-        "https://www.fantacalcio.it/serie-a/indisponibili"
-      ],
-      "promoted": false
-    },
     "6717": {
       "player_id": 6717,
       "name": "Konè I.",
@@ -832,7 +815,24 @@
       "multiplier": 0.97,
       "confidence": 0.9,
       "headline": "Casadei: indisponibilità da valutare nell'asta",
-      "summary": "Il centrocampista fuori causa contro Fiorentina e Sassuolo a causa di un affaticamento muscolare, da valutare in vista di lunedì contro la Roma nella 4a di campionato.",
+      "summary": "Il centrocampista fuori causa contro Fiorentina e Sassuolo a causa di un affaticamento muscolare, non ci sarà neppure lunedì contro la Roma. Da valutare rientro in vista della 5a di campionato.",
+      "sources": [
+        "https://www.fantacalcio.it/serie-a/indisponibili"
+      ],
+      "promoted": false
+    },
+    "6646": {
+      "player_id": 6646,
+      "name": "Adams C.",
+      "team": "Torino",
+      "status": "doubt",
+      "availability": 0.4,
+      "starter": 0.5,
+      "impact_percent": -3.0,
+      "multiplier": 0.97,
+      "confidence": 0.9,
+      "headline": "Adams C.: indisponibilità da valutare nell'asta",
+      "summary": "L'attaccante frenato domenica da un problema muscolare all'adduttore e rimane da valutare. Out lunedì contro la Roma.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
