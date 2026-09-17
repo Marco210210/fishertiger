@@ -1,7 +1,7 @@
 {
   "version": 1,
   "season": "2026/27",
-  "generated_at": "2026-09-16T11:38:39.032217+00:00",
+  "generated_at": "2026-09-17T11:45:41.878423+00:00",
   "provider": "Fantacalcio.it · elenco ufficiale",
   "lookback_days": 10,
   "players": {
@@ -51,40 +51,6 @@
       "confidence": 0.9,
       "headline": "Happonen: indisponibilità da valutare nell'asta",
       "summary": "Il portiere alle prese con un risentimento all'adduttore destro, assente domenica scorsa a Napoli. Condizioni da valutare in settimana verso il match interno di sabato contro il Torino, a rischio la sua convocazione.",
-      "sources": [
-        "https://www.fantacalcio.it/serie-a/indisponibili"
-      ],
-      "promoted": false
-    },
-    "4433": {
-      "player_id": 4433,
-      "name": "Zortea",
-      "team": "Bologna",
-      "status": "doubt",
-      "availability": 0.4,
-      "starter": 0.5,
-      "impact_percent": -3.0,
-      "multiplier": 0.97,
-      "confidence": 0.9,
-      "headline": "Zortea: indisponibilità da valutare nell'asta",
-      "summary": "Il terzino alle prese con un fastidio all'anca e assente domenica scorsa contro il Napoli al Maradona. Da valutare in vista di sabato contro il Toro al Dall'Ara nella 5a giornata.",
-      "sources": [
-        "https://www.fantacalcio.it/serie-a/indisponibili"
-      ],
-      "promoted": false
-    },
-    "6225": {
-      "player_id": 6225,
-      "name": "El Azzouzi O.",
-      "team": "Bologna",
-      "status": "out",
-      "availability": 0.3,
-      "starter": 0.5,
-      "impact_percent": -6.0,
-      "multiplier": 0.94,
-      "confidence": 0.9,
-      "headline": "El Azzouzi O.: indisponibilità da valutare nell'asta",
-      "summary": "Il centrocampista ai box per una lesione del bicipite femorale della coscia sinistra, recuperabile dalla seconda metà di settembre.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
@@ -271,7 +237,7 @@
       "multiplier": 0.9,
       "confidence": 0.9,
       "headline": "Stones: indisponibilità da valutare nell'asta",
-      "summary": "il difensore alle prese con un risentimento ai flessori della coscia sinistra, recuperabile da inizio ottobre.",
+      "summary": "il difensore alle prese con un risentimento ai flessori della coscia sinistra, recuperabile dalla prima metà di ottobre.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
@@ -978,14 +944,14 @@
       "player_id": 5507,
       "name": "Busio",
       "team": "Venezia",
-      "status": "doubt",
-      "availability": 0.4,
+      "status": "out",
+      "availability": 0.15,
       "starter": 0.5,
-      "impact_percent": -3.0,
-      "multiplier": 0.97,
+      "impact_percent": -18.0,
+      "multiplier": 0.82,
       "confidence": 0.9,
       "headline": "Busio: indisponibilità da valutare nell'asta",
-      "summary": "il regista dei veneti KO l'11 settembre contro la Fiorentina vittima di una distrazione intratendinea del bicipite femorale destro. Rischia un lungo stop, di certo assente sabato sera contro la Lazio.",
+      "summary": "il regista dei veneti KO l'11 settembre contro la Fiorentina vittima di una distrazione intratendinea del bicipite femorale destro. Rischia un lungo stop e ipotizziamo un rientro dall'inizio di novembre.",
       "sources": [
         "https://www.fantacalcio.it/serie-a/indisponibili"
       ],
